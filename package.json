@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "publisher": "stevensona",
     "engines": {
         "vscode": "^1.0.0"
