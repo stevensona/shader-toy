@@ -2,7 +2,7 @@
 
 With this extension, view a live WebGL preview of GLSL shaders within VSCode, similar to [shadertoy.com](https://www.shadertoy.com/) by providing a "Show GLSL Preview" command.
 
-![metaballs example](./images/example.png)
+![metaballs example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example.png)
 
  Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is ```main```. 
 

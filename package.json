@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "publisher": "stevensona",
     "engines": {
         "vscode": "^1.0.0"
@@ -15,10 +15,12 @@
     ],
     "main": "./out/src/extension",
     "contributes": {
-        "commands": [{
-            "command": "extension.showGlslPreview",
-            "title": "Show GLSL Preview"
-        }]
+        "commands": [
+            {
+                "command": "extension.showGlslPreview",
+                "title": "Show GLSL Preview"
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "node ./node_modules/vscode/bin/compile",
