@@ -54,6 +54,12 @@ note that ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` rep
 * Performance at the moment is not great for certain shaders, and the cause is under investigation.
 * Errors are not reported. Because of this, it can be impossible to find out why your shader is not working.
 
+## Todo
+
+* Display error messages
+* FPS counter in status bar
+* Figure out the best way to incorporate ability to use textures
+
 ## Contributing
 
 Contributions of any kind are welcome and encouraged. 
@@ -62,6 +68,10 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.1.3
+
+Add support for a few more of the uniforms, and implements a 1 second time delay between modifying the source and recompilation. 
 
 ### 0.1.1
 

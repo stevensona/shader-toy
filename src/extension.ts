@@ -19,13 +19,7 @@ export function activate(context: ExtensionContext) {
             return `
                 <head>
                 <style>
-                    html, body, #canvas {
-                    margin: 0;
-                    padding: 0;
-                    width: 100%;
-                    height: 100%;
-                    display: block;
-                    }
+                    html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
                 </style>
                 </head>
                 <body>
@@ -40,10 +34,17 @@ export function activate(context: ExtensionContext) {
                     }
                 </script>
                 <script id="fs" type="x-shader/x-fragment">
-                    uniform vec3    iResolution;
-                    uniform float   iGlobalTime;
-                    uniform float   iTimeDelta;
-
+                    uniform vec3        iResolution;
+                    uniform float       iGlobalTime;
+                    uniform float       iTimeDelta;
+                    uniform int         iFrame;
+                    uniform float       iChannelTime[4];
+                    uniform vec3        iChannelResolution[4];
+                    uniform vec4        iMouse;
+//                  uniform samplerXX   iChannel0..3;
+//                  uniform vec4        iDate;
+//                  uniform float       iSampleRate;
+                    
                     ${shader}
                 </script>
 
@@ -54,25 +55,32 @@ export function activate(context: ExtensionContext) {
                     var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
                     var clock = new THREE.Clock();
                     var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+                    var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
+                    var mouse = new THREE.Vector4(0, 0, 0, 0);
                     var shader = new THREE.ShaderMaterial({
                             vertexShader: document.getElementById('vs').textContent,
                             fragmentShader: document.getElementById('fs').textContent,
                             depthWrite: false,
                             depthTest: false,
                             uniforms: {
-                              iResolution: { type: "v3", value: resolution },
-                              iGlobalTime: { type: "f", value: 0.0 },
-                              iTimeDelta: { type: "f", value: 0.0 }
+                                iResolution: { type: "v3", value: resolution },
+                                iGlobalTime: { type: "f", value: 0.0 },
+                                iTimeDelta: { type: "f", value: 0.0 },
+                                iFrame: { type: "i", value: 0 },
+                                iChannelTime: { type: "fv1", value: [0., 0., 0., 0.] },
+                                iChannelResolution: { type: "v3v", value:
+                                    [channelResolution, channelResolution, channelResolution, channelResolution]   
+                                },
+                                iMouse: { type: "v4", value: mouse }
+
                             }
                         });
-
                     var quad = new THREE.Mesh(
                         new THREE.PlaneGeometry(2, 2),
                         shader
                     );
                     scene.add(quad);
-
-                    camera.position.z = 200;
+                    camera.position.z = 10;
 
                     render();
 
@@ -89,6 +97,8 @@ export function activate(context: ExtensionContext) {
                         shader.uniforms['iResolution'].value = resolution;
                         shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
                         shader.uniforms['iTimeDelta'].value = clock.getDelta();
+                        shader.uniforms['iFrame'].value = 0;
+                        shader.uniforms['iMouse'].value = mouse;
 
                         renderer.render(scene, camera);
                     }
@@ -107,11 +117,14 @@ export function activate(context: ExtensionContext) {
 
     let provider = new TextDocumentContentProvider();
     let registration = workspace.registerTextDocumentContentProvider('glsl-preview', provider);
-    
+    var _timeout: number;
     workspace.onDidChangeTextDocument((e: TextDocumentChangeEvent) => {
-        if(e.document === window.activeTextEditor.document) {
-            provider.update(previewUri);
-        }
+        clearTimeout(_timeout);
+        _timeout = setTimeout( function() { 
+            if(e.document === window.activeTextEditor.document) {
+                provider.update(previewUri);
+            }
+        }, 1000);
     });
     let disposable = commands.registerCommand('extension.showGlslPreview', () => {
         return commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
