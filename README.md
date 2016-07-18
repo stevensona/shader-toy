@@ -8,7 +8,16 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime```, and ```iDeltaTime``` are the only uniforms provided.
+Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime```, and ```iDeltaTime```, ```iChannel0-3``` are the only uniforms provided. The 4 available texture channels (```iChannel0```...```iChannel3```) may be defined by modifying the workspace's settings.json file. For example:  
+```
+{
+    "shader-toy.textures": {
+        "0": "./duck.png",
+        "1": "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg"
+    }
+}
+```
+This demonstrates using local and remote images as textures. *Remember that "power of 2" texture sizes is generally what you want to stick to.*
 
 
 The following is an example ported from Shadertoy.com:
@@ -45,6 +54,8 @@ void main()
 
 note that ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` replaces ```fragColor``` in the original demo.
 
+![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
+
 ## Requirements
 
 * A somewhat decent graphics card supporting WebGL.
@@ -58,7 +69,6 @@ note that ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` rep
 
 * Display error messages
 * FPS counter in status bar
-* Figure out the best way to incorporate ability to use textures
 
 ## Contributing
 
@@ -68,6 +78,10 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.1.4
+
+Adds support for texture channels.
 
 ### 0.1.3
 

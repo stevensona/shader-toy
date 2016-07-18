@@ -13,7 +13,8 @@ export function activate(context: ExtensionContext) {
         private _onDidChange = new EventEmitter<Uri>();
 
         public provideTextDocumentContent(uri: Uri): string {
-            let shader = window.activeTextEditor.document.getText();
+            const shader = window.activeTextEditor.document.getText();
+            const textures = workspace.getConfiguration('shader-toy')['textures'];
 
             // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
             return `
@@ -29,11 +30,14 @@ export function activate(context: ExtensionContext) {
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r73/three.min.js"></script>
                 <canvas id="canvas"></canvas>
                 <script id="vs" type="x-shader/x-vertex">
+                    //#version 150
                     void main() {
                         gl_Position = vec4(position, 1.0);
                     }
                 </script>
                 <script id="fs" type="x-shader/x-fragment">
+                    //#version 150
+                    //out vec4 vFragColor;
                     uniform vec3        iResolution;
                     uniform float       iGlobalTime;
                     uniform float       iTimeDelta;
@@ -41,7 +45,10 @@ export function activate(context: ExtensionContext) {
                     uniform float       iChannelTime[4];
                     uniform vec3        iChannelResolution[4];
                     uniform vec4        iMouse;
-//                  uniform samplerXX   iChannel0..3;
+                    uniform sampler2D   iChannel0;
+                    uniform sampler2D   iChannel1;
+                    uniform sampler2D   iChannel2;
+                    uniform sampler2D   iChannel3;
 //                  uniform vec4        iDate;
 //                  uniform float       iSampleRate;
                     
@@ -71,7 +78,11 @@ export function activate(context: ExtensionContext) {
                                 iChannelResolution: { type: "v3v", value:
                                     [channelResolution, channelResolution, channelResolution, channelResolution]   
                                 },
-                                iMouse: { type: "v4", value: mouse }
+                                iMouse: { type: "v4", value: mouse },
+                                iChannel0: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["0"]}") },
+                                iChannel1: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["1"]}") },
+                                iChannel2: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["2"]}") },
+                                iChannel3: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["3"]}") },
 
                             }
                         });
