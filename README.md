@@ -79,6 +79,10 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.1.5
+
+Fix for error when settings.json is not present (no textures defined)
+
 ### 0.1.4
 
 Adds support for texture channels.

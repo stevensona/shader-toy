@@ -12,12 +12,21 @@ export function activate(context: ExtensionContext) {
     class TextDocumentContentProvider implements TextDocumentContentProvider {
         private _onDidChange = new EventEmitter<Uri>();
 
+        private getTextureUniforms(textures: {}) : string {
+            return `
+            
+            `
+        }
+
         public provideTextDocumentContent(uri: Uri): string {
             const shader = window.activeTextEditor.document.getText();
-            const textures = workspace.getConfiguration('shader-toy')['textures'];
+            const config = workspace.getConfiguration('shader-toy');
+            const has_textures = 'textures' in workspace.getConfiguration('shader-toy');
+            let textures = {};
+            if(has_textures) textures = config['textures'];
 
             // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
-            return `
+            const content = `
                 <head>
                 <style>
                     html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
@@ -79,13 +88,14 @@ export function activate(context: ExtensionContext) {
                                     [channelResolution, channelResolution, channelResolution, channelResolution]   
                                 },
                                 iMouse: { type: "v4", value: mouse },
-                                iChannel0: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["0"]}") },
-                                iChannel1: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["1"]}") },
-                                iChannel2: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["2"]}") },
-                                iChannel3: { type: "t", value: THREE.ImageUtils.loadTexture("${textures["3"]}") },
-
                             }
                         });
+                    if(${has_textures}) {
+                        ${"0" in textures ? "shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["0"] + ") };" : "Function.prototype;"}
+                        ${"1" in textures ? "shader.uniforms.iChannel1 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["1"] + ") };" : "Function.prototype;"}
+                        ${"2" in textures ? "shader.uniforms.iChannel2 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["2"] + ") };" : "Function.prototype;"}
+                        ${"3" in textures ? "shader.uniforms.iChannel3 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["3"] + ") };" : "Function.prototype;"}
+                    }
                     var quad = new THREE.Mesh(
                         new THREE.PlaneGeometry(2, 2),
                         shader
@@ -114,7 +124,9 @@ export function activate(context: ExtensionContext) {
                         renderer.render(scene, camera);
                     }
                 </script>
-            `
+            `;
+            //console.log(content);
+            return content;
         }
 
         get onDidChange(): Event<Uri> {
