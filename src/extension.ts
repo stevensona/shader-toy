@@ -26,27 +26,27 @@ export function activate(context: ExtensionContext) {
             if(has_textures) textures = config['textures'];
 
             // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
+            const line_offset = 27;
             const content = `
                 <head>
                 <style>
                     html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
+                    #error {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
                 </style>
                 </head>
                 <body>
+                    <div id="error"></div>
                     <div id="container"></div>
                 </body>
-
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r73/three.min.js"></script>
                 <canvas id="canvas"></canvas>
                 <script id="vs" type="x-shader/x-vertex">
-                    //#version 150
                     void main() {
                         gl_Position = vec4(position, 1.0);
                     }
                 </script>
                 <script id="fs" type="x-shader/x-fragment">
-                    //#version 150
-                    //out vec4 vFragColor;
                     uniform vec3        iResolution;
                     uniform float       iGlobalTime;
                     uniform float       iTimeDelta;
@@ -65,6 +65,15 @@ export function activate(context: ExtensionContext) {
                 </script>
 
                 <script type="text/javascript">
+                    (function(){
+                        console.error = function (message) {
+                            if('7' in arguments) {
+                                $("#error").html("<h3>Shader failed to compile</h3><ul>")                                    
+                                $("#error").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
+                                $("#error").append("</ul>");
+                            }
+                        };
+                    })();
                     var canvas = document.getElementById('canvas');
                     var scene = new THREE.Scene();
                     var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});

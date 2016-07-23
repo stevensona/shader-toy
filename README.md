@@ -54,11 +54,12 @@ void main()
 
 note that ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` replaces ```fragColor``` in the original demo.
 
+The following is an example of using textures in shaders:  
 ![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
 
 ## Requirements
 
-* A somewhat decent graphics card supporting WebGL.
+* A graphics card supporting WebGL.
 
 ## Known Issues
 
@@ -67,7 +68,7 @@ note that ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` rep
 
 ## Todo
 
-* Display error messages
+* Better error output integration with the editor (Highlight error lines with error message)
 * FPS counter in status bar
 
 ## Contributing
@@ -78,6 +79,10 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.1.6
+
+This patch adds the ability to view GLSL compiler errors. They are currently displayed as a list in the preview viewport.
 
 ### 0.1.5
 

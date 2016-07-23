@@ -1,0 +1,132 @@
+                <head>
+                <style>
+                    html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
+                    #error {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
+                </style>
+                </head>
+                <body>
+                    <div id="error"></div>
+                    <div id="container"></div>
+                </body>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r73/three.min.js"></script>
+                <canvas id="canvas"></canvas>
+                <script id="vs" type="x-shader/x-vertex">
+
+                    void main() {
+                        gl_Position = vec4(position, 1.0);
+                    }
+                </script>
+                <script id="fs" type="x-shader/x-fragment">
+                    uniform vec3        iResolution;
+                    uniform float       iGlobalTime;
+                    uniform float       iTimeDelta;
+                    uniform int         iFrame;
+                    uniform float       iChannelTime[4];
+                    uniform vec3        iChannelResolution[4];
+                    uniform vec4        iMouse;
+                    uniform sampler2D   iChannel0;
+                    uniform sampler2D   iChannel1;
+                    uniform sampler2D   iChannel2;
+                    uniform sampler2D   iChannel3;
+
+                    // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+                    // Created by S.Guillitte 
+                    void main()
+                    {
+                        float time=iGlobalTime*1.0;
+                        vec2 uv = (gl_FragCoord.xy / iResolution.xx-0.5)*8.0;
+                        vec2 uv0=uv;
+                        float i0=1.0;
+                        float i1=1.0;
+                        float i2=1.0;
+                        float i4=0.0;
+                        for(int s=0;s<7;s++)
+                        {
+                            vec2 r;
+                            fuck;
+                            r=vec2(cos(uv.y*i0-i4+time/i1),sin(uv.x*i0-i4+time/i1))/i2;
+                            r+=vec2(-r.y,r.x)*0.3;
+                            uv.xy+=r;
+
+                            i0*=1.93;
+                            i1*=1.15;
+                            i2*=17;
+                            i4+=0.05+0.1*time*i1;
+                        }
+                        float r=sin(uv.x-time)*0.5+0.5;
+                        float b=sin(uv.y+time)*0.5+0.5;
+                        float g=sin((uv.x+uv.y+sin(time*0.5))*0.5)*0.5+0.5;
+                        gl_FragColor = vec4(r,g,b,1.0);
+                    }
+
+                </script>
+
+                <script type="text/javascript">
+                    (function(){
+                        console.error = function (message) {
+                            if('7' in arguments) {
+                                $("#error").html("<h3>Shader failed to compile!</h3><ul>")                                    
+                                $("#error").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 27); }));
+                                $("#error").append("</ul>");
+                            }
+                        };
+                    })();
+
+
+                    var canvas = document.getElementById('canvas');
+                    var scene = new THREE.Scene();
+                    var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+                    var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
+                    var clock = new THREE.Clock();
+                    var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+                    var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
+                    var mouse = new THREE.Vector4(0, 0, 0, 0);
+
+                    var shader = new THREE.ShaderMaterial({
+                            vertexShader: document.getElementById('vs').textContent,
+                            fragmentShader: document.getElementById('fs').textContent,
+                            depthWrite: false,
+                            depthTest: false,
+                            uniforms: {
+                                iResolution: { type: "v3", value: resolution },
+                                iGlobalTime: { type: "f", value: 0.0 },
+                                iTimeDelta: { type: "f", value: 0.0 },
+                                iFrame: { type: "i", value: 0 },
+                                iChannelTime: { type: "fv1", value: [0., 0., 0., 0.] },
+                                iChannelResolution: { type: "v3v", value:
+                                    [channelResolution, channelResolution, channelResolution, channelResolution]   
+                                },
+                                iMouse: { type: "v4", value: mouse },
+                            }
+                        });
+
+                    var quad = new THREE.Mesh(
+                        new THREE.PlaneGeometry(2, 2),
+                        shader
+                    );
+                    scene.add(quad);
+                    camera.position.z = 10;
+
+                    render();
+
+                    function render() {
+                        requestAnimationFrame(render);
+                        if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                            renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+                            camera.aspect = canvas.clientWidth /  canvas.clientHeight;
+                            camera.updateProjectionMatrix();
+                            resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+                        }
+                        
+                        
+                        shader.uniforms['iResolution'].value = resolution;
+                        shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
+                        shader.uniforms['iTimeDelta'].value = clock.getDelta();
+                        shader.uniforms['iFrame'].value = 0;
+                        shader.uniforms['iMouse'].value = mouse;
+
+                        renderer.render(scene, camera);
+                    }
+                </script>
