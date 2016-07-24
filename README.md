@@ -4,7 +4,7 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ![metaballs example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example.png)
 
- Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is ```main```. 
+ Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is ```void main()```. 
 
 ## Features
 
@@ -69,6 +69,7 @@ The following is an example of using textures in shaders:
 
 * Better error output integration with the editor (Highlight error lines with error message)
 * FPS counter in status bar
+* Improve compatibility with "shadertoy" shaders.
 
 ## Contributing
 
