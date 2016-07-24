@@ -64,7 +64,6 @@ The following is an example of using textures in shaders:
 ## Known Issues
 
 * Performance at the moment is not great for certain shaders, and the cause is under investigation.
-* Errors are not reported. Because of this, it can be impossible to find out why your shader is not working.
 
 ## Todo
 
