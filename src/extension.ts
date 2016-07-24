@@ -124,10 +124,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         }
                     });
                 if(${has_textures}) {
-                    ${"0" in textures ? "shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["0"] + ") };" : "Function.prototype;"}
-                    ${"1" in textures ? "shader.uniforms.iChannel1 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["1"] + ") };" : "Function.prototype;"}
-                    ${"2" in textures ? "shader.uniforms.iChannel2 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["2"] + ") };" : "Function.prototype;"}
-                    ${"3" in textures ? "shader.uniforms.iChannel3 = { type: 't', value: THREE.ImageUtils.loadTexture(" + textures["3"] + ") };" : "Function.prototype;"}
+                    ${"0" in textures ? "shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["0"] + "') };" : "Function.prototype;"}
+                    ${"1" in textures ? "shader.uniforms.iChannel1 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["1"] + "') };" : "Function.prototype;"}
+                    ${"2" in textures ? "shader.uniforms.iChannel2 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["2"] + "') };" : "Function.prototype;"}
+                    ${"3" in textures ? "shader.uniforms.iChannel3 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["3"] + "') };" : "Function.prototype;"}
                 }
                 var quad = new THREE.Mesh(
                     new THREE.PlaneGeometry(2, 2),
@@ -158,7 +158,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }
             </script>
         `;
-        //console.log(content);
+        console.log(content);
         return content;
     }
 
