@@ -62,8 +62,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 <div id="error"></div>
                 <div id="container"></div>
             </body>
-            <script src="${this.getResourcePath('jquery.min.js')}"></script>
-            <script src="${this.getResourcePath('three.min.js')}"></script>
+            <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
+            <script src="file://${this.getResourcePath('three.min.js')}"></script>
             <canvas id="canvas"></canvas>
             <script id="vs" type="x-shader/x-vertex">
                 void main() {
