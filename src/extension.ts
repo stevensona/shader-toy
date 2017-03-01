@@ -61,7 +61,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             <body>
                 <div id="error"></div>
                 <div id="container"></div>
-            </body>
+
             <script src="${this.getResourcePath('jquery.min.js')}"></script>
             <script src="${this.getResourcePath('three.min.js')}"></script>
             <canvas id="canvas"></canvas>
@@ -157,6 +157,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     renderer.render(scene, camera);
                 }
             </script>
+            </body>
         `;
         console.log(content);
         return content;
