@@ -46,8 +46,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         const shader = vscode.window.activeTextEditor.document.getText();
         const config = vscode.workspace.getConfiguration('shader-toy');
         const has_textures = 'textures' in vscode.workspace.getConfiguration('shader-toy');
-        let textures = {};
-        if(has_textures) textures = config['textures'];
+        let textures = config['textures'] || {};
+        let textureScript = "";
+
+        for(let i in textures) {
+            textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };`;
+        }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const line_offset = 27;
@@ -123,12 +127,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                             iMouse: { type: "v4", value: mouse },
                         }
                     });
-                if(${has_textures}) {
-                    ${"0" in textures ? "shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["0"] + "') };" : "Function.prototype;"}
-                    ${"1" in textures ? "shader.uniforms.iChannel1 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["1"] + "') };" : "Function.prototype;"}
-                    ${"2" in textures ? "shader.uniforms.iChannel2 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["2"] + "') };" : "Function.prototype;"}
-                    ${"3" in textures ? "shader.uniforms.iChannel3 = { type: 't', value: THREE.ImageUtils.loadTexture('" + textures["3"] + "') };" : "Function.prototype;"}
-                }
+                
+                ${textureScript}
+                
                 var quad = new THREE.Mesh(
                     new THREE.PlaneGeometry(2, 2),
                     shader
