@@ -8,7 +8,7 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime```, and ```iDeltaTime```, ```iChannel0-3``` are the only uniforms provided. The 4 available texture channels (```iChannel0```...```iChannel3```) may be defined by modifying the workspace's settings.json file. For example:  
+Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime```, and ```iDeltaTime```, ```iChannelN``` are the only uniforms provided. The texture channels (```iChannel0```, ```iChannel1```, ...) may be defined by modifying the workspace's settings.json file. For example:  
 ```
 {
     "shader-toy.textures": {
@@ -18,7 +18,6 @@ Automatically update display with the results of your shader. At the moment, ```
 }
 ```
 This demonstrates using local and remote images as textures. *Remember that "power of 2" texture sizes is generally what you want to stick to.*
-
 
 The following is an example ported from Shadertoy.com:
 ```glsl
