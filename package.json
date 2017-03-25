@@ -16,6 +16,18 @@
     ],
     "main": "./out/src/extension",
     "contributes": {
+        "configuration": {
+            "properties": {
+                "shader-toy.textures": {
+                    "type": "object",
+                    "default": {
+                        "0": "",
+                        "1": ""
+                    },
+                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol."
+                }
+            }
+        },
         "commands": [
             {
                 "command": "extension.showGlslPreview",
