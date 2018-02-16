@@ -5,6 +5,12 @@
     "version": "0.4.0",
     "publisher": "stevensona",
     "license": "MIT",
+    "repository": {
+        "url": "https://github.com/stevensona/shader-toy.git"
+    },
+    "bugs": {
+        "url": "https://github.com/stevensona/shader-toy/issues"
+    },
     "engines": {
         "vscode": "^1.0.0"
     },
