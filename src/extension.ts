@@ -78,7 +78,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
-        const line_offset = 113;
+        const line_offset = 117;
         const content = `
             <head>
             <style>
