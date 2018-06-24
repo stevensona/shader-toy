@@ -111,6 +111,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 uniform sampler2D   iChannel1;
                 uniform sampler2D   iChannel2;
                 uniform sampler2D   iChannel3;
+                uniform sampler2D   iChannel4;
+                uniform sampler2D   iChannel5;
+                uniform sampler2D   iChannel6;
+                uniform sampler2D   iChannel7;
+                uniform sampler2D   iChannel8;
+                uniform sampler2D   iChannel9;
                 ${shader}
             </script>
 
