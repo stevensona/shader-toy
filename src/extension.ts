@@ -54,6 +54,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         let shader = vscode.window.activeTextEditor.document.getText();
         const config = vscode.workspace.getConfiguration('shader-toy');
 
+        var line_offset = 117;
+
         let textureScript = "\n";
         if (config.get('useInShaderTextures', false)) {
             var texturePos = shader.indexOf("#Channel", 0);
@@ -64,6 +66,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 let texture = shader.substr(channelPos + 2, endlinePos - channelPos - 3);
 
                 textureScript += `shader.uniforms.iChannel${channel} = { type: 't', value: THREE.ImageUtils.loadTexture('${texture}') };\n`;
+                line_offset--;
 
                 shader = shader.replace(shader.substring(texturePos, endlinePos + 1), "");
                 texturePos = shader.indexOf("#Channel", texturePos);
@@ -87,7 +90,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
-        const line_offset = 117;
         const content = `
             <head>
             <style>
