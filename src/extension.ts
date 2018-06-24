@@ -11,6 +11,7 @@ export function activate(context: ExtensionContext) {
     let previewUri = Uri.parse('glsl-preview://authority/glsl-preview');
     let provider = new GLSLDocumentContentProvider(context);
     let registration = vscode.workspace.registerTextDocumentContentProvider('glsl-preview', provider);
+    const config = vscode.workspace.getConfiguration('shader-toy');
     var _timeout: number;
 
     vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
@@ -21,6 +22,13 @@ export function activate(context: ExtensionContext) {
             }
         }, 1000);
     });
+    if (config.get('reloadOnChangeEditor', false)) {
+        vscode.window.onDidChangeActiveTextEditor((e: vscode.TextEditor) => {
+            if(e && e.document === e.document) {
+                provider.update(previewUri);
+            }
+        });
+    }
     let disposable = vscode.commands.registerCommand('extension.showGlslPreview', () => {
         return vscode.commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
         .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
@@ -45,7 +53,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     public provideTextDocumentContent(uri: Uri): string {
         const shader = vscode.window.activeTextEditor.document.getText();
         const config = vscode.workspace.getConfiguration('shader-toy');
-        const has_textures = 'textures' in vscode.workspace.getConfiguration('shader-toy');
         let textures = config['textures'] || {};
         let textureScript = "";
 
