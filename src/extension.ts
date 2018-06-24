@@ -16,7 +16,7 @@ export function activate(context: ExtensionContext) {
     vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
         clearTimeout(_timeout);
         _timeout = setTimeout( function() { 
-            if(e.document === vscode.window.activeTextEditor.document) {
+            if(vscode.window.activeTextEditor && e.document === vscode.window.activeTextEditor.document) {
                 provider.update(previewUri);
             }
         }, 1000);
@@ -87,9 +87,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 uniform sampler2D   iChannel1;
                 uniform sampler2D   iChannel2;
                 uniform sampler2D   iChannel3;
-//                  uniform vec4        iDate;
-//                  uniform float       iSampleRate;
-                
                 ${shader}
             </script>
 
@@ -148,7 +145,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         camera.updateProjectionMatrix();
                         resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                     }
-
                     
                     shader.uniforms['iResolution'].value = resolution;
                     shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
@@ -158,6 +154,25 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                     renderer.render(scene, camera);
                 }
+                canvas.addEventListener('mousemove', function(evt) {
+                    if (mouse.z + mouse.w != 0) {
+                        var rect = canvas.getBoundingClientRect();
+                        mouse.x = evt.clientX - rect.left;
+                        mouse.y = resolution.y - evt.clientY - rect.top;
+                    } 
+                }, false);
+                canvas.addEventListener('mousedown', function(evt) {
+                    if (evt.button == 0)
+                        mouse.z = 1;
+                    if (evt.button == 2)
+                        mouse.w = 1;
+                }, false);
+                canvas.addEventListener('mouseup', function(evt) {
+                    if (evt.button == 0)
+                        mouse.z = 0;
+                    if (evt.button == 2)
+                        mouse.w = 0;
+                }, false);
             </script>
             </body>
         `;

@@ -1,106 +1,120 @@
-              <head>
-            <style>
-                html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
-                #error {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
-            </style>
-            </head>
-            <body>
-                <div id="error"></div>
-                <div id="container"></div>
+<head>
+    <style>
+        html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
+        #error {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
+    </style>
+</head>
+<body>
+    <div id="error"></div>
+    <div id="container"></div>
 
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>              
-                <canvas id="canvas"></canvas>
-                <script id="vs" type="x-shader/x-vertex">
-                    void main() {
-                        gl_Position = vec4(position, 1.0);
-                    }
-                </script>
-                <script id="fs" type="x-shader/x-fragment">
-                    uniform vec3        iResolution;
-                    uniform float       iGlobalTime;
-                    uniform float       iTimeDelta;
-                    uniform int         iFrame;
-                    uniform float       iChannelTime[4];
-                    uniform vec3        iChannelResolution[4];
-                    uniform vec4        iMouse;
-                    uniform sampler2D   iChannel0;
-                    uniform sampler2D   iChannel1;
-                    uniform sampler2D   iChannel2;
-                    uniform sampler2D   iChannel3;
-    //                  uniform vec4        iDate;
-    //                  uniform float       iSampleRate;                           
-                                            
-                    void main() {
-
-        gl_FragColor = vec4(1., 0., 0., 1.0);
-
-    }
-                </script>
-                <script type="text/javascript">
-                    (function(){
-                        console.error = function (message) {
-                            if('7' in arguments) {
-                                $("#error").html("<h3>Shader failed to compile</h3><ul>")                                    
-                                $("#error").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 113); }));
-                                $("#error").append("</ul>");
-                            }
-                        };
-                    })();
-                    var canvas = document.getElementById('canvas');
-                    var scene = new THREE.Scene();
-                    var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
-                    var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
-                    var clock = new THREE.Clock();
-                    var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
-                    var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
-                    var mouse = new THREE.Vector4(0, 0, 0, 0);
-                    var shader = new THREE.ShaderMaterial({
-                            vertexShader: document.getElementById('vs').textContent,
-                            fragmentShader: document.getElementById('fs').textContent,
-                            depthWrite: false,
-                            depthTest: false,
-                            uniforms: {
-                                iResolution: { type: "v3", value: resolution },
-                                iGlobalTime: { type: "f", value: 0.0 },
-                                iTimeDelta: { type: "f", value: 0.0 },
-                                iFrame: { type: "i", value: 0 },
-                                iChannelTime: { type: "fv1", value: [0., 0., 0., 0.] }, 
-                                iChannelResolution: { type: "v3v", value:
-                                    [channelResolution, channelResolution, channelResolution, channelResolution]   
-                                },
-                                iMouse: { type: "v4", value: mouse },
-                            }
-                        });
-                    if(true) {
-                        shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture("https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg") };
-                        Function.prototype;
-                        Function.prototype;
-                        Function.prototype;
-                    }
-                    var quad = new THREE.Mesh(
-                        new THREE.PlaneGeometry(2, 2),
-                        shader
-                    );
-                    scene.add(quad);
-                    camera.position.z = 10;
-                    render();
-                    function render() {
-                        requestAnimationFrame(render);
-                        if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
-                            renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-                            camera.aspect = canvas.clientWidth /  canvas.clientHeight;
-                            camera.updateProjectionMatrix();
-                            resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
-                        }
-                        
-                        
-                        shader.uniforms['iResolution'].value = resolution;
-                        shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
-                        shader.uniforms['iTimeDelta'].value = clock.getDelta();
-                        shader.uniforms['iFrame'].value = 0;
-                        shader.uniforms['iMouse'].value = mouse;
-                        renderer.render(scene, camera);
-                    }
-                </script>
-            </body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>              
+    <canvas id="canvas"></canvas>
+    <script id="vs" type="x-shader/x-vertex">
+        void main() {
+            gl_Position = vec4(position, 1.0);
+        }
+    </script>
+    <script id="fs" type="x-shader/x-fragment">
+        uniform vec3        iResolution;
+        uniform float       iGlobalTime;
+        uniform float       iTimeDelta;
+        uniform int         iFrame;
+        uniform float       iChannelTime[4];
+        uniform vec3        iChannelResolution[4];
+        uniform vec4        iMouse;
+        uniform sampler2D   iChannel0;
+        uniform sampler2D   iChannel1;
+        uniform sampler2D   iChannel2;
+        uniform sampler2D   iChannel3;                  
+                                
+        void main() {
+            gl_FragColor = vec4(1., 0., 0., 1.0);
+        }
+    </script>
+    <script type="text/javascript">
+        (function(){
+            console.error = function (message) {
+                if('7' in arguments) {
+                    $("#error").html("<h3>Shader failed to compile</h3><ul>")                                    
+                    $("#error").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 113); }));
+                    $("#error").append("</ul>");
+                }
+            };
+        })();
+        var canvas = document.getElementById('canvas');
+        var scene = new THREE.Scene();
+        var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+        var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
+        var clock = new THREE.Clock();
+        var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+        var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
+        var mouse = new THREE.Vector4(0, 0, 0, 0);
+        var shader = new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vs').textContent,
+                fragmentShader: document.getElementById('fs').textContent,
+                depthWrite: false,
+                depthTest: false,
+                uniforms: {
+                    iResolution: { type: "v3", value: resolution },
+                    iGlobalTime: { type: "f", value: 0.0 },
+                    iTimeDelta: { type: "f", value: 0.0 },
+                    iFrame: { type: "i", value: 0 },
+                    iChannelTime: { type: "fv1", value: [0., 0., 0., 0.] }, 
+                    iChannelResolution: { type: "v3v", value:
+                        [channelResolution, channelResolution, channelResolution, channelResolution]   
+                    },
+                    iMouse: { type: "v4", value: mouse },
+                }
+            });
+        if(true) {
+            shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture("https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg") };
+            Function.prototype;
+            Function.prototype;
+            Function.prototype;
+        }
+        var quad = new THREE.Mesh(
+            new THREE.PlaneGeometry(2, 2),
+            shader
+        );
+        scene.add(quad);
+        camera.position.z = 10;
+        render();
+        function render() {
+            requestAnimationFrame(render);
+            if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+                camera.aspect = canvas.clientWidth /  canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+            }
+            
+            shader.uniforms['iResolution'].value = resolution;
+            shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
+            shader.uniforms['iTimeDelta'].value = clock.getDelta();
+            shader.uniforms['iFrame'].value = 0;
+            shader.uniforms['iMouse'].value = mouse;
+            renderer.render(scene, camera);
+        }
+        canvas.addEventListener('mousemove', function(evt) {
+            if (mouse.z + mouse.w != 0) {
+                var rect = canvas.getBoundingClientRect();
+                mouse.x = evt.clientX - rect.left;
+                mouse.y = resolution.y - evt.clientY - rect.top;
+            } 
+        }, false);
+        canvas.addEventListener('mousedown', function(evt) {
+            if (evt.button == 0)
+                mouse.z = 1;
+            if (evt.button == 2)
+                mouse.w = 1;
+        }, false);
+        canvas.addEventListener('mouseup', function(evt) {
+            if (evt.button == 0)
+                mouse.z = 0;
+            if (evt.button == 2)
+                mouse.w = 0;
+        }, false);
+    </script>
+</body>
