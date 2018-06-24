@@ -51,13 +51,30 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     }
     
     public provideTextDocumentContent(uri: Uri): string {
-        const shader = vscode.window.activeTextEditor.document.getText();
+        let shader = vscode.window.activeTextEditor.document.getText();
         const config = vscode.workspace.getConfiguration('shader-toy');
-        let textures = config['textures'] || {};
-        let textureScript = "";
 
-        for(let i in textures) {
-            textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };`;
+        let textureScript = "\n";
+        if (config.get('useInShaderTextures', false)) {
+            var texturePos = shader.indexOf("#Channel", 0);
+            while (texturePos >= 0) {
+                var channelPos = texturePos + 8;
+                var channel = parseInt(shader.charAt(channelPos));
+                var endlinePos = shader.indexOf("\n", texturePos);
+                let texture = shader.substr(channelPos + 2, endlinePos - channelPos - 3);
+
+                textureScript += `shader.uniforms.iChannel${channel} = { type: 't', value: THREE.ImageUtils.loadTexture('${texture}') };\n`;
+
+                shader = shader.replace(shader.substring(texturePos, endlinePos + 1), "");
+                texturePos = shader.indexOf("#Channel", texturePos);
+            }
+        }
+        else {
+            let textures = config.get('textures', {});
+            for(let i in textures) {
+                if (textures[i].length > 0)
+                    textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };\n`;
+            }
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
