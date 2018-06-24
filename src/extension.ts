@@ -54,7 +54,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
-        const line_offset = 27;
+        const line_offset = 113;
         const content = `
             <head>
             <style>
@@ -148,7 +148,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         camera.updateProjectionMatrix();
                         resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                     }
-                    
+
                     
                     shader.uniforms['iResolution'].value = resolution;
                     shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();

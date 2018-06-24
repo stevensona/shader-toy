@@ -42,7 +42,7 @@
                         console.error = function (message) {
                             if('7' in arguments) {
                                 $("#error").html("<h3>Shader failed to compile</h3><ul>")                                    
-                                $("#error").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 27); }));
+                                $("#error").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 113); }));
                                 $("#error").append("</ul>");
                             }
                         };
