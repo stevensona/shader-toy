@@ -77,17 +77,26 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }
         }
 
+        let frameTimeScript = "";
+        if (config.get('printShaderFrameTime', false)) {
+            frameTimeScript = `
+            if (shaderCompiled) {\n
+                if (frameCounter % 30 == 0)
+                    $(\"#message\").html(\"FrameTime \" + parseInt(deltaTime * 0.000001) + \"ns\");
+            }`;
+        }
+
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const line_offset = 117;
         const content = `
             <head>
             <style>
                 html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
-                #error {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
+                #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold; z-index: 2; position: absolute;}
             </style>
             </head>
             <body>
-                <div id="error"></div>
+                <div id="message"></div>
                 <div id="container"></div>
 
             </body>
@@ -121,12 +130,14 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             </script>
 
             <script type="text/javascript">
+                var shaderCompiled = true;
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#error").html("<h3>Shader failed to compile</h3><ul>")                                    
-                            $("#error").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
-                            $("#error").append("</ul>");
+                            $("#message").html("<h3>Shader failed to compile</h3><ul>")                                    
+                            $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
+                            $("#message").append("</ul>");
+                            shaderCompiled = false;
                         }
                     };
                 })();
@@ -138,6 +149,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
+                var frameCounter = 0;
                 var shader = new THREE.ShaderMaterial({
                         vertexShader: document.getElementById('vs').textContent,
                         fragmentShader: document.getElementById('fs').textContent,
@@ -176,13 +188,18 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                     }
                     
+                    var deltaTime = clock.getDelta();
+                    frameCounter++;
+                    
                     shader.uniforms['iResolution'].value = resolution;
                     shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
-                    shader.uniforms['iTimeDelta'].value = clock.getDelta();
-                    shader.uniforms['iFrame'].value = 0;
+                    shader.uniforms['iTimeDelta'].value = deltaTime;
+                    shader.uniforms['iFrame'].value = frameCounter;
                     shader.uniforms['iMouse'].value = mouse;
 
                     renderer.render(scene, camera);
+
+                    ${frameTimeScript}
                 }
                 canvas.addEventListener('mousemove', function(evt) {
                     if (mouse.z + mouse.w != 0) {
