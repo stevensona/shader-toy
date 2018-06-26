@@ -172,7 +172,7 @@ void main()
 {
 	vec2 uv = gl_FragCoord.xy / iResolution.xy - 0.5;
 	uv.x *= iResolution.x/iResolution.y; //fix aspect ratio
-	vec3 mouse = vec3(0.);
+	vec2 mouse = iMouse.xy / iResolution.xy;
 	
 	float t = iGlobalTime*.5*object_speed_modifier + 2.0;
 	
