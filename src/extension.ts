@@ -58,9 +58,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         let textureScript = "\n";
         if (config.get('useInShaderTextures', false)) {
-            var texturePos = shader.indexOf("#Channel", 0);
+            var texturePos = shader.indexOf("#iChannel", 0);
             while (texturePos >= 0) {
-                var channelPos = texturePos + 8;
+                var channelPos = texturePos + 9;
                 var channel = parseInt(shader.charAt(channelPos));
                 var endlinePos = shader.indexOf("\n", texturePos);
                 let texture = shader.substr(channelPos + 2, endlinePos - channelPos - 3);
@@ -69,7 +69,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 line_offset--;
 
                 shader = shader.replace(shader.substring(texturePos, endlinePos + 1), "");
-                texturePos = shader.indexOf("#Channel", texturePos);
+                texturePos = shader.indexOf("#iChannel", texturePos);
             }
         }
         else {
