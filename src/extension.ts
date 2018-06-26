@@ -233,7 +233,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             </script>
             </body>
         `;
-        console.log(content);
+        // console.log(content);
         return content;
     }
 
