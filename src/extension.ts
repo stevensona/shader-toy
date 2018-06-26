@@ -54,7 +54,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         let shader = vscode.window.activeTextEditor.document.getText();
         const config = vscode.workspace.getConfiguration('shader-toy');
 
-        var line_offset = 117;
+        var line_offset = 120;
 
         let textureScript = "\n";
         if (config.get('useInShaderTextures', false)) {
@@ -139,6 +139,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 uniform sampler2D   iChannel7;
                 uniform sampler2D   iChannel8;
                 uniform sampler2D   iChannel9;
+
+                #define SHADER_TOY
+
                 ${shader}
             </script>
 

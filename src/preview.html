@@ -33,7 +33,9 @@
         uniform sampler2D   iChannel6;
         uniform sampler2D   iChannel7;
         uniform sampler2D   iChannel8;
-        uniform sampler2D   iChannel9;              
+        uniform sampler2D   iChannel9;      
+
+        #define SHADER_TOY        
                                 
         void main() {
             gl_FragColor = vec4(1., 0., 0., 1.0);
@@ -59,7 +61,7 @@
             console.error = function (message) {
                 if('7' in arguments) {
                     $("#message").html("<h3>Shader failed to compile</h3><ul>")                                    
-                    $("#message").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 117); }));
+                    $("#message").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 120); }));
                     $("#message").append("</ul>");
                 }
             };
