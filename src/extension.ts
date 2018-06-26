@@ -75,18 +75,29 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         else {
             let textures = config.get('textures', {});
             for(let i in textures) {
-                if (textures[i].length > 0)
+                if (textures[i].length > 0) {
                     textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };\n`;
+                }
             }
         }
 
         let frameTimeScript = "";
         if (config.get('printShaderFrameTime', false)) {
             frameTimeScript = `
-            if (shaderCompiled) {\n
-                if (frameCounter % 30 == 0)
-                    $(\"#message\").html(\"FrameTime \" + parseInt(deltaTime * 0.000001) + \"ns\");
-            }`;
+            (function() {
+                var script = document.createElement('script')
+                script.onload = function() {
+                    var stats = new Stats();
+                    stats.showPanel(1);
+                    document.body.appendChild(stats.dom);
+                    requestAnimationFrame(function loop() {
+                        stats.update();
+                        requestAnimationFrame(loop);
+                    });
+                };
+                script.src = 'https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js';
+                document.head.appendChild(script);
+            }());\n`;
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
@@ -132,14 +143,14 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             </script>
 
             <script type="text/javascript">
-                var shaderCompiled = true;
+                ${frameTimeScript}
+
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
                             $("#message").html("<h3>Shader failed to compile</h3><ul>")                                    
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
                             $("#message").append("</ul>");
-                            shaderCompiled = false;
                         }
                     };
                 })();
@@ -190,18 +201,15 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                     }
                     
-                    var deltaTime = clock.getDelta();
                     frameCounter++;
                     
                     shader.uniforms['iResolution'].value = resolution;
+                    shader.uniforms['iTimeDelta'].value = clock.getDelta();
                     shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
-                    shader.uniforms['iTimeDelta'].value = deltaTime;
                     shader.uniforms['iFrame'].value = frameCounter;
                     shader.uniforms['iMouse'].value = mouse;
 
                     renderer.render(scene, camera);
-
-                    ${frameTimeScript}
                 }
                 canvas.addEventListener('mousemove', function(evt) {
                     if (mouse.z + mouse.w != 0) {

@@ -1,14 +1,15 @@
 <head>
     <style>
         html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
-        #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
+        #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold; z-index: 2; position: absolute;}
     </style>
 </head>
 <body>
+    <div id="message"></div>
     <div id="container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>              
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
     <canvas id="canvas"></canvas>
     <script id="vs" type="x-shader/x-vertex">
         void main() {
@@ -39,16 +40,31 @@
         }
     </script>
     <script type="text/javascript">
+        (function() {
+            var script = document.createElement('script')
+            script.onload = function() {
+                var stats = new Stats();
+			    stats.showPanel(1);
+                document.body.appendChild(stats.dom);
+                requestAnimationFrame(function loop() {
+                    stats.update();
+                    requestAnimationFrame(loop);
+                });
+            };
+            script.src = 'https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js';
+            document.head.appendChild(script);
+        }());
+    
         (function(){
             console.error = function (message) {
                 if('7' in arguments) {
                     $("#message").html("<h3>Shader failed to compile</h3><ul>")                                    
-                    $("#message").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 113); }));
+                    $("#message").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - 117); }));
                     $("#message").append("</ul>");
-                    shaderCompiled = false;
                 }
             };
         })();
+
         var canvas = document.getElementById('canvas');
         var scene = new THREE.Scene();
         var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
@@ -57,7 +73,7 @@
         var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
         var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
         var mouse = new THREE.Vector4(0, 0, 0, 0);
-        var frameTime = 0.0;
+        var frameCounter = 0;
         var shader = new THREE.ShaderMaterial({
                 vertexShader: document.getElementById('vs').textContent,
                 fragmentShader: document.getElementById('fs').textContent,
@@ -75,13 +91,6 @@
                     iMouse: { type: "v4", value: mouse },
                 }
             });
-        var shaderCompiled = true;
-        if(true) {
-            shader.uniforms.iChannel0 = { type: 't', value: THREE.ImageUtils.loadTexture("https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg") };
-            Function.prototype;
-            Function.prototype;
-            Function.prototype;
-        }
         var quad = new THREE.Mesh(
             new THREE.PlaneGeometry(2, 2),
             shader
@@ -98,17 +107,15 @@
                 resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
             }
             
-            shader.uniforms['iResolution'].value = resolution;
-            shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
-            shader.uniforms['iTimeDelta'].value = clock.getDelta();
-            shader.uniforms['iFrame'].value = 0;
-            shader.uniforms['iMouse'].value = mouse;
-            renderer.render(scene, camera);
+            frameCounter++;
             
-            if (shaderCompiled) {
-                frameTime = frameTime * 0.99 + clock.getDelta() * 0.01;
-                $("#message").html("FrameTime " + frameTime * 1000.0 + "ms");
-            }
+            shader.uniforms['iResolution'].value = resolution;
+            shader.uniforms['iTimeDelta'].value = clock.getDelta();
+            shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
+            shader.uniforms['iFrame'].value = frameCounter;
+            shader.uniforms['iMouse'].value = mouse;
+            
+            renderer.render(scene, camera);
         }
         canvas.addEventListener('mousemove', function(evt) {
             if (mouse.z + mouse.w != 0) {
