@@ -54,7 +54,13 @@
                 "command": "extension.showGlslPreview",
                 "title": "Shader Toy: Show GLSL Preview"
             }
-        ]
+        ],
+        "menus": {
+            "editor/context": [{
+                "command": "extension.showGlslPreview",
+                "group": "Show GLSL Preview"
+          }]
+        }
     },
     "scripts": {
         "vscode:prepublish": "node ./node_modules/vscode/bin/compile",
