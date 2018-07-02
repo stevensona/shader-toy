@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.4.1",
+    "version": "0.6.0",
     "publisher": "stevensona",
     "license": "MIT",
     "repository": {
@@ -24,6 +24,21 @@
     "contributes": {
         "configuration": {
             "properties": {
+                "shader-toy.useInShaderTextures": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Allow texture channel resources to be defined in shader source (#iChannel0 source)."
+                },
+                "shader-toy.reloadOnChangeEditor": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Reload OpenGL viewport when editor changes."
+                },
+                "shader-toy.printShaderFrameTime": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Display shader frame time graph in corner of display."
+                },
                 "shader-toy.textures": {
                     "type": "object",
                     "default": {
@@ -37,7 +52,7 @@
         "commands": [
             {
                 "command": "extension.showGlslPreview",
-                "title": "Show GLSL Preview"
+                "title": "Shader Toy: Show GLSL Preview"
             }
         ]
     },

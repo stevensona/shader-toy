@@ -4,11 +4,11 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ![metaballs example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example.png)
 
- Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is ```void main()```. 
+ Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is ```void main()```.
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime```, and ```iDeltaTime```, ```iChannelN``` are the only uniforms provided. The texture channels (```iChannel0```, ```iChannel1```, ...) may be defined by modifying the workspace's settings.json file. For example:  
+Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime```, ```iFrame```, ```iMouse```, ```iDeltaTime```, and ```iChannelN``` are the only uniforms provided. The texture channels (```iChannel0```, ```iChannel1```, ...) may be defined by modifying the workspace's settings.json file. For example:
 ```
 {
     "shader-toy.textures": {
@@ -17,12 +17,12 @@ Automatically update display with the results of your shader. At the moment, ```
     }
 }
 ```
-This demonstrates using local and remote images as textures. *Remember that "power of 2" texture sizes is generally what you want to stick to.*
+This demonstrates using local and remote images as textures. *Remember that "power of 2" texture sizes is generally what you want to stick to.* If the ```useInShaderTextures``` option is enabled (disabled by default), textures can also be referenced from the shader source itself (experimental) like so: ```#iChannel0 https://example.com/example.png```.
 
 The following is an example ported from Shadertoy.com:
 ```glsl
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-// Created by S.Guillitte 
+// Created by S.Guillitte
 void main()
 {
 	float time=iGlobalTime*1.0;
@@ -38,7 +38,7 @@ void main()
 		r=vec2(cos(uv.y*i0-i4+time/i1),sin(uv.x*i0-i4+time/i1))/i2;
         r+=vec2(-r.y,r.x)*0.3;
 		uv.xy+=r;
-        
+
 		i0*=1.93;
 		i1*=1.15;
 		i2*=1.7;
@@ -53,7 +53,7 @@ void main()
 
 note that ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` replaces ```fragColor``` in the original demo.
 
-The following is an example of using textures in shaders:  
+The following is an example of using textures in shaders:
 ![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
 
 ## Requirements
@@ -67,14 +67,13 @@ The following is an example of using textures in shaders:
 ## Todo
 
 * Better error output integration with the editor (Highlight error lines with error message)
-* FPS counter in status bar
 * Improve compatibility with "shadertoy" shaders.
 
 ## Contributing
 
-Contributions of any kind are welcome and encouraged. 
+Contributions of any kind are welcome and encouraged.
 
-[Github Project Page](https://github.com/stevensona/shader-toy)  
+[Github Project Page](https://github.com/stevensona/shader-toy)
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
@@ -93,7 +92,7 @@ Adds support for texture channels.
 
 ### 0.1.3
 
-Add support for a few more of the uniforms, and implements a 1 second time delay between modifying the source and recompilation. 
+Add support for a few more of the uniforms, and implements a 1 second time delay between modifying the source and recompilation.
 
 ### 0.1.1
 
