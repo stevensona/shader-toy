@@ -5,8 +5,6 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { ExtensionContext, TextDocumentContentProvider, EventEmitter, Event, Uri, ViewColumn } from 'vscode';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: ExtensionContext) {
     let previewUri = Uri.parse('glsl-preview://authority/glsl-preview');
     let provider = new GLSLDocumentContentProvider(context);
@@ -29,12 +27,15 @@ export function activate(context: ExtensionContext) {
             }
         });
     }
-    let disposable = vscode.commands.registerCommand('extension.showGlslPreview', () => {
+
+    let previewCommand = vscode.commands.registerCommand('extension.showGlslPreview', () => {
         return vscode.commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
         .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
     });
     
-    context.subscriptions.push(disposable, registration);
+    context.subscriptions.push(previewCommand, registration);
+}
+export function deactivate() {
 }
 
 
@@ -103,10 +104,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const content = `
             <head>
-            <style>
-                html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
-                #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold; z-index: 2; position: absolute;}
-            </style>
+                <style>
+                    html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
+                    #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold; z-index: 2; position: absolute;}
+                </style>
             </head>
             <body>
                 <div id="message"></div>
@@ -234,7 +235,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         mouse.w = 0;
                 }, false);
             </script>
-            </body>
         `;
         // console.log(content);
         return content;
@@ -247,8 +247,4 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     public update(uri: Uri) {
         this._onDidChange.fire(uri);
     }
-}
-
-// this method is called when your extension is deactivated
-export function deactivate() {
 }

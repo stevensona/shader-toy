@@ -56,10 +56,12 @@
             }
         ],
         "menus": {
-            "editor/context": [{
-                "command": "extension.showGlslPreview",
-                "group": "Show GLSL Preview"
-          }]
+            "editor/context": [
+                {
+                    "command": "extension.showGlslPreview",
+                    "group": "ShaderToy"
+                }
+            ]
         }
     },
     "scripts": {
