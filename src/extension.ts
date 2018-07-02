@@ -11,16 +11,24 @@ export function activate(context: ExtensionContext) {
     let previewUri = Uri.parse('glsl-preview://authority/glsl-preview');
     let provider = new GLSLDocumentContentProvider(context);
     let registration = vscode.workspace.registerTextDocumentContentProvider('glsl-preview', provider);
+    const config = vscode.workspace.getConfiguration('shader-toy');
     var _timeout: number;
 
     vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
         clearTimeout(_timeout);
         _timeout = setTimeout( function() { 
-            if(e.document === vscode.window.activeTextEditor.document) {
+            if(vscode.window.activeTextEditor && e.document === vscode.window.activeTextEditor.document) {
                 provider.update(previewUri);
             }
         }, 1000);
     });
+    if (config.get('reloadOnChangeEditor', false)) {
+        vscode.window.onDidChangeActiveTextEditor((e: vscode.TextEditor) => {
+            if(e && e.document === e.document) {
+                provider.update(previewUri);
+            }
+        });
+    }
     let disposable = vscode.commands.registerCommand('extension.showGlslPreview', () => {
         return vscode.commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
         .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
@@ -43,27 +51,65 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     }
     
     public provideTextDocumentContent(uri: Uri): string {
-        const shader = vscode.window.activeTextEditor.document.getText();
+        let shader = vscode.window.activeTextEditor.document.getText();
         const config = vscode.workspace.getConfiguration('shader-toy');
-        const has_textures = 'textures' in vscode.workspace.getConfiguration('shader-toy');
-        let textures = config['textures'] || {};
-        let textureScript = "";
 
-        for(let i in textures) {
-            textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };`;
+        var line_offset = 120;
+
+        let textureScript = "\n";
+        if (config.get('useInShaderTextures', false)) {
+            var texturePos = shader.indexOf("#iChannel", 0);
+            while (texturePos >= 0) {
+                var channelPos = texturePos + 9;
+                var channel = parseInt(shader.charAt(channelPos));
+                var endlinePos = shader.indexOf("\n", texturePos);
+                let texture = shader.substr(channelPos + 2, endlinePos - channelPos - 3);
+
+                textureScript += `shader.uniforms.iChannel${channel} = { type: 't', value: THREE.ImageUtils.loadTexture('${texture}') };\n`;
+                line_offset--;
+
+                shader = shader.replace(shader.substring(texturePos, endlinePos + 1), "");
+                texturePos = shader.indexOf("#iChannel", texturePos);
+            }
+        }
+        else {
+            let textures = config.get('textures', {});
+            for(let i in textures) {
+                if (textures[i].length > 0) {
+                    textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };\n`;
+                }
+            }
+        }
+
+        let frameTimeScript = "";
+        if (config.get('printShaderFrameTime', false)) {
+            frameTimeScript = `
+            (function() {
+                var script = document.createElement('script')
+                script.onload = function() {
+                    var stats = new Stats();
+                    stats.showPanel(1);
+                    document.body.appendChild(stats.dom);
+                    requestAnimationFrame(function loop() {
+                        stats.update();
+                        requestAnimationFrame(loop);
+                    });
+                };
+                script.src = 'https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js';
+                document.head.appendChild(script);
+            }());\n`;
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
-        const line_offset = 27;
         const content = `
             <head>
             <style>
                 html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
-                #error {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold;}
+                #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold; z-index: 2; position: absolute;}
             </style>
             </head>
             <body>
-                <div id="error"></div>
+                <div id="message"></div>
                 <div id="container"></div>
 
             </body>
@@ -87,19 +133,27 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 uniform sampler2D   iChannel1;
                 uniform sampler2D   iChannel2;
                 uniform sampler2D   iChannel3;
-//                  uniform vec4        iDate;
-//                  uniform float       iSampleRate;
-                
+                uniform sampler2D   iChannel4;
+                uniform sampler2D   iChannel5;
+                uniform sampler2D   iChannel6;
+                uniform sampler2D   iChannel7;
+                uniform sampler2D   iChannel8;
+                uniform sampler2D   iChannel9;
+
+                #define SHADER_TOY
+
                 ${shader}
             </script>
 
             <script type="text/javascript">
+                ${frameTimeScript}
+
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#error").html("<h3>Shader failed to compile</h3><ul>")                                    
-                            $("#error").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
-                            $("#error").append("</ul>");
+                            $("#message").html("<h3>Shader failed to compile</h3><ul>")                                    
+                            $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
+                            $("#message").append("</ul>");
                         }
                     };
                 })();
@@ -111,6 +165,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
+                var frameCounter = 0;
                 var shader = new THREE.ShaderMaterial({
                         vertexShader: document.getElementById('vs').textContent,
                         fragmentShader: document.getElementById('fs').textContent,
@@ -149,19 +204,39 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                     }
                     
+                    frameCounter++;
                     
                     shader.uniforms['iResolution'].value = resolution;
-                    shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
                     shader.uniforms['iTimeDelta'].value = clock.getDelta();
-                    shader.uniforms['iFrame'].value = 0;
+                    shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
+                    shader.uniforms['iFrame'].value = frameCounter;
                     shader.uniforms['iMouse'].value = mouse;
 
                     renderer.render(scene, camera);
                 }
+                canvas.addEventListener('mousemove', function(evt) {
+                    if (mouse.z + mouse.w != 0) {
+                        var rect = canvas.getBoundingClientRect();
+                        mouse.x = evt.clientX - rect.left;
+                        mouse.y = resolution.y - evt.clientY - rect.top;
+                    } 
+                }, false);
+                canvas.addEventListener('mousedown', function(evt) {
+                    if (evt.button == 0)
+                        mouse.z = 1;
+                    if (evt.button == 2)
+                        mouse.w = 1;
+                }, false);
+                canvas.addEventListener('mouseup', function(evt) {
+                    if (evt.button == 0)
+                        mouse.z = 0;
+                    if (evt.button == 2)
+                        mouse.w = 0;
+                }, false);
             </script>
             </body>
         `;
-        console.log(content);
+        // console.log(content);
         return content;
     }
 
