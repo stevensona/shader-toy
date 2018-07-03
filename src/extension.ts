@@ -1,6 +1,5 @@
 'use strict';
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ExtensionContext, TextDocumentContentProvider, EventEmitter, Event, Uri, ViewColumn } from 'vscode';
@@ -35,7 +34,6 @@ export function activate(context: ExtensionContext) {
         .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
     });
     let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number) => {
-        console.log('editor', editor.document.uri.toString());
         if (editor) {
             let range = editor.document.lineAt(line - 1).range;
             editor.selection = new vscode.Selection(range.start, range.end);
@@ -116,8 +114,39 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         const content = `
             <head>
                 <style>
-                    html, body, #canvas { margin: 0; padding: 0; width: 100%; height: 100%; display: block; }
-                    #message {font-family: Consolas; font-size: 1.2em; color:#ccc; background-color:black; font-weight: bold; z-index: 2; position: absolute;}
+                    html, body, #canvas {
+                        margin: 0;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        display: block;
+                    }
+                    .error {
+                        font-family: Consolas;
+                        font-size: 1.2em;
+                        color: black;
+                        box-sizing: border-box;
+                        background-color: lightcoral;
+                        border-radius: 2px;
+                        border-color: lightblue;
+                        border-width: thin;
+                        border-style: solid;
+                        line-height: 1.4em;
+                    }
+                    .error:hover {
+                        color: black;
+                        background-color: brown;
+                        border-color: blue;
+                    }
+                    #message {
+                        font-family: Consolas;
+                        font-size: 1.2em;
+                        color: #ccc;
+                        background-color: black;
+                        font-weight: bold;
+                        z-index: 2;
+                        position: absolute;
+                    }
                 </style>
             </head>
             <body>
@@ -165,12 +194,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         if('7' in arguments) {
                             $("#message").html('<h3>Shader failed to compile</h3><ul>')                                    
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
-                                return '<li><a unselectable href=\"'+ encodeURI(\'command:shader-toy.onGlslError?\' + JSON.stringify([Number(c) - ${line_offset}])) + '\">Line ' + String(Number(c) - ${line_offset}) + '</a>';
+                                return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - ${line_offset}])) + '">Line ' + String(Number(c) - ${line_offset}) + '</a>';
                             }));
                             $("#message").append('</ul>');
                         }
                     };
                 })();
+
                 var canvas = document.getElementById('canvas');
                 var scene = new THREE.Scene();
                 var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
@@ -249,7 +279,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
             </script>
         `;
-        console.log(content);
         return content;
     }
 
