@@ -11,6 +11,7 @@ export function activate(context: ExtensionContext) {
     let registration = vscode.workspace.registerTextDocumentContentProvider('glsl-preview', provider);
     const config = vscode.workspace.getConfiguration('shader-toy');
     var _timeout: number;
+    var editor = vscode.window.activeTextEditor;
 
     vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
         clearTimeout(_timeout);
@@ -24,16 +25,26 @@ export function activate(context: ExtensionContext) {
         vscode.window.onDidChangeActiveTextEditor((e: vscode.TextEditor) => {
             if(e && e.document === e.document) {
                 provider.update(previewUri);
+                editor = e;
             }
         });
     }
 
-    let previewCommand = vscode.commands.registerCommand('extension.showGlslPreview', () => {
+    let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
         return vscode.commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
         .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
     });
+    let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number) => {
+        console.log('editor', editor.document.uri.toString());
+        if (editor) {
+            let range = editor.document.lineAt(line - 1).range;
+            editor.selection = new vscode.Selection(range.start, range.end);
+            editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        }
+    });
     
     context.subscriptions.push(previewCommand, registration);
+    context.subscriptions.push(errorCommand);
 }
 export function deactivate() {
 }
@@ -152,9 +163,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#message").html("<h3>Shader failed to compile</h3><ul>")                                    
-                            $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) { return  "<li>Line " + String(Number(c) - ${line_offset}); }));
-                            $("#message").append("</ul>");
+                            $("#message").html('<h3>Shader failed to compile</h3><ul>')                                    
+                            $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
+                                return '<li><a unselectable href=\"'+ encodeURI(\'command:shader-toy.onGlslError?\' + JSON.stringify([Number(c) - ${line_offset}])) + '\">Line ' + String(Number(c) - ${line_offset}) + '</a>';
+                            }));
+                            $("#message").append('</ul>');
                         }
                     };
                 })();
@@ -236,7 +249,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
             </script>
         `;
-        // console.log(content);
+        console.log(content);
         return content;
     }
 

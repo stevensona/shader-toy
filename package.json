@@ -18,7 +18,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.showGlslPreview"
+        "onCommand:shader-toy.showGlslPreview"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -51,14 +51,14 @@
         },
         "commands": [
             {
-                "command": "extension.showGlslPreview",
+                "command": "shader-toy.showGlslPreview",
                 "title": "Shader Toy: Show GLSL Preview"
             }
         ],
         "menus": {
             "editor/context": [
                 {
-                    "command": "extension.showGlslPreview",
+                    "command": "shader-toy.showGlslPreview",
                     "group": "ShaderToy"
                 }
             ]
