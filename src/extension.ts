@@ -61,35 +61,99 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     }
     
     public provideTextDocumentContent(uri: Uri): string {
-        let shader = vscode.window.activeTextEditor.document.getText();
+        let activeEditor = vscode.window.activeTextEditor;
+        let shader = activeEditor.document.getText();
+        let shaderName = activeEditor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
 
+        // TODO: Pass to canvas
         var line_offset = 120;
 
-        let textureScript = "\n";
-        if (config.get('useInShaderTextures', false)) {
-            var texturePos = shader.indexOf("#iChannel", 0);
-            while (texturePos >= 0) {
-                var channelPos = texturePos + 9;
-                var channel = parseInt(shader.charAt(channelPos));
-                var endlinePos = shader.indexOf("\n", texturePos);
-                let texture = shader.substr(channelPos + 2, endlinePos - channelPos - 3);
+        let shaderPreamble = `
+        uniform vec3        iResolution;
+        uniform float       iGlobalTime;
+        uniform float       iTimeDelta;
+        uniform int         iFrame;
+        uniform float       iChannelTime[4];
+        uniform vec3        iChannelResolution[4];
+        uniform vec4        iMouse;
+        uniform sampler2D   iChannel0;
+        uniform sampler2D   iChannel1;
+        uniform sampler2D   iChannel2;
+        uniform sampler2D   iChannel3;
+        uniform sampler2D   iChannel4;
+        uniform sampler2D   iChannel5;
+        uniform sampler2D   iChannel6;
+        uniform sampler2D   iChannel7;
+        uniform sampler2D   iChannel8;
+        uniform sampler2D   iChannel9;
 
-                textureScript += `shader.uniforms.iChannel${channel} = { type: 't', value: THREE.ImageUtils.loadTexture('${texture}') };\n`;
-                line_offset--;
+        #define SHADER_TOY`
 
-                shader = shader.replace(shader.substring(texturePos, endlinePos + 1), "");
-                texturePos = shader.indexOf("#iChannel", texturePos);
-            }
+        var buffers = this.parseShaderCode(shaderName, shader);
+        const numShaders = buffers.length;
+
+        // Write all the shaders
+        var shaderScripts = "";
+        var buffersScripts = "";
+        for (let i in buffers) {
+            const buffer = buffers[i];
+            shaderScripts += `
+            <script id="${buffer.Name}" type="x-shader/x-fragment">
+                ${shaderPreamble}
+                ${buffer.Code}
+            </script>`
+
+            var target = "null";
+            if (buffer != buffers[numShaders - 1])
+                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight)"
+            buffersScripts += `
+            buffers.push({
+                Target: ${target},
+                Shader: new THREE.ShaderMaterial({
+                    vertexShader: document.getElementById('vertexShader').textContent,
+                    fragmentShader: document.getElementById('${buffer.Name}').textContent,
+                    depthWrite: false,
+                    depthTest: false,
+                    uniforms: {
+                        iResolution: { type: "v3", value: resolution },
+                        iGlobalTime: { type: "f", value: 0.0 },
+                        iTimeDelta: { type: "f", value: 0.0 },
+                        iFrame: { type: "i", value: 0 },
+                        iMouse: { type: "v4", value: mouse },
+                    }
+                })
+            });`;
         }
-        else {
-            let textures = config.get('textures', {});
-            for(let i in textures) {
-                if (textures[i].length > 0) {
-                    textureScript += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };\n`;
+
+        
+        var textureScripts = "\n";
+        // if (config.get('useInShaderTextures', false)) {
+            for (let i in buffers) {
+                const textures =  buffers[i].Textures;
+                for (let j in textures) {
+                    const texture = textures[j];
+                    const channel = texture.Channel;
+                    const bufferIndex = texture.Buffer;
+                    const texturePath = texture.Texture;
+                    if (bufferIndex != null) {
+                        textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: buffers[${bufferIndex}].Target.texture };\n`;
+                    }
+                    else {
+                        textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: THREE.ImageUtils.loadTexture('${texturePath}') };\n`;
+                    }
                 }
             }
-        }
+        // }
+        // TODO: Fix up original version?
+        // else {
+        //     let textures = config.get('textures', {});
+        //     for(let i in textures) {
+        //         if (textures[i].length > 0) {
+        //             textureScripts += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };\n`;
+        //         }
+        //     }
+        // }
 
         let frameTimeScript = "";
         if (config.get('printShaderFrameTime', false)) {
@@ -157,34 +221,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
             <canvas id="canvas"></canvas>
-            <script id="vs" type="x-shader/x-vertex">
+
+            <script id="vertexShader" type="x-shader/x-vertex">
                 void main() {
                     gl_Position = vec4(position, 1.0);
                 }
             </script>
-            <script id="fs" type="x-shader/x-fragment">
-                uniform vec3        iResolution;
-                uniform float       iGlobalTime;
-                uniform float       iTimeDelta;
-                uniform int         iFrame;
-                uniform float       iChannelTime[4];
-                uniform vec3        iChannelResolution[4];
-                uniform vec4        iMouse;
-                uniform sampler2D   iChannel0;
-                uniform sampler2D   iChannel1;
-                uniform sampler2D   iChannel2;
-                uniform sampler2D   iChannel3;
-                uniform sampler2D   iChannel4;
-                uniform sampler2D   iChannel5;
-                uniform sampler2D   iChannel6;
-                uniform sampler2D   iChannel7;
-                uniform sampler2D   iChannel8;
-                uniform sampler2D   iChannel9;
-
-                #define SHADER_TOY
-
-                ${shader}
-            </script>
+            ${shaderScripts}
 
             <script type="text/javascript">
                 ${frameTimeScript}
@@ -192,7 +235,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#message").html('<h3>Shader failed to compile</h3><ul>')                                    
+                            $("#message").html('<h3>Shader failed to compile</h3><ul>')
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
                                 return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - ${line_offset}])) + '">Line ' + String(Number(c) - ${line_offset}) + '</a>';
                             }));
@@ -202,46 +245,37 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 })();
 
                 var canvas = document.getElementById('canvas');
-                var scene = new THREE.Scene();
                 var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
                 var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
+                camera.position.z = 10;
                 var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
                 var frameCounter = 0;
-                var shader = new THREE.ShaderMaterial({
-                        vertexShader: document.getElementById('vs').textContent,
-                        fragmentShader: document.getElementById('fs').textContent,
-                        depthWrite: false,
-                        depthTest: false,
-                        uniforms: {
-                            iResolution: { type: "v3", value: resolution },
-                            iGlobalTime: { type: "f", value: 0.0 },
-                            iTimeDelta: { type: "f", value: 0.0 },
-                            iFrame: { type: "i", value: 0 },
-                            iChannelTime: { type: "fv1", value: [0., 0., 0., 0.] },
-                            iChannelResolution: { type: "v3v", value:
-                                [channelResolution, channelResolution, channelResolution, channelResolution]   
-                            },
-                            iMouse: { type: "v4", value: mouse },
-                        }
-                    });
+
+                var buffers = [];
+                ${buffersScripts}
                 
-                ${textureScript}
+                ${textureScripts}
                 
+                var scene = new THREE.Scene();
                 var quad = new THREE.Mesh(
                     new THREE.PlaneGeometry(2, 2),
-                    shader
+                    null
                 );
                 scene.add(quad);
-                camera.position.z = 10;
 
                 render();
 
                 function render() {
                     requestAnimationFrame(render);
                     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                        for (let i in buffers) {
+                            if (buffers[i].Target) {
+                                buffers[i].Target.setSize(canvas.clientWidth, canvas.clientHeight);
+                            }
+                        }
                         renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
                         camera.aspect = canvas.clientWidth /  canvas.clientHeight;
                         camera.updateProjectionMatrix();
@@ -249,14 +283,20 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     }
                     
                     frameCounter++;
+                    var deltaTime = clock.getDelta();
+                    var time = clock.getElapsedTime();
                     
-                    shader.uniforms['iResolution'].value = resolution;
-                    shader.uniforms['iTimeDelta'].value = clock.getDelta();
-                    shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
-                    shader.uniforms['iFrame'].value = frameCounter;
-                    shader.uniforms['iMouse'].value = mouse;
+                    for (let i in buffers) {
+                        let buffer = buffers[i];
+                        buffer.Shader.uniforms['iResolution'].value = resolution;
+                        buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
+                        buffer.Shader.uniforms['iGlobalTime'].value = time;
+                        buffer.Shader.uniforms['iFrame'].value = frameCounter;
+                        buffer.Shader.uniforms['iMouse'].value = mouse;
 
-                    renderer.render(scene, camera);
+                        quad.material = buffer.Shader;
+                        renderer.render(scene, camera, buffer.Target);
+                    }
                 }
                 canvas.addEventListener('mousemove', function(evt) {
                     if (mouse.z + mouse.w != 0) {
@@ -279,6 +319,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
             </script>
         `;
+        // console.log(content);
         return content;
     }
 
@@ -288,5 +329,80 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
     public update(uri: Uri) {
         this._onDidChange.fire(uri);
+    }
+
+    parseShaderCode(name: string, code: string) {
+        const config = vscode.workspace.getConfiguration('shader-toy');
+
+        var bufferDependencies = [];
+
+        var line_offset = 119;
+        var textureScript = "";
+        var textures = [];
+
+        if (config.get('useInShaderTextures', false)) {
+            var texturePos = code.indexOf("#iChannel", 0);
+            while (texturePos >= 0) {
+                var channelPos = texturePos + 9;
+                var spacePos = code.indexOf(" ", 0);
+                var channel = parseInt(code.substring(channelPos, spacePos));
+                var endlinePos = code.indexOf("\n", texturePos);
+
+                let texture = code.substr(channelPos + 2, endlinePos - channelPos - 3);
+                var colonPos = texture.indexOf('://', 0);
+                let textureType = texture.substring(0, colonPos);
+
+                if (textureType == "buf") {
+                    texture = texture.substring(colonPos + 3, texture.length);
+                    var fs = require("fs");
+                    let bufferCode = fs.readFileSync(texture, "utf-8");
+                    // console.log(texture);
+                    // console.log(bufferCode);
+                    var currentNumBuffers = bufferDependencies.length;
+                    var buffers = this.parseShaderCode(texture, bufferCode);
+                    for (let i in buffers) {
+                        let buffer = buffers[i];
+                        if (buffer.Buffer) {
+                            buffer.Buffer += currentNumBuffers;
+                        }
+                        bufferDependencies.push(buffer);
+                    }
+                    textures.push({
+                        Channel: channel,
+                        Buffer: bufferDependencies.length - 1,
+                        Texture: null
+                    });
+                    // TODO: Why does concat not work?
+                    // bufferDependencies.concat(buffers);
+                }
+                else {
+                    textures.push({
+                        Channel: channel,
+                        Buffer: null,
+                        Texture: texture
+                    });
+                }
+
+                code = code.replace(code.substring(texturePos, endlinePos + 1), "");
+                texturePos = code.indexOf("#iChannel", texturePos);
+                line_offset--;
+            }
+        }
+
+        const stripPath = (name: string) => {
+            var lastSlash = name.lastIndexOf('\\');
+            if (lastSlash < 0) lastSlash = name.lastIndexOf('/'); // TODO: Better way to handle different / or \\
+            return name.substring(lastSlash + 1);
+        };
+
+        // Push yourself after all your dependencies
+        bufferDependencies.push({
+            Name: stripPath(name),
+            Code: code,
+            Textures: textures,
+            LineOffset: line_offset
+        });
+        
+        return bufferDependencies;
     }
 }

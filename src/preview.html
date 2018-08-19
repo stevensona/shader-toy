@@ -11,12 +11,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
     <canvas id="canvas"></canvas>
-    <script id="vs" type="x-shader/x-vertex">
+    <script id="vertexShader" type="x-shader/x-vertex">
         void main() {
             gl_Position = vec4(position, 1.0);
         }
     </script>
-    <script id="fs" type="x-shader/x-fragment">
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        uniform vec3        iResolution;
+        uniform float       iGlobalTime;
+        uniform float       iTimeDelta;
+        uniform int         iFrame;
+        uniform float       iChannelTime[4];
+        uniform vec3        iChannelResolution[4];
+        uniform vec4        iMouse;
+        uniform sampler2D   iChannel0;
+        uniform sampler2D   iChannel1;
+        uniform sampler2D   iChannel2;
+        uniform sampler2D   iChannel3;
+        uniform sampler2D   iChannel4;
+        uniform sampler2D   iChannel5;
+        uniform sampler2D   iChannel6;
+        uniform sampler2D   iChannel7;
+        uniform sampler2D   iChannel8;
+        uniform sampler2D   iChannel9;
+
+        #define SHADER_TOY
+        
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            gl_FragColor = vec4(texture2D(iChannel0, uv).rgb, 0.0);
+            //gl_FragColor = vec4(1., 0., 0., 1.0);
+        }
+    </script>
+    <script id="fsBuf" type="x-shader/x-fragment">
         uniform vec3        iResolution;
         uniform float       iGlobalTime;
         uniform float       iTimeDelta;
@@ -36,9 +63,29 @@
         uniform sampler2D   iChannel9;      
 
         #define SHADER_TOY        
-                                
+        
         void main() {
-            gl_FragColor = vec4(1., 0., 0., 1.0);
+            float time=iGlobalTime*1.0;
+            vec2 uv = (gl_FragCoord.xy / iResolution.xx-0.5)*8.0;
+            vec2 uv0=uv;
+            float i0=.8;
+            float i1=.8;
+            float i2=.75;
+            float i4=0.;
+            for(int s=0;s<7;s++) {
+                vec2 r;
+                r=vec2(cos(uv.y*i0-i4-time/i1),sin(uv.x*i0-i4+time/i1))/i2;
+                r+=vec2(-r.y,r.x)*0.3;
+                uv.xy+=r;
+                i0*=1.93;
+                i1*=1.15;
+                i2*=1.7;
+                i4+=0.05+0.1*time*i1;
+            }
+            float b=sin(uv.x-time)*0.5+0.5;
+            float r=sin(uv.y+time)*0.5+0.5;
+            float g=sin((uv.x+uv.y+sin(time*0.5))*0.5)*0.5+0.5;
+            gl_FragColor = vec4(r,g,b,1.);
         }
     </script>
     <script type="text/javascript">
@@ -68,7 +115,6 @@
         })();
 
         var canvas = document.getElementById('canvas');
-        var scene = new THREE.Scene();
         var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
         var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
         var clock = new THREE.Clock();
@@ -76,9 +122,13 @@
         var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
         var mouse = new THREE.Vector4(0, 0, 0, 0);
         var frameCounter = 0;
-        var shader = new THREE.ShaderMaterial({
-                vertexShader: document.getElementById('vs').textContent,
-                fragmentShader: document.getElementById('fs').textContent,
+
+        var buffers = [];
+        buffers.push({
+            target: new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight),
+            shader: new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fsBuf').textContent,
                 depthWrite: false,
                 depthTest: false,
                 uniforms: {
@@ -86,23 +136,46 @@
                     iGlobalTime: { type: "f", value: 0.0 },
                     iTimeDelta: { type: "f", value: 0.0 },
                     iFrame: { type: "i", value: 0 },
-                    iChannelTime: { type: "fv1", value: [0., 0., 0., 0.] }, 
-                    iChannelResolution: { type: "v3v", value:
-                        [channelResolution, channelResolution, channelResolution, channelResolution]   
-                    },
                     iMouse: { type: "v4", value: mouse },
                 }
-            });
+            })
+        });
+        buffers.push({
+            target: null,
+            shader: new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fragmentShader').textContent,
+                depthWrite: false,
+                depthTest: false,
+                uniforms: {
+                    iResolution: { type: "v3", value: resolution },
+                    iGlobalTime: { type: "f", value: 0.0 },
+                    iTimeDelta: { type: "f", value: 0.0 },
+                    iFrame: { type: "i", value: 0 },
+                    iMouse: { type: "v4", value: mouse },
+                }
+            })
+        });
+
+        buffers[1].shader.uniforms.iChannel0 = { type: 't', value: buffers[0].target.texture };
+        
+        var scene = new THREE.Scene();
         var quad = new THREE.Mesh(
             new THREE.PlaneGeometry(2, 2),
-            shader
+            null
         );
         scene.add(quad);
+
         camera.position.z = 10;
         render();
         function render() {
             requestAnimationFrame(render);
             if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                for (let i in buffers) {
+                    if (buffers[i].target) {
+                        buffers[i].target.setSize(canvas.clientWidth, canvas.clientHeight);
+                    }
+                }
                 renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
                 camera.aspect = canvas.clientWidth /  canvas.clientHeight;
                 camera.updateProjectionMatrix();
@@ -110,14 +183,19 @@
             }
             
             frameCounter++;
+            var deltaTime = clock.getDelta();
+            var time = clock.getElapsedTime();
             
-            shader.uniforms['iResolution'].value = resolution;
-            shader.uniforms['iTimeDelta'].value = clock.getDelta();
-            shader.uniforms['iGlobalTime'].value = clock.getElapsedTime();
-            shader.uniforms['iFrame'].value = frameCounter;
-            shader.uniforms['iMouse'].value = mouse;
-            
-            renderer.render(scene, camera);
+            for (let i in buffers) {
+                let buffer = buffers[i];
+                buffer.shader.uniforms['iResolution'].value = resolution;
+                buffer.shader.uniforms['iTimeDelta'].value = deltaTime;
+                buffer.shader.uniforms['iGlobalTime'].value = time;
+                buffer.shader.uniforms['iFrame'].value = frameCounter;
+                buffer.shader.uniforms['iMouse'].value = mouse;
+                quad.material = buffer.shader;
+                renderer.render(scene, camera, buffer.target);
+            }
         }
         canvas.addEventListener('mousemove', function(evt) {
             if (mouse.z + mouse.w != 0) {
