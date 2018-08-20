@@ -90,6 +90,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         #define SHADER_TOY`
 
+        shaderName = shaderName.replace(/\\/g, "/");
         var buffers = this.parseShaderCode(shaderName, shader);
         const numShaders = buffers.length;
 
@@ -104,9 +105,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 ${buffer.Code}
             </script>`
 
+            // Create a RenderTarget for all but the final buffer
             var target = "null";
             if (buffer != buffers[numShaders - 1])
                 target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight)"
+            
             buffersScripts += `
             buffers.push({
                 Target: ${target},
@@ -135,13 +138,17 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     const texture = textures[j];
                     const channel = texture.Channel;
                     const bufferIndex = texture.Buffer;
-                    const texturePath = texture.Texture;
-                    if (bufferIndex != null) {
-                        textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: buffers[${bufferIndex}].Target.texture };\n`;
-                    }
-                    else {
-                        textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: THREE.ImageUtils.loadTexture('${texturePath}') };\n`;
-                    }
+                    const texturePath = texture.LocalTexture;
+                    const textureUrl = texture.RemoteTexture;
+
+                    var value;
+                    if (bufferIndex != null)
+                        value = `buffers[${bufferIndex}].Target.texture`;
+                    else if (texturePath != null)
+                        value = `THREE.ImageUtils.loadTexture('file://${texturePath}')`;
+                    else
+                        value = `THREE.ImageUtils.loadTexture('https://${texturePath}')`;
+                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
                 }
             }
         // }
@@ -341,48 +348,75 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var textures = [];
 
         if (config.get('useInShaderTextures', false)) {
+            // Find all #iChannel defines, which define textures and other shaders
             var texturePos = code.indexOf("#iChannel", 0);
             while (texturePos >= 0) {
+                // Get channel number
                 var channelPos = texturePos + 9;
                 var spacePos = code.indexOf(" ", 0);
                 var channel = parseInt(code.substring(channelPos, spacePos));
                 var endlinePos = code.indexOf("\n", texturePos);
 
+                // Get type and name of texture
                 let texture = code.substr(channelPos + 2, endlinePos - channelPos - 3);
                 var colonPos = texture.indexOf('://', 0);
                 let textureType = texture.substring(0, colonPos);
 
+                // Fix path to use '/' over '\\' and relative to the current working directory
+                texture = texture.substring(colonPos + 3, texture.length);
+                texture = ((file: string) => {
+                    const relFile = vscode.workspace.asRelativePath(file);
+                    const herePos = relFile.indexOf("./");
+                    if (relFile != file || herePos == 0) return vscode.workspace.rootPath + '/' + relFile;
+                    else return file;
+                })(texture);
+                texture = texture.replace(/\\/g, '/');
+
                 if (textureType == "buf") {
-                    texture = texture.substring(colonPos + 3, texture.length);
+                    // Read the whole file of the shader
                     var fs = require("fs");
                     let bufferCode = fs.readFileSync(texture, "utf-8");
-                    // console.log(texture);
-                    // console.log(bufferCode);
+
+                    // Parse the shader
                     var currentNumBuffers = bufferDependencies.length;
                     var buffers = this.parseShaderCode(texture, bufferCode);
+
+                    // Push new buffers
                     for (let i in buffers) {
                         let buffer = buffers[i];
+                        // Offset depending buffers by currently used amount of buffers
                         if (buffer.Buffer) {
                             buffer.Buffer += currentNumBuffers;
                         }
                         bufferDependencies.push(buffer);
                     }
+                    // Push buffers as textures
                     textures.push({
                         Channel: channel,
                         Buffer: bufferDependencies.length - 1,
-                        Texture: null
+                        LocalTexture: null,
+                        RemoteTexture: null
                     });
-                    // TODO: Why does concat not work?
-                    // bufferDependencies.concat(buffers);
+                }
+                else if (textureType == "file") {
+                    // Push texture
+                    textures.push({
+                        Channel: channel,
+                        Buffer: null,
+                        LocalTexture: texture,
+                        RemoteTexture: null
+                    });
                 }
                 else {
                     textures.push({
                         Channel: channel,
                         Buffer: null,
-                        Texture: texture
+                        LocalTexture: null,
+                        RemoteTexture: texture
                     });
                 }
 
+                // Remove #iChannel define
                 code = code.replace(code.substring(texturePos, endlinePos + 1), "");
                 texturePos = code.indexOf("#iChannel", texturePos);
                 line_offset--;
@@ -390,8 +424,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         const stripPath = (name: string) => {
-            var lastSlash = name.lastIndexOf('\\');
-            if (lastSlash < 0) lastSlash = name.lastIndexOf('/'); // TODO: Better way to handle different / or \\
+            var lastSlash = name.lastIndexOf('/');
             return name.substring(lastSlash + 1);
         };
 
