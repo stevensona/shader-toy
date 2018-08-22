@@ -108,13 +108,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             // Create a RenderTarget for all but the final buffer
             var target = "null";
             if (buffer != buffers[numShaders - 1])
-                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight)"
+                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight)";
             
             buffersScripts += `
             buffers.push({
                 Target: ${target},
                 Shader: new THREE.ShaderMaterial({
-                    vertexShader: document.getElementById('vertexShader').textContent,
                     fragmentShader: document.getElementById('${buffer.Name}').textContent,
                     depthWrite: false,
                     depthTest: false,
@@ -229,11 +228,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
             <canvas id="canvas"></canvas>
 
-            <script id="vertexShader" type="x-shader/x-vertex">
-                void main() {
-                    gl_Position = vec4(position, 1.0);
-                }
-            </script>
             ${shaderScripts}
 
             <script type="text/javascript">
@@ -253,13 +247,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 var canvas = document.getElementById('canvas');
                 var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
-                var camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientWidth, 1, 1000);
-                camera.position.z = 10;
                 var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
-                var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
                 var frameCounter = 0;
+
+                var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
 
                 var buffers = [];
                 ${buffersScripts}
@@ -268,25 +261,35 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 
                 var scene = new THREE.Scene();
                 var quad = new THREE.Mesh(
-                    new THREE.PlaneGeometry(2, 2),
+                    new THREE.PlaneGeometry(resolution.x, resolution.y),
                     null
                 );
                 scene.add(quad);
+                
+                var camera = new THREE.OrthographicCamera(-resolution.x / 2.0, resolution.x / 2.0, resolution.y / 2.0, -resolution.y / 2.0, 1, 1000);
+                camera.position.set(0, 0, 10);
 
                 render();
 
                 function render() {
                     requestAnimationFrame(render);
                     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                        resolution.x = canvas.clientWidth;
+                        resolution.y = canvas.clientHeight;
                         for (let i in buffers) {
                             if (buffers[i].Target) {
-                                buffers[i].Target.setSize(canvas.clientWidth, canvas.clientHeight);
+                                buffers[i].Target.setSize(resolution.x, resolution.y);
                             }
                         }
-                        renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-                        camera.aspect = canvas.clientWidth /  canvas.clientHeight;
+                        renderer.setSize(resolution.x, resolution.y, false);
+                        
+                        // Update Camera and Mesh
+                        quad.geometry = new THREE.PlaneGeometry(resolution.x, resolution.y);
+                        camera.left = -resolution.x / 2.0;
+                        camera.right = resolution.x / 2.0;
+                        camera.top = resolution.y / 2.0;
+                        camera.bottom = -resolution.y / 2.0;
                         camera.updateProjectionMatrix();
-                        resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                     }
                     
                     frameCounter++;
@@ -367,6 +370,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 texture = ((file: string) => {
                     const relFile = vscode.workspace.asRelativePath(file);
                     const herePos = relFile.indexOf("./");
+                    if (vscode.workspace.rootPath == null && herePos == 0) console.log("To use relative paths please open a workspace!");
                     if (relFile != file || herePos == 0) return vscode.workspace.rootPath + '/' + relFile;
                     else return file;
                 })(texture);
