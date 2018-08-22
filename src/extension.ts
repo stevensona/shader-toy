@@ -130,36 +130,25 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         
         var textureScripts = "\n";
-        // if (config.get('useInShaderTextures', false)) {
-            for (let i in buffers) {
-                const textures =  buffers[i].Textures;
-                for (let j in textures) {
-                    const texture = textures[j];
-                    const channel = texture.Channel;
-                    const bufferIndex = texture.Buffer;
-                    const texturePath = texture.LocalTexture;
-                    const textureUrl = texture.RemoteTexture;
+        for (let i in buffers) {
+            const textures =  buffers[i].Textures;
+            for (let j in textures) {
+                const texture = textures[j];
+                const channel = texture.Channel;
+                const bufferIndex = texture.Buffer;
+                const texturePath = texture.LocalTexture;
+                const textureUrl = texture.RemoteTexture;
 
-                    var value;
-                    if (bufferIndex != null)
-                        value = `buffers[${bufferIndex}].Target.texture`;
-                    else if (texturePath != null)
-                        value = `THREE.ImageUtils.loadTexture('file://${texturePath}')`;
-                    else
-                        value = `THREE.ImageUtils.loadTexture('https://${texturePath}')`;
-                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
-                }
+                var value;
+                if (bufferIndex != null)
+                    value = `buffers[${bufferIndex}].Target.texture`;
+                else if (texturePath != null)
+                    value = `THREE.ImageUtils.loadTexture('file://${texturePath}')`;
+                else
+                    value = `THREE.ImageUtils.loadTexture('https://${texturePath}')`;
+                textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
             }
-        // }
-        // TODO: Fix up original version?
-        // else {
-        //     let textures = config.get('textures', {});
-        //     for(let i in textures) {
-        //         if (textures[i].length > 0) {
-        //             textureScripts += `shader.uniforms.iChannel${i} = { type: 't', value: THREE.ImageUtils.loadTexture('${textures[i]}') };\n`;
-        //         }
-        //     }
-        // }
+        }
 
         let frameTimeScript = "";
         if (config.get('printShaderFrameTime', false)) {
@@ -350,6 +339,72 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var textureScript = "";
         var textures = [];
 
+        const loadDependency = (file: string, channel: number) => {
+            // Get type and name of file
+            var colonPos = file.indexOf('://', 0);
+            let textureType = file.substring(0, colonPos);
+
+            // Fix path to use '/' over '\\' and relative to the current working directory
+            file = file.substring(colonPos + 3, file.length);
+            file = ((file: string) => {
+                const relFile = vscode.workspace.asRelativePath(file);
+                const herePos = relFile.indexOf("./");
+                if (vscode.workspace.rootPath == null && herePos == 0) console.log("To use relative paths please open a workspace!");
+                if (relFile != file || herePos == 0) return vscode.workspace.rootPath + '/' + relFile;
+                else return file;
+            })(file);
+            file = file.replace(/\\/g, '/');
+
+            if (textureType == "buf") {
+                // Read the whole file of the shader
+                var fs = require("fs");
+                let bufferCode = fs.readFileSync(file, "utf-8");
+    
+                // Parse the shader
+                var currentNumBuffers = bufferDependencies.length;
+                var buffers = this.parseShaderCode(file, bufferCode);
+    
+                // Push new buffers
+                for (let i in buffers) {
+                    let buffer = buffers[i];
+                    // Offset depending buffers by currently used amount of buffers
+                    if (buffer.Buffer) {
+                        buffer.Buffer += currentNumBuffers;
+                    }
+                    bufferDependencies.push(buffer);
+                }
+                // Push buffers as textures
+                textures.push({
+                    Channel: channel,
+                    Buffer: bufferDependencies.length - 1,
+                    LocalTexture: null,
+                    RemoteTexture: null
+                });
+            }
+            else if (textureType == "file") {
+                // Push texture
+                textures.push({
+                    Channel: channel,
+                    Buffer: null,
+                    LocalTexture: file,
+                    RemoteTexture: null
+                });
+            }
+            else {
+                textures.push({
+                    Channel: channel,
+                    Buffer: null,
+                    LocalTexture: null,
+                    RemoteTexture: file
+                });
+            }
+        };
+
+        const stripPath = (name: string) => {
+            var lastSlash = name.lastIndexOf('/');
+            return name.substring(lastSlash + 1);
+        };
+
         if (config.get('useInShaderTextures', false)) {
             // Find all #iChannel defines, which define textures and other shaders
             var texturePos = code.indexOf("#iChannel", 0);
@@ -360,65 +415,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var channel = parseInt(code.substring(channelPos, spacePos));
                 var endlinePos = code.indexOf("\n", texturePos);
 
-                // Get type and name of texture
+                // Get dependencies' name
                 let texture = code.substr(channelPos + 2, endlinePos - channelPos - 3);
-                var colonPos = texture.indexOf('://', 0);
-                let textureType = texture.substring(0, colonPos);
-
-                // Fix path to use '/' over '\\' and relative to the current working directory
-                texture = texture.substring(colonPos + 3, texture.length);
-                texture = ((file: string) => {
-                    const relFile = vscode.workspace.asRelativePath(file);
-                    const herePos = relFile.indexOf("./");
-                    if (vscode.workspace.rootPath == null && herePos == 0) console.log("To use relative paths please open a workspace!");
-                    if (relFile != file || herePos == 0) return vscode.workspace.rootPath + '/' + relFile;
-                    else return file;
-                })(texture);
-                texture = texture.replace(/\\/g, '/');
-
-                if (textureType == "buf") {
-                    // Read the whole file of the shader
-                    var fs = require("fs");
-                    let bufferCode = fs.readFileSync(texture, "utf-8");
-
-                    // Parse the shader
-                    var currentNumBuffers = bufferDependencies.length;
-                    var buffers = this.parseShaderCode(texture, bufferCode);
-
-                    // Push new buffers
-                    for (let i in buffers) {
-                        let buffer = buffers[i];
-                        // Offset depending buffers by currently used amount of buffers
-                        if (buffer.Buffer) {
-                            buffer.Buffer += currentNumBuffers;
-                        }
-                        bufferDependencies.push(buffer);
-                    }
-                    // Push buffers as textures
-                    textures.push({
-                        Channel: channel,
-                        Buffer: bufferDependencies.length - 1,
-                        LocalTexture: null,
-                        RemoteTexture: null
-                    });
-                }
-                else if (textureType == "file") {
-                    // Push texture
-                    textures.push({
-                        Channel: channel,
-                        Buffer: null,
-                        LocalTexture: texture,
-                        RemoteTexture: null
-                    });
-                }
-                else {
-                    textures.push({
-                        Channel: channel,
-                        Buffer: null,
-                        LocalTexture: null,
-                        RemoteTexture: texture
-                    });
-                }
+                
+                // Load the dependency
+                loadDependency(texture, channel);
 
                 // Remove #iChannel define
                 code = code.replace(code.substring(texturePos, endlinePos + 1), "");
@@ -426,11 +427,18 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 line_offset--;
             }
         }
-
-        const stripPath = (name: string) => {
-            var lastSlash = name.lastIndexOf('/');
-            return name.substring(lastSlash + 1);
-        };
+        else { // TODO: Ideally depracate this because it is counter-productive when working dependent shaders
+            let textures = config.get('textures', {});
+            for(let i in textures) {
+                const texture = textures[i];
+                if (textures[i].length > 0) {
+                    // Check for buffer to load to avoid circular loading
+                    if (stripPath(texture) != stripPath(name)) {
+                        loadDependency(texture, parseInt(i));
+                    }
+                }
+            }
+        }
 
         // Push yourself after all your dependencies
         bufferDependencies.push({

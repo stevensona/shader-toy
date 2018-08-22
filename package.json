@@ -42,10 +42,11 @@
                 "shader-toy.textures": {
                     "type": "object",
                     "default": {
-                        "0": "",
-                        "1": ""
+                        "0": "https://www.example.my/cool.png",
+                        "1": "file://./relative.jpg",
+                        "2": "buf://./other-shader.glsl"
                     },
-                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol."
+                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
                 }
             }
         },
