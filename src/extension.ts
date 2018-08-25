@@ -33,12 +33,30 @@ export function activate(context: ExtensionContext) {
         return vscode.commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
         .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
     });
-    let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number) => {
-        if (editor) {
-            let range = editor.document.lineAt(line - 1).range;
+    let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number, file: string) => {
+        var highlightLine = (document: vscode.TextDocument, line: number) => {
+            let range = document.lineAt(line - 1).range;
+            vscode.window.showTextDocument(document, vscode.ViewColumn.One, true);
             editor.selection = new vscode.Selection(range.start, range.end);
             editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        };
+
+        if (editor) {
+            var currentFile = editor.document.fileName;
+            currentFile = currentFile.replace(/\\/g, '/');
+            if (currentFile == file) {
+                highlightLine(editor.document, line);
+                return;
+            }
         }
+
+        var newDocument = vscode.workspace.openTextDocument(file);
+        newDocument.then((document: vscode.TextDocument) => {
+            console.log(document.fileName);
+            highlightLine(document, line);
+        }, (reason) => {
+            console.log(`Could not open ${file} because ${reason}`);
+        });
     });
     
     context.subscriptions.push(previewCommand, registration);
@@ -66,9 +84,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         let shaderName = activeEditor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
 
-        // TODO: Pass to canvas
-        var line_offset = 120;
-
         let shaderPreamble = `
         uniform vec3        iResolution;
         uniform float       iGlobalTime;
@@ -90,7 +105,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         #define SHADER_TOY`
 
-        shaderName = shaderName.replace(/\\/g, "/");
+        shaderName = shaderName.replace(/\\/g, '/');
         var buffers = this.parseShaderCode(shaderName, shader);
         const numShaders = buffers.length;
 
@@ -112,6 +127,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             
             buffersScripts += `
             buffers.push({
+                Name: "${buffer.Name}",
+                File: "${buffer.File}",
+                LineOffset: "${buffer.LineOffset}",
                 Target: ${target},
                 Shader: new THREE.ShaderMaterial({
                     fragmentShader: document.getElementById('${buffer.Name}').textContent,
@@ -222,12 +240,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             <script type="text/javascript">
                 ${frameTimeScript}
 
+                var currentShader = {};
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#message").html('<h3>Shader failed to compile</h3><ul>')
+                            $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>')
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
-                                return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - ${line_offset}])) + '">Line ' + String(Number(c) - ${line_offset}) + '</a>';
+                                return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - currentShader.LineOffset, currentShader.File])) + '">Line ' + String(Number(c) - currentShader.LineOffset) + '</a>';
                             }));
                             $("#message").append('</ul>');
                         }
@@ -257,6 +276,19 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 
                 var camera = new THREE.OrthographicCamera(-resolution.x / 2.0, resolution.x / 2.0, resolution.y / 2.0, -resolution.y / 2.0, 1, 1000);
                 camera.position.set(0, 0, 10);
+
+                // Run every shader once to check for compile errors
+                for (let i in buffers) {
+                    let buffer = buffers[i];
+                    currentShader = {
+                        Name: buffer.Name,
+                        File: buffer.File,
+                        LineOffset: buffer.LineOffset
+                    };
+                    quad.material = buffer.Shader;
+                    renderer.render(scene, camera, buffer.Target);
+                }
+                currentShader = {};
 
                 render();
 
@@ -335,8 +367,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         var bufferDependencies = [];
 
-        var line_offset = 119;
-        var textureScript = "";
+        var line_offset = 120;
         var textures = [];
 
         const loadDependency = (file: string, channel: number) => {
@@ -354,6 +385,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 else return file;
             })(file);
             file = file.replace(/\\/g, '/');
+            file = file.replace(/\.\//g, "");
 
             if (textureType == "buf") {
                 // Read the whole file of the shader
@@ -443,6 +475,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         // Push yourself after all your dependencies
         bufferDependencies.push({
             Name: stripPath(name),
+            File: name,
             Code: code,
             Textures: textures,
             LineOffset: line_offset
