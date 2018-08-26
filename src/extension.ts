@@ -169,6 +169,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         let frameTimeScript = "";
         if (config.get('printShaderFrameTime', false)) {
+            // TODO: Make stats.js use a local copy instead of remote, right now it won't work without internet connection
             frameTimeScript = `
             (function() {
                 var script = document.createElement('script')
@@ -387,6 +388,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             file = file.replace(/\.\//g, "");
 
             if (textureType == "buf") {
+                // TODO: Allow using _self_ as a buffer, this will require some more refactoring though
+
                 // Read the whole file of the shader
                 var fs = require("fs");
                 let bufferCode = fs.readFileSync(file, "utf-8");
