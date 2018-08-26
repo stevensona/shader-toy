@@ -15,7 +15,7 @@ export function activate(context: ExtensionContext) {
     vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
         clearTimeout(_timeout);
         _timeout = setTimeout( function() { 
-            if(vscode.window.activeTextEditor && e.document === vscode.window.activeTextEditor.document) {
+            if(vscode.window.activeTextEditor && e && e.document === vscode.window.activeTextEditor.document) {
                 provider.update(previewUri);
             }
         }, 1000);
@@ -79,6 +79,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     
     public provideTextDocumentContent(uri: Uri): string {
         let activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
+            return "";
+        }
+        
         let shader = activeEditor.document.getText();
         let shaderName = activeEditor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
