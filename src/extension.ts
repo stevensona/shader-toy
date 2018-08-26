@@ -52,10 +52,9 @@ export function activate(context: ExtensionContext) {
 
         var newDocument = vscode.workspace.openTextDocument(file);
         newDocument.then((document: vscode.TextDocument) => {
-            console.log(document.fileName);
             highlightLine(document, line);
         }, (reason) => {
-            console.log(`Could not open ${file} because ${reason}`);
+            vscode.window.showErrorMessage(`Could not open ${file} because ${reason}`);
         });
     });
     
@@ -380,7 +379,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             file = ((file: string) => {
                 const relFile = vscode.workspace.asRelativePath(file);
                 const herePos = relFile.indexOf("./");
-                if (vscode.workspace.rootPath == null && herePos == 0) console.log("To use relative paths please open a workspace!");
+                if (vscode.workspace.rootPath == null && herePos == 0) vscode.window.showErrorMessage("To use relative paths please open a workspace!");
                 if (relFile != file || herePos == 0) return vscode.workspace.rootPath + '/' + relFile;
                 else return file;
             })(file);
