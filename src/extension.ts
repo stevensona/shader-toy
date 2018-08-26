@@ -478,9 +478,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         // If there is no void main() in the shader we assume it is a shader-toy style shader
-        // TODO: Add better support for 
         var mainPos = code.search(/void\s+main\s*\(\s*\)\s*\{/g);
-        if (mainPos == -1) {
+        var mainImagePos = code.search(/void\s+mainImage\s*\(\s*out\s+vec4\s+\w+,\s*in\s+vec2\s+\w+\s*\)\s*\{/g);
+        if (mainPos == -1 && mainImagePos >= 0) {
             code += `
             void main() {
                 mainImage(gl_FragColor, gl_FragCoord.xy);
