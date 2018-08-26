@@ -261,7 +261,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 })();
 
                 var canvas = document.getElementById('canvas');
-                var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+                var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true, context: canvas.getContext('webgl2')});
                 var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
