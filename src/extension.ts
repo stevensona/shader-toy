@@ -86,6 +86,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         let shaderPreamble = `
         uniform vec3        iResolution;
         uniform float       iGlobalTime;
+        uniform float       iTime;
         uniform float       iTimeDelta;
         uniform int         iFrame;
         uniform float       iChannelTime[4];
@@ -137,6 +138,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     uniforms: {
                         iResolution: { type: "v3", value: resolution },
                         iGlobalTime: { type: "f", value: 0.0 },
+                        iTime: { type: "f", value: 0.0 },
                         iTimeDelta: { type: "f", value: 0.0 },
                         iFrame: { type: "i", value: 0 },
                         iMouse: { type: "v4", value: mouse },
@@ -322,6 +324,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
                         buffer.Shader.uniforms['iGlobalTime'].value = time;
+                        buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;
 
@@ -367,7 +370,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         var bufferDependencies = [];
 
-        var line_offset = 120;
+        var line_offset = 121;
         var textures = [];
 
         const loadDependency = (file: string, channel: number) => {
@@ -472,6 +475,17 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     }
                 }
             }
+        }
+
+        // If there is no void main() in the shader we assume it is a shader-toy style shader
+        // TODO: Add better support for 
+        var mainPos = code.search(/void\s+main\s*\(\s*\)\s*\{/g);
+        if (mainPos == -1) {
+            code += `
+            void main() {
+                mainImage(gl_FragColor, gl_FragCoord.xy);
+            }
+            `
         }
 
         // Push yourself after all your dependencies
