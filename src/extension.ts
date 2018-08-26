@@ -162,7 +162,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 else if (texturePath != null)
                     value = `THREE.ImageUtils.loadTexture('file://${texturePath}')`;
                 else
-                    value = `THREE.ImageUtils.loadTexture('https://${texturePath}')`;
+                    value = `THREE.ImageUtils.loadTexture('https://${textureUrl}')`;
                 textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
             }
         }
