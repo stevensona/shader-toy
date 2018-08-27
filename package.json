@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "publisher": "stevensona",
     "license": "MIT",
     "repository": {
@@ -18,7 +18,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.showGlslPreview"
+        "onCommand:shader-toy.showGlslPreview"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -42,19 +42,28 @@
                 "shader-toy.textures": {
                     "type": "object",
                     "default": {
-                        "0": "",
-                        "1": ""
+                        "0": "https://www.example.my/cool.png",
+                        "1": "file://./relative.jpg",
+                        "2": "buf://./other-shader.glsl"
                     },
-                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol."
+                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
                 }
             }
         },
         "commands": [
             {
-                "command": "extension.showGlslPreview",
+                "command": "shader-toy.showGlslPreview",
                 "title": "Shader Toy: Show GLSL Preview"
             }
-        ]
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "shader-toy.showGlslPreview",
+                    "group": "ShaderToy"
+                }
+            ]
+        }
     },
     "scripts": {
         "vscode:prepublish": "node ./node_modules/vscode/bin/compile",

@@ -9,8 +9,7 @@ void main()
     float i1=.8;
     float i2=.75;
     float i4=0.;
-    for(int s=0;s<7;s++)
-    {
+    for(int s=0;s<7;s++) {
         vec2 r;
         r=vec2(cos(uv.y*i0-i4-time/i1),sin(uv.x*i0-i4+time/i1))/i2;
         r+=vec2(-r.y,r.x)*0.3;
