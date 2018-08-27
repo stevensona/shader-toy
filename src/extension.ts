@@ -134,7 +134,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             buffers.push({
                 Name: "${buffer.Name}",
                 File: "${buffer.File}",
-                LineOffset: "${buffer.LineOffset}",
+                LineOffset: ${buffer.LineOffset},
                 Target: ${target},
                 Shader: new THREE.ShaderMaterial({
                     fragmentShader: document.getElementById('${buffer.Name}').textContent,
@@ -254,7 +254,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 })();
 
                 var canvas = document.getElementById('canvas');
-                var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true, context: canvas.getContext('webgl2')});
+                var webgl2 = canvas.getContext('webgl2');
+                var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true, context: webgl2});
                 var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
@@ -264,6 +265,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 var buffers = [];
                 ${buffersScripts}
+
+                // WebGL2 inserts more lines into the shader
+                if (webgl2) {
+                    for (let i in buffers) {
+                        buffers[i].LineOffset += 16;
+                    }
+                }
                 
                 ${textureScripts}
                 
