@@ -176,22 +176,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         let frameTimeScript = "";
         if (config.get('printShaderFrameTime', false)) {
-            // TODO: Make stats.js use a local copy instead of remote, right now it won't work without internet connection
             frameTimeScript = `
-            (function() {
-                var script = document.createElement('script')
-                script.onload = function() {
-                    var stats = new Stats();
-                    stats.showPanel(1);
-                    document.body.appendChild(stats.dom);
-                    requestAnimationFrame(function loop() {
-                        stats.update();
-                        requestAnimationFrame(loop);
-                    });
-                };
-                script.src = 'https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js';
-                document.head.appendChild(script);
-            }());\n`;
+            <script src="file://${this.getResourcePath('stats.min.js')}" onload="
+                var stats = new Stats();
+                stats.showPanel(1);
+                document.body.appendChild(stats.dom);
+                requestAnimationFrame(function loop() {
+                    stats.update();
+                    requestAnimationFrame(loop);
+                });
+            "></script>`;
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
@@ -240,13 +234,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             </body>
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
+            ${frameTimeScript}
             <canvas id="canvas"></canvas>
 
             ${shaderScripts}
 
             <script type="text/javascript">
-                ${frameTimeScript}
-
                 var currentShader = {};
                 (function(){
                     console.error = function (message) {
