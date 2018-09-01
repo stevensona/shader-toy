@@ -402,6 +402,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
             // Fix path to use '/' over '\\' and relative to the current working directory
             file = file.substring(colonPos + 3, file.length);
+            const origFile = file;
             file = ((file: string) => {
                 const relFile = vscode.workspace.asRelativePath(file);
                 const herePos = relFile.indexOf("./");
@@ -416,9 +417,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 // TODO: Allow using _self_ as a buffer, this will require some more refactoring though
 
                 // Read the whole file of the shader
+                let bufferCode = "";
                 var fs = require("fs");
-                let bufferCode = fs.readFileSync(file, "utf-8");
-    
+                try {
+                    bufferCode = fs.readFileSync(file, "utf-8");
+                }
+                catch (error) {
+                    vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                    return [];
+                }
+
                 // Parse the shader
                 var currentNumBuffers = bufferDependencies.length;
                 var buffers = this.parseShaderCode(file, bufferCode);
