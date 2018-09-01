@@ -128,7 +128,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             // Create a RenderTarget for all but the final buffer
             var target = "null";
             if (buffer != buffers[numShaders - 1])
-                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter })";
+                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
             
             buffersScripts += `
             buffers.push({
@@ -253,10 +253,24 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         }
                     };
                 })();
+                // Development feature: Output warnings from third-party libraries
+                // (function(){
+                //     console.warn = function (message) {
+                //         $("#message").append(message + '<br>');
+                //     };
+                // })();
 
                 var canvas = document.getElementById('canvas');
-                var webgl2 = canvas.getContext('webgl2');
-                var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true, context: webgl2});
+                var gl = canvas.getContext('webgl2');
+                var isWebGL2 = gl != null;
+                if (gl == null) gl = canvas.getContext('webgl');
+                var supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
+                var supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
+                var framebufferType = THREE.UnsignedByteType;
+                if (supportsFloatFramebuffer) framebufferType = THREE.FloatType;
+                else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
+
+                var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
                 var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
@@ -268,7 +282,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 ${buffersScripts}
 
                 // WebGL2 inserts more lines into the shader
-                if (webgl2) {
+                if (isWebGL2) {
                     for (let i in buffers) {
                         buffers[i].LineOffset += 16;
                     }

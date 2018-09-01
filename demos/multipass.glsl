@@ -8,5 +8,4 @@ void main() {
     vec3 pattern = texture2D(iChannel0, uvWarped).rgb;
 
     gl_FragColor = vec4(pattern, 1.0);
-    // gl_FragColor = vec4(uvWarped, 1.0, 1.0);
 }

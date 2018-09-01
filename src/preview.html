@@ -42,11 +42,20 @@
 </body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/95/three.min.js"></script>
-<script src="https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js" onload="var stats = new Stats(); stats.showPanel(1); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop); });"></script>
+<script src="https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js" onload="
+    var stats = new Stats();
+    stats.showPanel(1);
+    document.body.appendChild(stats.dom);
+    requestAnimationFrame(function loop() {
+        stats.update();
+        requestAnimationFrame(loop);
+    });
+"></script>
 <canvas id="canvas"></canvas>
 
 
-<script id="Untitled-1" type="x-shader/x-fragment">
+<script id="uv-warp.glsl" type="x-shader/x-fragment">
+    
     uniform vec3        iResolution;
     uniform float       iGlobalTime;
     uniform float       iTime;
@@ -67,9 +76,50 @@
     uniform sampler2D   iChannel9;
 
     #define SHADER_TOY
-    
     void main() {
-        gl_FragColor = vec4(1.0, 0.0, 0.0, 0.0);
+        vec2 uv = gl_FragCoord.xy / iResolution.xy;
+        float time = iGlobalTime;
+
+        for (float i = 1.0; i < 10.0; i++) {
+            float v = 0.1 * sin((uv.r + uv.g) * 0.5 * i + iTime) / i;
+            float u = 0.1 * cos((uv.r - uv.g) * 0.5 * i + iTime) / i;
+
+            uv += vec2(u, v);
+        }
+
+        gl_FragColor = vec4(uv, 1.0, 1.0);
+    }
+</script>
+<script id="multipass.glsl" type="x-shader/x-fragment">
+    
+    uniform vec3        iResolution;
+    uniform float       iGlobalTime;
+    uniform float       iTime;
+    uniform float       iTimeDelta;
+    uniform int         iFrame;
+    uniform float       iChannelTime[4];
+    uniform vec3        iChannelResolution[4];
+    uniform vec4        iMouse;
+    uniform sampler2D   iChannel0;
+    uniform sampler2D   iChannel1;
+    uniform sampler2D   iChannel2;
+    uniform sampler2D   iChannel3;
+    uniform sampler2D   iChannel4;
+    uniform sampler2D   iChannel5;
+    uniform sampler2D   iChannel6;
+    uniform sampler2D   iChannel7;
+    uniform sampler2D   iChannel8;
+    uniform sampler2D   iChannel9;
+
+    #define SHADER_TOY
+        
+    void main() {
+        vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+        vec2 uvWarped = texture2D(iChannel1, uv).rg;
+        vec3 pattern = texture2D(iChannel0, uvWarped).rgb;
+
+        gl_FragColor = vec4(pattern, 1.0);
     }
 </script>
 
@@ -78,7 +128,7 @@
     (function(){
         console.error = function (message) {
             if('7' in arguments) {
-                $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>')
+                $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>');
                 $("#message").append(arguments[7].replace(/ERROR: \d+:(\d+)/g, function(m, c) {
                     return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - currentShader.LineOffset, currentShader.File])) + '">Line ' + String(Number(c) - currentShader.LineOffset) + '</a>';
                 }));
@@ -88,7 +138,16 @@
     })();
 
     var canvas = document.getElementById('canvas');
-    var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+    var gl = canvas.getContext('webgl2');
+    var isWebGL2 = gl != null;
+    if (gl == null) gl = canvas.getContext('webgl');
+    var supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
+    var supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
+    var framebufferType = THREE.UnsignedByteType;
+    if (supportsFloatFramebuffer) framebufferType = THREE.FloatType;
+    if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
+
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
     var clock = new THREE.Clock();
     var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
     var mouse = new THREE.Vector4(0, 0, 0, 0);
@@ -98,12 +157,12 @@
 
     var buffers = [];
     buffers.push({
-        Name: "Untitled-1",
-        File: "Untitled-1",
-        LineOffset: "121",
-        Target: null,
+        Name: "uv-warp.glsl",
+        File: "d:/zollk/Documents/Visual Studio 2017/Projects/shader-toy/demos/uv-warp.glsl",
+        LineOffset: 121,
+        Target: new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType }),
         Shader: new THREE.ShaderMaterial({
-            fragmentShader: document.getElementById('Untitled-1').textContent,
+            fragmentShader: document.getElementById('uv-warp.glsl').textContent,
             depthWrite: false,
             depthTest: false,
             uniforms: {
@@ -116,7 +175,37 @@
             }
         })
     });
+    buffers.push({
+        Name: "multipass.glsl",
+        File: "d:/zollk/Documents/Visual Studio 2017/Projects/shader-toy/demos/multipass.glsl",
+        LineOffset: 119,
+        Target: null,
+        Shader: new THREE.ShaderMaterial({
+            fragmentShader: document.getElementById('multipass.glsl').textContent,
+            depthWrite: false,
+            depthTest: false,
+            uniforms: {
+                iResolution: { type: "v3", value: resolution },
+                iGlobalTime: { type: "f", value: 0.0 },
+                iTime: { type: "f", value: 0.0 },
+                iTimeDelta: { type: "f", value: 0.0 },
+                iFrame: { type: "i", value: 0 },
+                iMouse: { type: "v4", value: mouse },
+            }
+        })
+    });
+
+    // WebGL2 inserts more lines into the shader
+    if (isWebGL2) {
+        for (let i in buffers) {
+            buffers[i].LineOffset += 16;
+        }
+    }
     
+    var texLoader = new THREE.TextureLoader();
+    buffers[1].Shader.uniforms.iChannel0 = { type: 't', value: texLoader.load('https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg', function(texture){ texture.minFilter = THREE.LinearFilter; }) };
+    buffers[1].Shader.uniforms.iChannel1 = { type: 't', value: buffers[0].Target.texture };
+
     var scene = new THREE.Scene();
     var quad = new THREE.Mesh(
         new THREE.PlaneGeometry(resolution.x, resolution.y),
