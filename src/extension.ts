@@ -128,7 +128,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             // Create a RenderTarget for all but the final buffer
             var target = "null";
             if (buffer != buffers[numShaders - 1])
-                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight)";
+                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
             
             buffersScripts += `
             buffers.push({
@@ -154,6 +154,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         
         var textureScripts = "\n";
+        var textureLoadScript = `function(texture){ texture.minFilter = THREE.LinearFilter; }`;
         for (let i in buffers) {
             const textures =  buffers[i].Textures;
             for (let j in textures) {
@@ -167,9 +168,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 if (bufferIndex != null)
                     value = `buffers[${bufferIndex}].Target.texture`;
                 else if (texturePath != null)
-                    value = `THREE.ImageUtils.loadTexture('file://${texturePath}')`;
+                    value = `texLoader.load('file://${texturePath}', ${textureLoadScript})`;
                 else
-                    value = `THREE.ImageUtils.loadTexture('https://${textureUrl}')`;
+                    value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
                 textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
             }
         }
@@ -244,7 +245,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>')
+                            $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>');
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
                                 return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - currentShader.LineOffset, currentShader.File])) + '">Line ' + String(Number(c) - currentShader.LineOffset) + '</a>';
                             }));
@@ -252,10 +253,24 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         }
                     };
                 })();
+                // Development feature: Output warnings from third-party libraries
+                // (function(){
+                //     console.warn = function (message) {
+                //         $("#message").append(message + '<br>');
+                //     };
+                // })();
 
                 var canvas = document.getElementById('canvas');
-                var webgl2 = canvas.getContext('webgl2');
-                var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true, context: webgl2});
+                var gl = canvas.getContext('webgl2');
+                var isWebGL2 = gl != null;
+                if (gl == null) gl = canvas.getContext('webgl');
+                var supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
+                var supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
+                var framebufferType = THREE.UnsignedByteType;
+                if (supportsFloatFramebuffer) framebufferType = THREE.FloatType;
+                else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
+
+                var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
                 var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
@@ -267,12 +282,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 ${buffersScripts}
 
                 // WebGL2 inserts more lines into the shader
-                if (webgl2) {
+                if (isWebGL2) {
                     for (let i in buffers) {
                         buffers[i].LineOffset += 16;
                     }
                 }
                 
+                var texLoader = new THREE.TextureLoader();
                 ${textureScripts}
                 
                 var scene = new THREE.Scene();
