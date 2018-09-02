@@ -474,11 +474,18 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         if (config.get('useInShaderTextures', false)) {
             // Find all #iChannel defines, which define textures and other shaders
-            var texturePos = code.indexOf("#iChannel", 0);
+            var channelMatch, texturePos, matchLength;
+
+            const findNextMatch = () => {
+                channelMatch = code.match(/^\s*#iChannel/m);
+                texturePos = channelMatch ? channelMatch.index : -1;
+                matchLength = channelMatch ? channelMatch[0].length : 0;
+            };
+            findNextMatch();
             while (texturePos >= 0) {
                 // Get channel number
-                var channelPos = texturePos + 9;
-                var spacePos = code.indexOf(" ", 0);
+                var channelPos = texturePos + matchLength;
+                var spacePos = code.indexOf(" ", texturePos + matchLength);
                 var channel = parseInt(code.substring(channelPos, spacePos));
                 var endlinePos = code.indexOf("\n", texturePos);
 
@@ -490,7 +497,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 // Remove #iChannel define
                 code = code.replace(code.substring(texturePos, endlinePos + 1), "");
-                texturePos = code.indexOf("#iChannel", texturePos);
+                findNextMatch();
                 line_offset--;
             }
         }
