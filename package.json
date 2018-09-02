@@ -26,7 +26,7 @@
             "properties": {
                 "shader-toy.useInShaderTextures": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Allow texture channel resources to be defined in shader source (#iChannel0 source)."
                 },
                 "shader-toy.reloadOnChangeEditor": {

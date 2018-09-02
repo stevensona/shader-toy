@@ -472,7 +472,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             return name.substring(lastSlash + 1);
         };
 
-        if (config.get('useInShaderTextures', false)) {
+        var useTextureDefinitionInShaders = config.get('useInShaderTextures', false);
+        if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
             var channelMatch, texturePos, matchLength;
 
@@ -534,6 +535,24 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }
             `
         }
+
+        var definedTextures = {};
+        for (let i in textures) {
+            const texture = textures[i];
+            definedTextures[texture.Channel] = true;
+        }
+        for (let i = 0; i < 9; i++) {
+            if (code.search("iChannel" + i) > 0) {
+                if (definedTextures[i] == null) {
+                    if (useTextureDefinitionInShaders) {
+                        vscode.window.showWarningMessage(`You are using iChannel${i} but there is no definition #iChannel${i} in your shader`);
+                    }
+                    else {
+                        vscode.window.showWarningMessage(`You are using iChannel${i} but there is no definition "${i}" in your settings.json`);
+                    }
+                }
+            }
+        } 
 
         // Push yourself after all your dependencies
         bufferDependencies.push({
