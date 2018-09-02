@@ -545,10 +545,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             if (code.search("iChannel" + i) > 0) {
                 if (definedTextures[i] == null) {
                     if (useTextureDefinitionInShaders) {
-                        vscode.window.showWarningMessage(`You are using iChannel${i} but there is no definition #iChannel${i} in your shader`);
+                        vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, "Details")
+                            .then((option: string) => {
+                                vscode.window.showInformationMessage(`To use this channel add to your shader a line "#iChannel${i}" followed by a space and the path to your texture. Use "file://" for local textures, "https://" for remote textures or "buf://" for other shaders.`);
+                            });
                     }
                     else {
-                        vscode.window.showWarningMessage(`You are using iChannel${i} but there is no definition "${i}" in your settings.json`);
+                        vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition "${i}" in settings.json`, "Details")
+                            .then((option: string) => {
+                                vscode.window.showInformationMessage(`To use this channel you will need to open your "settings.json" file and set the option "shader-toy.textures.${i}" to the path to your texture. Use "file://" for local textures, "https://" for remote textures or "buf://" for other shaders. It is advised to set the option "shader-toy.textures.useInShaderTextures" to true and define your texture path directly inside your shader.`);
+                            });
                     }
                 }
             }
