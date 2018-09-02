@@ -487,16 +487,26 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var channelPos = texturePos + matchLength;
                 var spacePos = code.indexOf(" ", texturePos + matchLength);
                 var channel = parseInt(code.substring(channelPos, spacePos));
-                var endlinePos = code.indexOf("\n", texturePos);
+                var endlinePosSize = 2;
+                var endlinePos = code.indexOf("\r\n", spacePos + 1);
+                if (endlinePos < 0) {
+                    endlinePosSize = 1;
+                    endlinePos = code.indexOf("\n", spacePos + 1);
+                }
+                var afterSpacePos = code.indexOf(" ", spacePos + 1);
+                var afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
+                var textureEndPos = Math.min(endlinePos,
+                    afterSpacePos > 0 ? afterSpacePos : code.length,
+                    afterCommentPos > 0 ? afterCommentPos : code.length);
 
                 // Get dependencies' name
-                let texture = code.substr(channelPos + 2, endlinePos - channelPos - 3);
+                let texture = code.substring(spacePos + 1, textureEndPos);
                 
                 // Load the dependency
                 loadDependency(texture, channel);
 
                 // Remove #iChannel define
-                code = code.replace(code.substring(texturePos, endlinePos + 1), "");
+                code = code.replace(code.substring(texturePos, endlinePos + endlinePosSize), "");
                 findNextMatch();
                 line_offset--;
             }
