@@ -12,15 +12,17 @@ export function activate(context: ExtensionContext) {
     var _timeout: number;
     var editor = vscode.window.activeTextEditor;
 
-    vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
-        clearTimeout(_timeout);
-        _timeout = setTimeout( function() { 
-            if(vscode.window.activeTextEditor && e && e.document === vscode.window.activeTextEditor.document) {
-                provider.update(previewUri);
-            }
-        }, 1000);
-    });
-    if (config.get('reloadOnChangeEditor', false)) {
+    if (config.get('reloadOnEditText')) {
+        vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
+            clearTimeout(_timeout);
+            _timeout = setTimeout( function() { 
+                if(vscode.window.activeTextEditor && e && e.document === vscode.window.activeTextEditor.document) {
+                    provider.update(previewUri);
+                }
+            }, config.get<number>('reloadOnEditTextDelay') * 1000);
+        });
+    }
+    if (config.get('reloadOnChangeEditor')) {
         vscode.window.onDidChangeActiveTextEditor((e: vscode.TextEditor) => {
             if(e && e.document === e.document) {
                 provider.update(previewUri);
@@ -176,7 +178,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         let frameTimeScript = "";
-        if (config.get('printShaderFrameTime', false)) {
+        if (config.get('printShaderFrameTime')) {
             frameTimeScript = `
             <script src="file://${this.getResourcePath('stats.min.js')}" onload="
                 var stats = new Stats();
@@ -231,7 +233,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             <body>
                 <div id="message"></div>
                 <div id="container"></div>
-
             </body>
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
@@ -472,7 +473,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             return name.substring(lastSlash + 1);
         };
 
-        var useTextureDefinitionInShaders = config.get('useInShaderTextures', false);
+        var useTextureDefinitionInShaders = config.get('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
             var channelMatch, texturePos, matchLength;
@@ -513,7 +514,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }
         }
         else { // TODO: Ideally depracate this because it is counter-productive when working dependent shaders
-            let textures = config.get('textures', {});
+            let textures = config.get('textures');
             for(let i in textures) {
                 const texture = textures[i];
                 if (textures[i].length > 0) {

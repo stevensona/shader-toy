@@ -24,10 +24,15 @@
     "contributes": {
         "configuration": {
             "properties": {
-                "shader-toy.useInShaderTextures": {
+                "shader-toy.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Allow texture channel resources to be defined in shader source (#iChannel0 source)."
+                    "description": "Reload OpenGL viewport when the opened file contents are changed."
+                },
+                "shader-toy.reloadOnEditTextDelay": {
+                    "type": "float",
+                    "default": 1.0,
+                    "description": "Delay in seconds between an edit of the opened file and the reload of OpenGL viewport."
                 },
                 "shader-toy.reloadOnChangeEditor": {
                     "type": "boolean",
@@ -38,6 +43,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Display shader frame time graph in corner of display."
+                },
+                "shader-toy.useInShaderTextures": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Allow texture channel resources to be defined in shader source (#iChannel0 source)."
                 },
                 "shader-toy.textures": {
                     "type": "object",
