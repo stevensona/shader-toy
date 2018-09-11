@@ -12,7 +12,7 @@ export function activate(context: ExtensionContext) {
     var _timeout: number;
     var editor = vscode.window.activeTextEditor;
 
-    if (config.get('reloadOnEditText')) {
+    if (config.get<boolean>('reloadOnEditText')) {
         vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
             clearTimeout(_timeout);
             _timeout = setTimeout( function() { 
@@ -22,7 +22,7 @@ export function activate(context: ExtensionContext) {
             }, config.get<number>('reloadOnEditTextDelay') * 1000);
         });
     }
-    if (config.get('reloadOnChangeEditor')) {
+    if (config.get<boolean>('reloadOnChangeEditor')) {
         vscode.window.onDidChangeActiveTextEditor((e: vscode.TextEditor) => {
             if(e && e.document === e.document) {
                 provider.update(previewUri);
@@ -180,7 +180,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         var frameTimeScript = "";
-        if (config.get('printShaderFrameTime')) {
+        if (config.get<boolean>('printShaderFrameTime')) {
             frameTimeScript = `
             <script src="file://${this.getResourcePath('stats.min.js')}" onload="
                 var stats = new Stats();
@@ -194,7 +194,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         var pauseButtonScript = "";
-        if (config.get('showPauseButton')) {
+        if (config.get<boolean>('showPauseButton')) {
             pauseButtonScript = `
             <label class="button-container">
                 <input id="pause-button" type="checkbox">
@@ -206,7 +206,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var advanceTimeScript = `
         deltaTime = clock.getDelta();
         time = clock.getElapsedTime() - pausedTime;`;
-        if (config.get('pauseWholeRender')) {
+        if (config.get<boolean>('pauseWholeRender')) {
             pauseWholeScript = `if (paused) return;`;
         }
         else {
@@ -564,7 +564,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             return name.substring(lastSlash + 1);
         };
 
-        var useTextureDefinitionInShaders = config.get('useInShaderTextures');
+        var useTextureDefinitionInShaders = config.get<boolean>('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
             var channelMatch, texturePos, matchLength;
