@@ -76,7 +76,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
     }
 
     private getResourcePath(mediaFile) : string {
-        return this._context.asAbsolutePath(path.join('resources', mediaFile));
+        var resourcePath = this._context.asAbsolutePath(path.join('resources', mediaFile));
+        resourcePath = resourcePath.replace(/\\/g, '/');
+        return resourcePath;
     }
     
     public provideTextDocumentContent(uri: Uri): string {
@@ -202,6 +204,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         height: 100%;
                         display: block;
                     }
+                    
                     .error {
                         font-family: Consolas;
                         font-size: 1.2em;
@@ -228,11 +231,65 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         z-index: 2;
                         position: absolute;
                     }
+                    
+                    /* Container for pause button */
+                    .button-container, .container {
+                        text-align: center;
+                        position: absolute;
+                        bottom: 0;
+                        width: 100%;
+                        height: 80px;
+                        margin: auto;
+                    }
+                    /* Hide the browser's default checkbox */
+                    .button-container input {
+                        position: absolute;
+                        opacity: 0;
+                        cursor: pointer;
+                    }
+            
+                    /* Custom checkmark style */
+                    .pause-play {
+                        position: absolute;
+                        border: none;
+                        padding: 30px;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 16px;
+                        border-radius: 8px;
+                        margin: auto;
+                        transform: translateX(-50%);
+                        background: url("file://${this.getResourcePath('pause.png')}");
+                        background-size: 40px;
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        background-color: rgba(128, 128, 128, 0.5);
+                    }
+                    .button-container:hover input ~ .pause-play {
+                        background-color: lightgray;
+                        transition-duration: 0.2s;
+                    }
+                    .button-container:hover input:checked ~ .pause-play {
+                        background-color: lightgray;
+                        transition-duration: 0.2s;
+                    }
+                    .button-container input:checked ~ .pause-play {
+                        background: url("file://${this.getResourcePath('play.png')}");
+                        background-size: 40px;
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        background-color: rgba(128, 128, 128, 0.5);
+                    }
                 </style>
             </head>
             <body>
                 <div id="message"></div>
-                <div id="container"></div>
+                <div id="container">
+                    <label class="button-container">
+                        <input id="pause-button" type="checkbox">
+                        <span class="pause-play"></span>
+                    </div>
+                </div>
             </body>
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
@@ -260,6 +317,15 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 //         $("#message").append(message + '<br>');
                 //     };
                 // })();
+
+                var paused = false;
+                var pausedTime = 0.0;
+                var pauseButton = document.getElementById('pause-button');
+                pauseButton.onclick = function(){
+                    paused = pauseButton.checked;
+                    if (!paused)
+                        pausedTime += clock.getDelta();
+                };
 
                 var canvas = document.getElementById('canvas');
                 var gl = canvas.getContext('webgl2');
@@ -319,6 +385,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 function render() {
                     requestAnimationFrame(render);
+                    if (paused) return;
+            
                     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
                         resolution.x = canvas.clientWidth;
                         resolution.y = canvas.clientHeight;
@@ -340,7 +408,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     
                     frameCounter++;
                     var deltaTime = clock.getDelta();
-                    var time = clock.getElapsedTime();
+                    var time = clock.getElapsedTime() - pausedTime;
                     
                     for (let i in buffers) {
                         let buffer = buffers[i];
@@ -376,7 +444,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
             </script>
         `;
-        // console.log(content);
+        console.log(content);
         return content;
     }
 
