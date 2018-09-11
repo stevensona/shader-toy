@@ -47,7 +47,7 @@
                 "shader-toy.pauseWholeRender": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Determines wheter pausing will pause only time thus still render and allow input, or pause everything."
+                    "description": "Determines whether pausing will pause only time thus still render and allow input, or pause everything."
                 },
                 "shader-toy.printShaderFrameTime": {
                     "type": "boolean",

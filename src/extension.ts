@@ -346,11 +346,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 var paused = false;
                 var pauseButton = document.getElementById('pause-button');
-                pauseButton.onclick = function(){
-                    paused = pauseButton.checked;
-                    if (!paused)
-                        pausedTime += clock.getDelta();
-                };
+                if (pauseButton) {
+                    pauseButton.onclick = function(){
+                        paused = pauseButton.checked;
+                        if (!paused)
+                            pausedTime += clock.getDelta();
+                    };
+                }
 
                 var canvas = document.getElementById('canvas');
                 var gl = canvas.getContext('webgl2');
