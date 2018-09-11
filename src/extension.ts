@@ -193,6 +193,15 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             "></script>`;
         }
 
+        let pauseButtonScript = "";
+        if (config.get('showPauseButton')) {
+            pauseButtonScript = `
+            <label class="button-container">
+                <input id="pause-button" type="checkbox">
+                <span class="pause-play"></span>
+            </div>`;
+        }
+
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const content = `
             <head>
@@ -285,10 +294,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             <body>
                 <div id="message"></div>
                 <div id="container">
-                    <label class="button-container">
-                        <input id="pause-button" type="checkbox">
-                        <span class="pause-play"></span>
-                    </div>
+                    ${pauseButtonScript}
                 </div>
             </body>
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
