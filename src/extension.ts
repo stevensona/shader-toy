@@ -179,7 +179,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }
         }
 
-        let frameTimeScript = "";
+        var frameTimeScript = "";
         if (config.get('printShaderFrameTime')) {
             frameTimeScript = `
             <script src="file://${this.getResourcePath('stats.min.js')}" onload="
@@ -193,13 +193,28 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             "></script>`;
         }
 
-        let pauseButtonScript = "";
+        var pauseButtonScript = "";
         if (config.get('showPauseButton')) {
             pauseButtonScript = `
             <label class="button-container">
                 <input id="pause-button" type="checkbox">
                 <span class="pause-play"></span>
             </div>`;
+        }
+
+        var pauseWholeScript = "";
+        var advanceTimeScript = `
+        deltaTime = clock.getDelta();
+        time = clock.getElapsedTime() - pausedTime;`;
+        if (config.get('pauseWholeRender')) {
+            pauseWholeScript = `if (paused) return;`;
+        }
+        else {
+            advanceTimeScript = `
+            if (paused == false) {
+                deltaTime = clock.getDelta();
+                time = clock.getElapsedTime() - pausedTime;
+            }`;
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
@@ -324,8 +339,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 //     };
                 // })();
 
-                var paused = false;
+                var clock = new THREE.Clock();
                 var pausedTime = 0.0;
+                var deltaTime = 0.0;
+                var time = 0.0;
+
+                var paused = false;
                 var pauseButton = document.getElementById('pause-button');
                 pauseButton.onclick = function(){
                     paused = pauseButton.checked;
@@ -344,7 +363,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
 
                 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
-                var clock = new THREE.Clock();
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
                 var frameCounter = 0;
@@ -391,7 +409,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 function render() {
                     requestAnimationFrame(render);
-                    if (paused) return;
+                    ${pauseWholeScript}
             
                     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
                         resolution.x = canvas.clientWidth;
@@ -413,9 +431,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     }
                     
                     frameCounter++;
-                    var deltaTime = clock.getDelta();
-                    var time = clock.getElapsedTime() - pausedTime;
-                    
+                    ${advanceTimeScript}
+
                     for (let i in buffers) {
                         let buffer = buffers[i];
                         buffer.Shader.uniforms['iResolution'].value = resolution;
