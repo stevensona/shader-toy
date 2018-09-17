@@ -30,7 +30,7 @@
                     "description": "Reload OpenGL viewport when the opened file contents are changed."
                 },
                 "shader-toy.reloadOnEditTextDelay": {
-                    "type": "float",
+                    "type": "number",
                     "default": 1.0,
                     "description": "Delay in seconds between an edit of the opened file and the reload of OpenGL viewport."
                 },
