@@ -115,8 +115,39 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         #define SHADER_TOY`
 
         shaderName = shaderName.replace(/\\/g, '/');
-        var buffers = this.parseShaderCode(shaderName, shader);
-        const numShaders = buffers.length;
+        var buffers = [];
+        this.parseShaderCode(shaderName, shader, buffers);
+
+        // If final buffer uses feedback we need to add a last pass that renders it to the screen
+        // because we can not ping-pong the screen
+        {
+            let finalBuffer = buffers[buffers.length - 1];
+            if (finalBuffer.UsesSelf) {
+                var finalBufferIndex = buffers.length - 1;
+                finalBuffer.Dependents.push({
+                    Index: buffers.length,
+                    Channel: 0
+                });
+                buffers.push({
+                    Name: "final-blit",
+                    File: "final-blit",
+                    Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
+                    Textures: [{
+                        Channel: 0,
+                        Buffer: finalBuffer.Name,
+                        BufferIndex: finalBufferIndex,
+                        LocalTexture: null,
+                        RemoteTexture: null,
+                        UsesSelf: false
+                    }],
+                    UsesSelf: false,
+                    SelfChannel: -1,
+                    Dependents: [],
+                    LineOffset: 0,
+                });
+            }
+        }
+        
 
         // Write all the shaders
         var shaderScripts = "";
@@ -131,15 +162,21 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
             // Create a RenderTarget for all but the final buffer
             var target = "null";
-            if (buffer != buffers[numShaders - 1])
+            var pingPongTarget = "null";
+            if (buffer != buffers[buffers.length - 1])
                 target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
-            
+            if (buffer.UsesSelf)
+                pingPongTarget = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
+
             buffersScripts += `
             buffers.push({
                 Name: "${buffer.Name}",
                 File: "${buffer.File}",
                 LineOffset: ${buffer.LineOffset},
                 Target: ${target},
+                PingPongTarget: ${pingPongTarget},
+                PingPongChannel: ${buffer.SelfChannel},
+                Dependents: ${JSON.stringify(buffer.Dependents)},
                 Shader: new THREE.ShaderMaterial({
                     fragmentShader: document.getElementById('${buffer.Name}').textContent,
                     depthWrite: false,
@@ -160,15 +197,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var textureScripts = "\n";
         var textureLoadScript = `function(texture){ texture.minFilter = THREE.LinearFilter; }`;
         for (let i in buffers) {
-            const textures =  buffers[i].Textures;
+            const buffer = buffers[i];
+            const textures =  buffer.Textures;
             for (let j in textures) {
                 const texture = textures[j];
                 const channel = texture.Channel;
-                const bufferIndex = texture.Buffer;
+                const bufferIndex = texture.BufferIndex;
                 const texturePath = texture.LocalTexture;
                 const textureUrl = texture.RemoteTexture;
 
-                var value;
+                var value: string;
                 if (bufferIndex != null)
                     value = `buffers[${bufferIndex}].Target.texture`;
                 else if (texturePath != null)
@@ -176,6 +214,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 else
                     value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
                 textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
+            }
+
+            if (buffer.UsesSelf) {
+                textureScripts += `buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
             }
         }
 
@@ -417,8 +459,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         resolution.x = canvas.clientWidth;
                         resolution.y = canvas.clientHeight;
                         for (let i in buffers) {
-                            if (buffers[i].Target) {
-                                buffers[i].Target.setSize(resolution.x, resolution.y);
+                            let buffer = buffers[i];
+                            if (buffer.Target) {
+                                buffer.Target.setSize(resolution.x, resolution.y);
+                            }
+                            if (buffer.PingPongTarget) {
+                                buffer.PingPongTarget.setSize(resolution.x, resolution.y);
                             }
                         }
                         renderer.setSize(resolution.x, resolution.y, false);
@@ -436,16 +482,30 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     ${advanceTimeScript}
 
                     for (let i in buffers) {
-                        let buffer = buffers[i];
+                        const buffer = buffers[i];
+
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
                         buffer.Shader.uniforms['iGlobalTime'].value = time;
                         buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;
-
+                        
                         quad.material = buffer.Shader;
                         renderer.render(scene, camera, buffer.Target);
+                    }
+
+                    for (let i in buffers) {
+                        const buffer = buffers[i];
+                        if (buffer.PingPongTarget) {
+                            [buffer.PingPongTarget, buffer.Target] = [buffer.Target, buffer.PingPongTarget];
+                            buffer.Shader.uniforms[\`iChannel\${buffer.PingPongChannel}\`].value = buffer.PingPongTarget.texture;
+                            for (let j in buffer.Dependents) {
+                                const dependent = buffer.Dependents[j];
+                                const dependentBuffer = buffers[dependent.Index];
+                                dependentBuffer.Shader.uniforms[\`iChannel\${dependent.Channel}\`] = { type: 't', value: buffer.Target.texture };
+                            }
+                        }
                     }
                 }
                 canvas.addEventListener('mousemove', function(evt) {
@@ -469,7 +529,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
             </script>
         `;
-        console.log(content);
+        // console.log(content);
         return content;
     }
 
@@ -481,10 +541,24 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         this._onDidChange.fire(uri);
     }
 
-    parseShaderCode(name: string, code: string) {
-        const config = vscode.workspace.getConfiguration('shader-toy');
+    parseShaderCode(name: string, code: string, buffers: any[]) {
+        const stripPath = (name: string) => {
+            var lastSlash = name.lastIndexOf('/');
+            return name.substring(lastSlash + 1);
+        };
+        const findByName = (bufferName: string) => {
+            return (value: any) => {
+                if (value.Name == stripPath(bufferName))
+                    return true;
+                return false;
+            };
+        };
 
-        var bufferDependencies = [];
+        const found = buffers.find(findByName(name));
+        if (found != undefined)
+            return;
+
+        const config = vscode.workspace.getConfiguration('shader-toy');
 
         var line_offset = 121;
         var textures = [];
@@ -508,39 +582,40 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             file = file.replace(/\.\//g, "");
 
             if (textureType == "buf") {
-                // TODO: Allow using _self_ as a buffer, this will require some more refactoring though
-
-                // Read the whole file of the shader
-                let bufferCode = "";
-                var fs = require("fs");
-                try {
-                    bufferCode = fs.readFileSync(file, "utf-8");
+                if (file == "self") {
+                    // Push self as feedback-buffer
+                    textures.push({
+                        Channel: channel,
+                        Buffer: null,
+                        LocalTexture: null,
+                        RemoteTexture: null,
+                        Self: true
+                    });
                 }
-                catch (error) {
-                    vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
-                    return [];
-                }
-
-                // Parse the shader
-                var currentNumBuffers = bufferDependencies.length;
-                var buffers = this.parseShaderCode(file, bufferCode);
-    
-                // Push new buffers
-                for (let i in buffers) {
-                    let buffer = buffers[i];
-                    // Offset depending buffers by currently used amount of buffers
-                    if (buffer.Buffer) {
-                        buffer.Buffer += currentNumBuffers;
+                else {
+                    // Read the whole file of the shader
+                    let bufferCode = "";
+                    var fs = require("fs");
+                    try {
+                        bufferCode = fs.readFileSync(file, "utf-8");
                     }
-                    bufferDependencies.push(buffer);
+                    catch (error) {
+                        vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                        return;
+                    }
+
+                    // Parse the shader
+                    this.parseShaderCode(file, bufferCode, buffers);
+        
+                    // Push buffers as textures
+                    textures.push({
+                        Channel: channel,
+                        Buffer: stripPath(file),
+                        LocalTexture: null,
+                        RemoteTexture: null,
+                        Self: false
+                    });
                 }
-                // Push buffers as textures
-                textures.push({
-                    Channel: channel,
-                    Buffer: bufferDependencies.length - 1,
-                    LocalTexture: null,
-                    RemoteTexture: null
-                });
             }
             else if (textureType == "file") {
                 // Push texture
@@ -548,7 +623,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     Channel: channel,
                     Buffer: null,
                     LocalTexture: file,
-                    RemoteTexture: null
+                    RemoteTexture: null,
+                    Self: false
                 });
             }
             else {
@@ -556,14 +632,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     Channel: channel,
                     Buffer: null,
                     LocalTexture: null,
-                    RemoteTexture: file
+                    RemoteTexture: file,
+                    Self: false
                 });
             }
-        };
-
-        const stripPath = (name: string) => {
-            var lastSlash = name.lastIndexOf('/');
-            return name.substring(lastSlash + 1);
         };
 
         var useTextureDefinitionInShaders = config.get<boolean>('useInShaderTextures');
@@ -652,17 +724,41 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     }
                 }
             }
-        } 
+        }
+
+        // Translate buffer names to indices
+        var usesSelf = false;
+        var selfChannel = 0;
+        for (var i = 0; i < textures.length; i++) {
+            let texture = textures[i];
+            if (texture.Buffer) {
+                texture.BufferIndex = buffers.findIndex(findByName(texture.Buffer));
+                let dependencyBuffer = buffers[texture.BufferIndex];
+                if (dependencyBuffer.UsesSelf) {
+                    dependencyBuffer.Dependents.push({
+                        Index: buffers.length,
+                        Channel: texture.Channel
+                    });
+                }
+            }
+            else if (texture.Self) {
+                texture.Buffer = stripPath(name);
+                texture.BufferIndex = buffers.length;
+                usesSelf = true;
+                selfChannel = i;
+            }
+        }
 
         // Push yourself after all your dependencies
-        bufferDependencies.push({
+        buffers.push({
             Name: stripPath(name),
             File: name,
             Code: code,
             Textures: textures,
+            UsesSelf: usesSelf,
+            SelfChannel: selfChannel,
+            Dependents: [],
             LineOffset: line_offset
         });
-        
-        return bufferDependencies;
     }
 }
