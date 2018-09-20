@@ -256,6 +256,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             if (paused == false) {
                 deltaTime = clock.getDelta();
                 time = clock.getElapsedTime() - pausedTime;
+            } else {
+                deltaTime = 0.0;
             }`;
         }
 
