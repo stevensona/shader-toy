@@ -8,16 +8,24 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iTimeDelta```, ```iFrame```, ```iMouse```, and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by modifying the workspace's settings.json file. For example:
+Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iTimeDelta```, ```iFrame```, ```iMouse```, and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by inserting code of the following form at the top of your shader
+```
+#iChannel0 file://./duck.png
+#iChannel1 https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg
+#iChannel2 buf://./other/shader.glsl
+```
+This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)* or usign another shaders results as a texture. You may also use the last frame of the current shader itself as a texture by specifying simply ```self``` instead of a path.
+If the ```useInShaderTextures``` option is disable you can define the channels by modifying the workspace's settings.json file. For example:
 ```
 {
     "shader-toy.textures": {
         "0": "file://./duck.png",
-        "1": "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg"
+        "1": "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg",
+        "2": "buf://./other/shader.glsl"
     }
 }
 ```
-This demonstrates using local and remote images as textures. *Remember that "power of 2" texture sizes is generally what you want to stick to.* If the ```useInShaderTextures``` option is enabled (disabled by default), textures can also be referenced from the shader source itself like so: ```#iChannel0 https://example.com/example.png```. Note that to be able to use relative paths you will have to open a folder in Visual Code. Besides textures one can also use other shaders by using the ```buf://``` protocol, e.g. ```#iChannel0 buf://./first-pass.glsl```.
+Note that for either option to be able to use relative paths you will have to open a folder in Visual Code.
 
 The following is an example ported from shadertoy.com:
 ```glsl
@@ -67,7 +75,6 @@ The extensions also supports highlighting of compilation errors in the text edit
 ## Todo
 
 * Improve compatibility with "shadertoy" shaders,
-* allow shaders to feed back into themselves,
 * allow using audio channels like shadertoy.com does
 * allow using keyboard input like shadertoy.com does.
 
@@ -79,6 +86,24 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.7.4
+
+* Added support for using the current shader as input, thus allowing it to feed into itself (experimental),
+* improved error handling in some cases,
+* fixed a bug that would cause a iChannel definition inside a shader to be parsed even when commented out,
+* added an option that allows users to specify the delay between shader edits and shader reloads,
+* added an option to emit a warning when a shader uses an iChannel that is not defined (experimental),
+* added an option which gives the user a pause button inside the GLSL preview.
+
+### 0.7.3
+
+* Added support for WebGL 2.0 if available,
+* using higher precision textures if available.
+
+### 0.7.2
+
+* Hotfix for a bug which would cause users to crash on any shader preview.
 
 ### 0.7.1
 
