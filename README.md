@@ -8,7 +8,7 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iDeltaTime```, ```iFrame```, ```iMouse```, and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by modifying the workspace's settings.json file. For example:
+Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iTimeDelta```, ```iFrame```, ```iMouse```, and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by modifying the workspace's settings.json file. For example:
 ```
 {
     "shader-toy.textures": {
