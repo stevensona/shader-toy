@@ -476,6 +476,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         camera.top = resolution.y / 2.0;
                         camera.bottom = -resolution.y / 2.0;
                         camera.updateProjectionMatrix();
+
+                        // Reset iFrame on resize for shaders that rely on first-frame setups
+                        frameCounter = 0;
                     }
                     
                     frameCounter++;
