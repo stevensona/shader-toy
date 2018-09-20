@@ -54,10 +54,15 @@
                     "default": true,
                     "description": "Display shader frame time graph in corner of display."
                 },
+                "shader-toy.warnOnUndefinedTextures": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If enabled the user is warned when a channel is used in code but there is no definition for said channel, likely resulting in a bug in the shader."
+                },
                 "shader-toy.useInShaderTextures": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Allow texture channel resources to be defined in shader source (#iChannel0 source)."
+                    "description": "Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
                 },
                 "shader-toy.textures": {
                     "type": "object",
