@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.7.3",
+    "version": "0.7.4",
     "publisher": "stevensona",
     "license": "MIT",
     "repository": {
@@ -31,7 +31,7 @@
                 },
                 "shader-toy.reloadOnEditTextDelay": {
                     "type": "number",
-                    "default": 1.0,
+                    "default": 1,
                     "description": "Delay in seconds between an edit of the opened file and the reload of OpenGL viewport."
                 },
                 "shader-toy.reloadOnChangeEditor": {
