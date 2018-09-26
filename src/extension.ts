@@ -688,24 +688,33 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }
             }
             else if (textureType == "glsl") {
-                // Read the whole file of the shader
-                const shaderFile = this.readShaderFile(file);
-                if(shaderFile.success == false){
-                    vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
-                    return;
-                }
                 const path = require("path");
-                commonName = path.basename(file);
-                commonIncludes.push(
-                    {
-                        Name: commonName,
-                        File: file,
-                        Code: shaderFile.bufferCode
+                const name = path.basename(file);
+
+                // Check if the include already exists
+                const appendInclude = commonIncludes.findIndex(include => include.File === file) === -1;
+                if (appendInclude) {
+                    // Read the whole file of the shader
+                    const shaderFile = this.readShaderFile(file);
+                    if(shaderFile.success == false){
+                        vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                        return;
                     }
-                );
-                
-                const lineCount = shaderFile.bufferCode.split(/\r\n|\n/).length;
-                line_offset += lineCount;
+
+                    commonIncludes.push(
+                        {
+                            Name: name,
+                            File: file,
+                            Code: shaderFile.bufferCode
+                        }
+                    );
+
+                    const lineCount = shaderFile.bufferCode.split(/\r\n|\n/).length;
+                    line_offset += lineCount;
+                }
+
+                // reference this include
+                commonName = name;
             }
             else if (textureType == "file") {
                 // Push texture
