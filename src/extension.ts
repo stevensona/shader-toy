@@ -116,7 +116,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         shaderName = shaderName.replace(/\\/g, '/');
         var buffers = [];
-        this.parseShaderCode(shaderName, shader, buffers);
+        var commonIncludes = [];
+
+        this.parseShaderCode(shaderName, shader, buffers, commonIncludes);
 
         // If final buffer uses feedback we need to add a last pass that renders it to the screen
         // because we can not ping-pong the screen
@@ -154,9 +156,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var buffersScripts = "";
         for (let i in buffers) {
             const buffer = buffers[i];
+            const include = buffer.CommonName ? commonIncludes.find(include => include.Name == buffer.CommonName) : ''
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
                 ${shaderPreamble}
+                ${include ? include.Code : ''}
                 ${buffer.Code}
             </script>`
 
@@ -193,6 +197,23 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             });`;
         }
 
+        // add the common includes for compilation checking
+        for(let i in commonIncludes) {
+            const include = commonIncludes[i];
+            shaderScripts += `
+                <script id="${include.Name}" type="x-shader/x-fragment">#version 300 es
+                    precision highp float;
+                    ${shaderPreamble}
+                    ${include.Code}
+                    void main() {}
+                </script>`
+
+            buffersScripts += `
+                commonIncludes.push({
+                    Name: "${include.Name}",
+                    File: "${include.File}"
+                });`;
+        }
         
         var textureScripts = "\n";
         var textureLoadScript = `function(texture){ texture.minFilter = THREE.LinearFilter; }`;
@@ -416,6 +437,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
 
                 var buffers = [];
+                var commonIncludes = [];
                 ${buffersScripts}
 
                 // WebGL2 inserts more lines into the shader
@@ -439,6 +461,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 camera.position.set(0, 0, 10);
 
                 // Run every shader once to check for compile errors
+                for(let i in commonIncludes) {
+                    let include = commonIncludes[i];
+                    currentShader = {
+                        Name: include.Name,
+                        File: include.File,
+                        LineOffset: 0
+                    };
+                    compileFragShader(gl, document.getElementById(include.Name).textContent);
+                }
+
                 for (let i in buffers) {
                     let buffer = buffers[i];
                     currentShader = {
@@ -452,6 +484,25 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 currentShader = {};
 
                 render();
+
+                function addLineNumbers( string ) {
+                    var lines = string.split( '\\n' );
+                    for ( var i = 0; i < lines.length; i ++ ) {
+                        lines[ i ] = ( i + 1 ) + ': ' + lines[ i ];
+                    }
+                    return lines.join( '\\n' );
+                }
+            
+                function compileFragShader(gl, fsSource) {
+                    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+                    gl.shaderSource(fs, fsSource);
+                    gl.compileShader(fs);
+                    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+                        const fragmentLog = gl.getShaderInfoLog(fs);
+                        console.error( 'THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog );
+            
+                    }
+                }
 
                 function render() {
                     requestAnimationFrame(render);
@@ -546,7 +597,24 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         this._onDidChange.fire(uri);
     }
 
-    parseShaderCode(name: string, code: string, buffers: any[]) {
+    readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
+        // Read the whole file of the shader
+        let success = false;
+        let bufferCode = "";
+        let error = null;
+        const fs = require("fs");
+        try {
+            bufferCode = fs.readFileSync(file, "utf-8");
+            success = true
+        }
+        catch (e) {
+            error = e;
+        }
+
+        return { success, error, bufferCode };
+    }
+
+    parseShaderCode(name: string, code: string, buffers: any[], commonIncludes: any[]) {
         const stripPath = (name: string) => {
             var lastSlash = name.lastIndexOf('/');
             return name.substring(lastSlash + 1);
@@ -567,6 +635,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         var line_offset = 121;
         var textures = [];
+        let commonName = '';
 
         const loadDependency = (file: string, channel: number) => {
             // Get type and name of file
@@ -599,18 +668,14 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }
                 else {
                     // Read the whole file of the shader
-                    let bufferCode = "";
-                    var fs = require("fs");
-                    try {
-                        bufferCode = fs.readFileSync(file, "utf-8");
-                    }
-                    catch (error) {
+                    const shaderFile = this.readShaderFile(file);
+                    if(shaderFile.success == false){
                         vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
                         return;
                     }
 
                     // Parse the shader
-                    this.parseShaderCode(file, bufferCode, buffers);
+                    this.parseShaderCode(file, shaderFile.bufferCode, buffers, commonIncludes);
         
                     // Push buffers as textures
                     textures.push({
@@ -621,6 +686,26 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         Self: false
                     });
                 }
+            }
+            else if (textureType == "glsl") {
+                // Read the whole file of the shader
+                const shaderFile = this.readShaderFile(file);
+                if(shaderFile.success == false){
+                    vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                    return;
+                }
+                const path = require("path");
+                commonName = path.basename(file);
+                commonIncludes.push(
+                    {
+                        Name: commonName,
+                        File: file,
+                        Code: shaderFile.bufferCode
+                    }
+                );
+                
+                const lineCount = shaderFile.bufferCode.split(/\r\n|\n/).length;
+                line_offset += lineCount;
             }
             else if (textureType == "file") {
                 // Push texture
@@ -649,7 +734,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             var channelMatch, texturePos, matchLength;
 
             const findNextMatch = () => {
-                channelMatch = code.match(/^\s*#iChannel/m);
+                channelMatch = code.match(/^\s*#(iChannel|iCommon)/m);
                 texturePos = channelMatch ? channelMatch.index : -1;
                 matchLength = channelMatch ? channelMatch[0].length : 0;
             };
@@ -761,6 +846,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             Name: stripPath(name),
             File: name,
             Code: code,
+            CommonName: commonName,
             Textures: textures,
             UsesSelf: usesSelf,
             SelfChannel: selfChannel,
