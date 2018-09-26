@@ -564,24 +564,35 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         }
                     }
                 }
+                let dragging = false;
+                function updateMouse(clientX, clientY) {
+                    var rect = canvas.getBoundingClientRect();
+                    mouse.x = clientX - rect.left;
+                    mouse.y = resolution.y - clientY - rect.top;
+                }
                 canvas.addEventListener('mousemove', function(evt) {
                     if (mouse.z + mouse.w != 0) {
-                        var rect = canvas.getBoundingClientRect();
-                        mouse.x = evt.clientX - rect.left;
-                        mouse.y = resolution.y - evt.clientY - rect.top;
-                    } 
+                        updateMouse(evt.clientX, evt.clientY);
+                     } 
                 }, false);
                 canvas.addEventListener('mousedown', function(evt) {
                     if (evt.button == 0)
                         mouse.z = 1;
                     if (evt.button == 2)
                         mouse.w = 1;
+
+                    if (!dragging) {
+                        updateMouse(evt.clientX, evt.clientY);
+                        dragging = true
+                    }
                 }, false);
                 canvas.addEventListener('mouseup', function(evt) {
                     if (evt.button == 0)
                         mouse.z = 0;
                     if (evt.button == 2)
                         mouse.w = 0;
+
+                    dragging = false;
                 }, false);
             </script>
         `;
