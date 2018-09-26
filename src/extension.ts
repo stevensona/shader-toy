@@ -637,7 +637,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var textures = [];
         let commonName = '';
 
-        const loadDependency = (file: string, channel: number) => {
+        const loadDependency = (file: string, channel: number, passType: string) => {
             // Get type and name of file
             var colonPos = file.indexOf('://', 0);
             let textureType = file.substring(0, colonPos);
@@ -687,7 +687,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     });
                 }
             }
-            else if (textureType == "glsl") {
+            else if (passType == "iCommon" && textureType == "glsl") {
                 const path = require("path");
                 const name = path.basename(file);
 
@@ -740,12 +740,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var useTextureDefinitionInShaders = config.get<boolean>('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
-            var channelMatch, texturePos, matchLength;
+            var channelMatch, texturePos, matchLength, passType;
 
             const findNextMatch = () => {
                 channelMatch = code.match(/^\s*#(iChannel|iCommon)/m);
                 texturePos = channelMatch ? channelMatch.index : -1;
                 matchLength = channelMatch ? channelMatch[0].length : 0;
+                passType = channelMatch && channelMatch[1];
             };
             findNextMatch();
             while (texturePos >= 0) {
@@ -769,7 +770,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 let texture = code.substring(spacePos + 1, textureEndPos);
                 
                 // Load the dependency
-                loadDependency(texture, channel);
+                loadDependency(texture, channel, passType);
 
                 // Remove #iChannel define
                 code = code.replace(code.substring(texturePos, endlinePos + endlinePosSize), "");
@@ -784,7 +785,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 if (textures[i].length > 0) {
                     // Check for buffer to load to avoid circular loading
                     if (stripPath(texture) != stripPath(name)) {
-                        loadDependency(texture, parseInt(i));
+                        loadDependency(texture, parseInt(i), "iChannel");
                     }
                 }
             }
