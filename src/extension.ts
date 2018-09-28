@@ -156,7 +156,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var buffersScripts = "";
         for (let i in buffers) {
             const buffer = buffers[i];
-            const include = buffer.CommonName ? commonIncludes.find(include => include.Name == buffer.CommonName) : ''
+            const include = buffer.IncludeName ? commonIncludes.find(include => include.Name == buffer.IncludeName) : ''
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
                 ${shaderPreamble}
@@ -391,7 +391,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         if('7' in arguments) {
                             $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>');
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
-                                return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([Number(c) - currentShader.LineOffset, currentShader.File])) + '">Line ' + String(Number(c) - currentShader.LineOffset) + '</a>';
+                                let lineNumber = Number(c) - currentShader.LineOffset;
+                                return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([lineNumber, currentShader.File])) + '">Line ' + String(lineNumber) + '</a>';
                             }));
                             $("#message").append('</ul>');
                         }
@@ -461,14 +462,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 camera.position.set(0, 0, 10);
 
                 // Run every shader once to check for compile errors
+                let failed=0;
                 for(let i in commonIncludes) {
                     let include = commonIncludes[i];
                     currentShader = {
                         Name: include.Name,
                         File: include.File,
-                        LineOffset: 0
+                        LineOffset: ${shaderPreamble.split(/\r\n|\n/).length}  + 2 // add two for version and precision lines
                     };
-                    compileFragShader(gl, document.getElementById(include.Name).textContent);
+                    // bail if there is an error found in the include script
+                    if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) throw Error(\`Failed to compile \${include.Name}\`);
                 }
 
                 for (let i in buffers) {
@@ -500,8 +503,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
                         const fragmentLog = gl.getShaderInfoLog(fs);
                         console.error( 'THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog );
-            
+                        return false;
                     }
+                    return true;
                 }
 
                 function render() {
@@ -596,7 +600,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
             </script>
         `;
-        // console.log(content);
+        // console.log(shaderScripts);
+        // require("fs").writeFileSync(__dirname + "../../src/preview.html", content);
+
         return content;
     }
 
@@ -646,7 +652,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         var line_offset = 121;
         var textures = [];
-        let commonName = '';
+        let includeName = '';
 
         const loadDependency = (file: string, channel: number, passType: string) => {
             // Get type and name of file
@@ -666,7 +672,36 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             file = file.replace(/\\/g, '/');
             file = file.replace(/\.\//g, "");
 
-            if (textureType == "buf") {
+            if (passType == "include" && textureType == "glsl") {
+                const path = require("path");
+                const name = path.basename(file);
+
+                // Attempt to get the include if already exists
+                let include = commonIncludes.find(include => include.File === file);
+                if (!include) {
+                    // Read the whole file of the shader
+                    const shaderFile = this.readShaderFile(file);
+                    if(shaderFile.success == false){
+                        vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                        return;
+                    }
+
+                    include = {
+                        Name: name,
+                        File: file,
+                        Code: shaderFile.bufferCode,
+                        LineCount: shaderFile.bufferCode.split(/\r\n|\n/).length
+                    };
+
+                    commonIncludes.push(include);
+                }
+
+                // offset the include line count
+                line_offset += include.LineCount;
+
+                // store the reference name for this include
+                includeName = name;
+            } else if (textureType == "buf") {
                 if (file == "self") {
                     // Push self as feedback-buffer
                     textures.push({
@@ -698,35 +733,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     });
                 }
             }
-            else if (passType == "iCommon" && textureType == "glsl") {
-                const path = require("path");
-                const name = path.basename(file);
-
-                // Check if the include already exists
-                const appendInclude = commonIncludes.findIndex(include => include.File === file) === -1;
-                if (appendInclude) {
-                    // Read the whole file of the shader
-                    const shaderFile = this.readShaderFile(file);
-                    if(shaderFile.success == false){
-                        vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
-                        return;
-                    }
-
-                    commonIncludes.push(
-                        {
-                            Name: name,
-                            File: file,
-                            Code: shaderFile.bufferCode
-                        }
-                    );
-
-                    const lineCount = shaderFile.bufferCode.split(/\r\n|\n/).length;
-                    line_offset += lineCount;
-                }
-
-                // reference this include
-                commonName = name;
-            }
             else if (textureType == "file") {
                 // Push texture
                 textures.push({
@@ -754,7 +760,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             var channelMatch, texturePos, matchLength, passType;
 
             const findNextMatch = () => {
-                channelMatch = code.match(/^\s*#(iChannel|iCommon)/m);
+                channelMatch = code.match(/^\s*#(iChannel|include)/m);
                 texturePos = channelMatch ? channelMatch.index : -1;
                 matchLength = channelMatch ? channelMatch[0].length : 0;
                 passType = channelMatch && channelMatch[1];
@@ -867,7 +873,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             Name: stripPath(name),
             File: name,
             Code: code,
-            CommonName: commonName,
+            IncludeName: includeName,
             Textures: textures,
             UsesSelf: usesSelf,
             SelfChannel: selfChannel,

@@ -1,4 +1,4 @@
-#iCommon glsl://./common/blobby-common.glsl
+#include glsl://./common/blobby-common.glsl
 
 float blob(vec2 pos, vec2 center, float power)
 {
