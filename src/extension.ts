@@ -715,7 +715,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         const config = vscode.workspace.getConfiguration('shader-toy');
 
-        var line_offset = 122;
+        var line_offset = 123;
         var textures = [];
         let includeName = '';
 
@@ -758,11 +758,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         LineCount: shaderFile.bufferCode.split(/\r\n|\n/).length
                     };
 
+
                     commonIncludes.push(include);
                 }
 
                 // offset the include line count
-                line_offset += include.LineCount;
+                // TODO: Why do we need to subtract one here?
+                line_offset += include.LineCount - 1;
 
                 // store the reference name for this include
                 includeName = name;
