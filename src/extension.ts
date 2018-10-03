@@ -111,6 +111,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         uniform sampler2D   iChannel7;
         uniform sampler2D   iChannel8;
         uniform sampler2D   iChannel9;
+        uniform sampler2D   iKeyboard;
 
         #define SHADER_TOY`
 
@@ -215,6 +216,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 });`;
         }
         
+        var useKeyboard = false;
         var textureScripts = "\n";
         var textureLoadScript = `function(texture){ texture.minFilter = THREE.LinearFilter; }`;
         for (let i in buffers) {
@@ -239,6 +241,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
             if (buffer.UsesSelf) {
                 textureScripts += `buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
+            }
+
+            if (buffer.UsesKeyboard) {
+                useKeyboard = true;
+                textureScripts += `buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
             }
         }
 
@@ -280,6 +287,58 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             } else {
                 deltaTime = 0.0;
             }`;
+        }
+
+        var keyboardInitScript = "";
+        var keyboardUpdateScript = "";
+        var keyboardCallbackScripts = "";
+        if (useKeyboard) {
+            keyboardInitScript = `
+            const numKeys = 256;
+            const numStates = 4;
+            var keyBoardData = new Uint8Array(numKeys * numStates);
+            var keyBoardTexture = new THREE.DataTexture(keyBoardData, numKeys, numStates, THREE.LuminanceFormat, THREE.UnsignedByteType);
+            keyBoardTexture.magFilter = THREE.NearestFilter;
+            keyBoardTexture.flipY = true;
+            keyBoardTexture.needsUpdate = true;
+            var pressedKeys = [];
+            var releasedKeys = [];`;
+
+            keyboardUpdateScript = `
+            // Update keyboard data
+            if (pressedKeys.length > 0 || releasedKeys.length > 0) {
+                for (let i in pressedKeys)
+                    keyBoardData[pressedKeys[i] + 256] = 0;
+                for (let i in releasedKeys)
+                    keyBoardData[releasedKeys[i] + 768] = 0;
+                keyBoardTexture.needsUpdate = true;
+                pressedKeys = [];
+                releasedKeys = [];
+            }`;
+
+            keyboardCallbackScripts = `
+            document.addEventListener('keydown', function(evt) {
+                const i = evt.keyCode;
+                if (i >= 0 && i <= 255) {
+                    // Key is being held, don't register input
+                    if (keyBoardData[i + 512] == 0) {
+                        keyBoardData[i] = (keyBoardData[i] == 255 ? 0 : 255);
+                        keyBoardData[i + 256] = 255;
+                        keyBoardData[i + 512] = 255;
+                        pressedKeys.push(i);
+                        keyBoardTexture.needsUpdate = true;
+                    }
+                }
+            });
+            document.addEventListener('keyup', function(evt) {
+                const i = evt.keyCode;
+                if (i >= 0 && i <= 255) {
+                    keyBoardData[i + 512] = 0;
+                    keyBoardData[i + 768] = 255;
+                    releasedKeys.push(i);
+                    keyBoardTexture.needsUpdate = true;
+                }
+            });`;
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
@@ -447,6 +506,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         buffers[i].LineOffset += 16;
                     }
                 }
+
+                ${keyboardInitScript}
                 
                 var texLoader = new THREE.TextureLoader();
                 ${textureScripts}
@@ -567,6 +628,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                             }
                         }
                     }
+
+                    ${keyboardUpdateScript}
                 }
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
@@ -598,6 +661,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                     dragging = false;
                 }, false);
+
+                ${keyboardCallbackScripts}
             </script>
         `;
         // console.log(shaderScripts);
@@ -650,7 +715,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         const config = vscode.workspace.getConfiguration('shader-toy');
 
-        var line_offset = 121;
+        var line_offset = 122;
         var textures = [];
         let includeName = '';
 
@@ -701,7 +766,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 // store the reference name for this include
                 includeName = name;
-            } else if (textureType == "buf") {
+            }
+            else if (textureType == "buf") {
                 if (file == "self") {
                     // Push self as feedback-buffer
                     textures.push({
@@ -754,13 +820,14 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }
         };
 
+        var usesKeyboard = false;
         var useTextureDefinitionInShaders = config.get<boolean>('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
             var channelMatch, texturePos, matchLength, passType;
 
             const findNextMatch = () => {
-                channelMatch = code.match(/^\s*#(iChannel|include)/m);
+                channelMatch = code.match(/^\s*#(iChannel|include|iKeyboard)/m);
                 texturePos = channelMatch ? channelMatch.index : -1;
                 matchLength = channelMatch ? channelMatch[0].length : 0;
                 passType = channelMatch && channelMatch[1];
@@ -768,29 +835,32 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             findNextMatch();
             while (texturePos >= 0) {
                 // Get channel number
-                var channelPos = texturePos + matchLength;
-                var spacePos = code.indexOf(" ", texturePos + matchLength);
-                var channel = parseInt(code.substring(channelPos, spacePos));
-                var endlinePosSize = 2;
-                var endlinePos = code.indexOf("\r\n", spacePos + 1);
-                if (endlinePos < 0) {
-                    endlinePosSize = 1;
-                    endlinePos = code.indexOf("\n", spacePos + 1);
-                }
-                var afterSpacePos = code.indexOf(" ", spacePos + 1);
-                var afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
-                var textureEndPos = Math.min(endlinePos,
-                    afterSpacePos > 0 ? afterSpacePos : code.length,
-                    afterCommentPos > 0 ? afterCommentPos : code.length);
+                let channelPos = texturePos + matchLength;
+                let endline = code.substring(channelPos).match(/\r\n|\r|\n/);
+                endline.index += channelPos;
+                let spacePos = Math.min(code.indexOf(" ", texturePos + matchLength), endline.index);
 
-                // Get dependencies' name
-                let texture = code.substring(spacePos + 1, textureEndPos);
-                
-                // Load the dependency
-                loadDependency(texture, channel, passType);
+                if (passType == "iKeyboard") {
+                    usesKeyboard = true;
+                }
+                else {
+                    let channel = parseInt(code.substring(channelPos, spacePos));
+
+                    let afterSpacePos = code.indexOf(" ", spacePos + 1);
+                    let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
+                    let textureEndPos = Math.min(endline.index,
+                        afterSpacePos > 0 ? afterSpacePos : code.length,
+                        afterCommentPos > 0 ? afterCommentPos : code.length);
+
+                    // Get dependencies' name
+                    let texture = code.substring(spacePos + 1, textureEndPos);
+                    
+                    // Load the dependency
+                    loadDependency(texture, channel, passType);
+                }
 
                 // Remove #iChannel define
-                code = code.replace(code.substring(texturePos, endlinePos + endlinePosSize), "");
+                code = code.replace(code.substring(texturePos, endline.index + endline[0].length), "");
                 findNextMatch();
                 line_offset--;
             }
@@ -878,6 +948,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             UsesSelf: usesSelf,
             SelfChannel: selfChannel,
             Dependents: [],
+            UsesKeyboard: usesKeyboard,
             LineOffset: line_offset
         });
     }
