@@ -153,8 +153,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         
 
         let useKeyboard = false;
-        for (let i in buffers) {
-            const buffer = buffers[i];
+        for (let buffer of buffers) {
             if (buffer.UsesKeyboard) {
                 useKeyboard = true;
             }
@@ -182,10 +181,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             keyboard.Update = `
             // Update keyboard data
             if (pressedKeys.length > 0 || releasedKeys.length > 0) {
-                for (let i in pressedKeys)
-                    keyBoardData[pressedKeys[i] + 256] = 0;
-                for (let i in releasedKeys)
-                    keyBoardData[releasedKeys[i] + 768] = 0;
+                for (let key of pressedKeys)
+                    keyBoardData[key + 256] = 0;
+                for (let key of releasedKeys)
+                    keyBoardData[key + 768] = 0;
                 keyBoardTexture.needsUpdate = true;
                 pressedKeys = [];
                 releasedKeys = [];
@@ -246,8 +245,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         // Write all the shaders
         var shaderScripts = "";
         var buffersScripts = "";
-        for (let i in buffers) {
-            const buffer = buffers[i];
+        for (let buffer of buffers) {
             const include = buffer.IncludeName ? commonIncludes.find(include => include.Name == buffer.IncludeName) : ''
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
@@ -294,8 +292,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         // add the common includes for compilation checking
-        for(let i in commonIncludes) {
-            const include = commonIncludes[i];
+        for (let include of commonIncludes) {
             shaderScripts += `
                 <script id="${include.Name}" type="x-shader/x-fragment">#version 300 es
                     precision highp float;
@@ -320,8 +317,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         for (let i in buffers) {
             const buffer = buffers[i];
             const textures =  buffer.Textures;
-            for (let j in textures) {
-                const texture = textures[j];
+            for (let texture of textures) {
                 const channel = texture.Channel;
                 const bufferIndex = texture.BufferIndex;
                 const texturePath = texture.LocalTexture;
@@ -548,8 +544,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 // WebGL2 inserts more lines into the shader
                 if (isWebGL2) {
-                    for (let i in buffers) {
-                        buffers[i].LineOffset += 16;
+                    for (let buffer of buffers) {
+                        buffer.LineOffset += 16;
                     }
                 }
 
@@ -570,8 +566,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 // Run every shader once to check for compile errors
                 let failed=0;
-                for(let i in commonIncludes) {
-                    let include = commonIncludes[i];
+                for (let include of commonIncludes) {
                     currentShader = {
                         Name: include.Name,
                         File: include.File,
@@ -581,8 +576,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) throw Error(\`Failed to compile \${include.Name}\`);
                 }
 
-                for (let i in buffers) {
-                    let buffer = buffers[i];
+                for (let buffer of buffers) {
                     currentShader = {
                         Name: buffer.Name,
                         File: buffer.File,
@@ -622,8 +616,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
                         resolution.x = canvas.clientWidth;
                         resolution.y = canvas.clientHeight;
-                        for (let i in buffers) {
-                            let buffer = buffers[i];
+                        for (let buffer of buffers) {
                             if (buffer.Target) {
                                 buffer.Target.setSize(resolution.x, resolution.y);
                             }
@@ -648,9 +641,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     frameCounter++;
                     ${advanceTimeScript}
 
-                    for (let i in buffers) {
-                        const buffer = buffers[i];
-
+                    for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
                         buffer.Shader.uniforms['iGlobalTime'].value = time;
@@ -662,13 +653,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         renderer.render(scene, camera, buffer.Target);
                     }
 
-                    for (let i in buffers) {
-                        const buffer = buffers[i];
+                    for (let buffer of buffers) {
                         if (buffer.PingPongTarget) {
                             [buffer.PingPongTarget, buffer.Target] = [buffer.Target, buffer.PingPongTarget];
                             buffer.Shader.uniforms[\`iChannel\${buffer.PingPongChannel}\`].value = buffer.PingPongTarget.texture;
-                            for (let j in buffer.Dependents) {
-                                const dependent = buffer.Dependents[j];
+                            for (let dependent of buffer.Dependents) {
                                 const dependentBuffer = buffers[dependent.Index];
                                 dependentBuffer.Shader.uniforms[\`iChannel\${dependent.Channel}\`] = { type: 't', value: buffer.Target.texture };
                             }
@@ -915,7 +904,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
         else { // TODO: Ideally depracate this because it is counter-productive when working dependent shaders
             let textures = config.get('textures');
-            for(let i in textures) {
+            for (let i in textures) {
                 const texture = textures[i];
                 if (textures[i].length > 0) {
                     // Check for buffer to load to avoid circular loading
@@ -938,8 +927,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         var definedTextures = {};
-        for (let i in textures) {
-            const texture = textures[i];
+        for (let texture of textures) {
             definedTextures[texture.Channel] = true;
         }
         if (config.get<boolean>('warnOnUndefinedTextures')) {
@@ -966,7 +954,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         // Translate buffer names to indices
         var usesSelf = false;
         var selfChannel = 0;
-        for (var i = 0; i < textures.length; i++) {
+        for (let i = 0; i < textures.length; i++) {
             let texture = textures[i];
             if (texture.Buffer) {
                 texture.BufferIndex = buffers.findIndex(findByName(texture.Buffer));
