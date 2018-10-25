@@ -192,6 +192,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         iTimeDelta: { type: "f", value: 0.0 },
                         iFrame: { type: "i", value: 0 },
                         iMouse: { type: "v4", value: mouse },
+
+                        resolution: { type: "v3", value: resolution },
+                        time: { type: "f", value: 0.0 },
+                        mouse: { type: "v2", value: mouse },
                     }
                 })
             });`;
@@ -550,7 +554,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;
-                        
+
+                        buffer.Shader.uniforms['resolution'].value = resolution;
+                        buffer.Shader.uniforms['time'].value = time;
+                        buffer.Shader.uniforms['mouse'].value = mouse;
+
                         quad.material = buffer.Shader;
                         renderer.render(scene, camera, buffer.Target);
                     }
