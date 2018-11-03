@@ -173,7 +173,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             var keyBoardData = new Uint8Array(numKeys * numStates);
             var keyBoardTexture = new THREE.DataTexture(keyBoardData, numKeys, numStates, THREE.LuminanceFormat, THREE.UnsignedByteType);
             keyBoardTexture.magFilter = THREE.NearestFilter;
-            keyBoardTexture.flipY = true;
             keyBoardTexture.needsUpdate = true;
             var pressedKeys = [];
             var releasedKeys = [];`;
@@ -195,10 +194,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 const i = evt.keyCode;
                 if (i >= 0 && i <= 255) {
                     // Key is being held, don't register input
-                    if (keyBoardData[i + 512] == 0) {
-                        keyBoardData[i] = (keyBoardData[i] == 255 ? 0 : 255);
-                        keyBoardData[i + 256] = 255;
-                        keyBoardData[i + 512] = 255;
+                    if (keyBoardData[i] == 0) {
+                        keyBoardData[i] = 255; // Held
+                        keyBoardData[i + 256] = 255; // Pressed
+                        keyBoardData[i + 512] = (keyBoardData[i + 512] == 255 ? 0 : 255); // Toggled
                         pressedKeys.push(i);
                         keyBoardTexture.needsUpdate = true;
                     }
@@ -207,8 +206,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             document.addEventListener('keyup', function(evt) {
                 const i = evt.keyCode;
                 if (i >= 0 && i <= 255) {
-                    keyBoardData[i + 512] = 0;
-                    keyBoardData[i + 768] = 255;
+                    keyBoardData[i] = 0; // Not held
+                    keyBoardData[i + 768] = 255; // Released
                     releasedKeys.push(i);
                     keyBoardTexture.needsUpdate = true;
                 }
@@ -223,20 +222,20 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 Key_Numpad4 = 100, Key_Numpad5 = 101, Key_Numpad6 = 102, Key_Numpad7 = 103, Key_Numpad8 = 104, Key_Numpad9 = 105, Key_NumpadMultiply = 106, Key_NumpadAdd = 107, Key_NumpadSubtract = 109, Key_NumpadPeriod = 110, Key_NumpadDivide = 111, Key_F1 = 112, Key_F2 = 113, Key_F3 = 114, Key_F4 = 115, Key_F5 = 116, Key_F6 = 117, Key_F7 = 118, Key_F8 = 119, Key_F9 = 120, Key_F10 = 121, Key_F11 = 122, Key_F12 = 123, Key_NumLock = 144, Key_ScrollLock = 145,
                 Key_SemiColon = 186, Key_Equal = 187, Key_Comma = 188, Key_Dash = 189, Key_Period = 190, Key_ForwardSlash = 191, Key_GraveAccent = 192, Key_OpenBracket = 219, Key_BackSlash = 220, Key_CloseBraket = 221, Key_SingleQuote = 222;
 
-            bool isKeyToggled(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.875);
+            bool isKeyDown(int key) {
+                vec2 uv = vec2(float(key) / 255.0, 0.125);
                 return texture2D(iKeyboard, uv).r > 0.0;
             }
             bool isKeyPressed(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.625);
-                return texture2D(iKeyboard, uv).r > 0.0;
-            }
-            bool isKeyDown(int key) {
                 vec2 uv = vec2(float(key) / 255.0, 0.375);
                 return texture2D(iKeyboard, uv).r > 0.0;
             }
+            bool isKeyToggled(int key) {
+                vec2 uv = vec2(float(key) / 255.0, 0.625);
+                return texture2D(iKeyboard, uv).r > 0.0;
+            }
             bool isKeyReleased(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.125);
+                vec2 uv = vec2(float(key) / 255.0, 0.875);
                 return texture2D(iKeyboard, uv).r > 0.0;
             }`;
             keyboard.LineOffset = keyboard.Shader.split(/\r\n|\n/).length - 1;
