@@ -111,6 +111,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         uniform sampler2D   iChannel7;
         uniform sampler2D   iChannel8;
         uniform sampler2D   iChannel9;
+        uniform sampler2D   iKeyboard;
 
         #define SHADER_TOY`
 
@@ -151,15 +152,104 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
         
 
+        let useKeyboard = false;
+        for (let buffer of buffers) {
+            if (buffer.UsesKeyboard) {
+                useKeyboard = true;
+            }
+        }
+
+        let keyboard = {
+            Init: "",
+            Update: "",
+            Callbacks: "",
+            Shader: "",
+            LineOffset: 0
+        };
+        if (useKeyboard) {
+            keyboard.Init = `
+            const numKeys = 256;
+            const numStates = 4;
+            var keyBoardData = new Uint8Array(numKeys * numStates);
+            var keyBoardTexture = new THREE.DataTexture(keyBoardData, numKeys, numStates, THREE.LuminanceFormat, THREE.UnsignedByteType);
+            keyBoardTexture.magFilter = THREE.NearestFilter;
+            keyBoardTexture.needsUpdate = true;
+            var pressedKeys = [];
+            var releasedKeys = [];`;
+
+            keyboard.Update = `
+            // Update keyboard data
+            if (pressedKeys.length > 0 || releasedKeys.length > 0) {
+                for (let key of pressedKeys)
+                    keyBoardData[key + 256] = 0;
+                for (let key of releasedKeys)
+                    keyBoardData[key + 768] = 0;
+                keyBoardTexture.needsUpdate = true;
+                pressedKeys = [];
+                releasedKeys = [];
+            }`;
+
+            keyboard.Callbacks = `
+            document.addEventListener('keydown', function(evt) {
+                const i = evt.keyCode;
+                if (i >= 0 && i <= 255) {
+                    // Key is being held, don't register input
+                    if (keyBoardData[i] == 0) {
+                        keyBoardData[i] = 255; // Held
+                        keyBoardData[i + 256] = 255; // Pressed
+                        keyBoardData[i + 512] = (keyBoardData[i + 512] == 255 ? 0 : 255); // Toggled
+                        pressedKeys.push(i);
+                        keyBoardTexture.needsUpdate = true;
+                    }
+                }
+            });
+            document.addEventListener('keyup', function(evt) {
+                const i = evt.keyCode;
+                if (i >= 0 && i <= 255) {
+                    keyBoardData[i] = 0; // Not held
+                    keyBoardData[i + 768] = 255; // Released
+                    releasedKeys.push(i);
+                    keyBoardTexture.needsUpdate = true;
+                }
+            });`;
+            
+            keyboard.Shader = `
+            const int Key_Backspace = 8, Key_Tab = 9, Key_Enter = 13, Key_Shift = 16, Key_Ctrl = 17, Key_Alt = 18, Key_Pause = 19, Key_Caps = 20, Key_Escape = 27, Key_PageUp = 33, Key_PageDown = 34, Key_End = 35,
+                Key_Home = 36, Key_LeftArrow = 37, Key_UpArrow = 38, Key_RightArrow = 39, Key_DownArrow = 40, Key_Insert = 45, Key_Delete = 46, Key_0 = 48, Key_1 = 49, Key_2 = 50, Key_3 = 51, Key_4 = 52,
+                Key_5 = 53, Key_6 = 54, Key_7 = 55, Key_8 = 56, Key_9 = 57, Key_A = 65, Key_B = 66, Key_C = 67, Key_D = 68, Key_E = 69, Key_F = 70, Key_G = 71, Key_H = 72,
+                Key_I = 73, Key_J = 74, Key_K = 75, Key_L = 76, Key_M = 77, Key_N = 78, Key_O = 79, Key_P = 80, Key_Q = 81, Key_R = 82, Key_S = 83, Key_T = 84, Key_U = 85,
+                Key_V = 86, Key_W = 87, Key_X = 88, Key_Y = 89, Key_Z = 90, Key_LeftWindow = 91, Key_RightWindows = 92, Key_Select = 93, Key_Numpad0 = 96, Key_Numpad1 = 97, Key_Numpad2 = 98, Key_Numpad3 = 99,
+                Key_Numpad4 = 100, Key_Numpad5 = 101, Key_Numpad6 = 102, Key_Numpad7 = 103, Key_Numpad8 = 104, Key_Numpad9 = 105, Key_NumpadMultiply = 106, Key_NumpadAdd = 107, Key_NumpadSubtract = 109, Key_NumpadPeriod = 110, Key_NumpadDivide = 111, Key_F1 = 112, Key_F2 = 113, Key_F3 = 114, Key_F4 = 115, Key_F5 = 116, Key_F6 = 117, Key_F7 = 118, Key_F8 = 119, Key_F9 = 120, Key_F10 = 121, Key_F11 = 122, Key_F12 = 123, Key_NumLock = 144, Key_ScrollLock = 145,
+                Key_SemiColon = 186, Key_Equal = 187, Key_Comma = 188, Key_Dash = 189, Key_Period = 190, Key_ForwardSlash = 191, Key_GraveAccent = 192, Key_OpenBracket = 219, Key_BackSlash = 220, Key_CloseBraket = 221, Key_SingleQuote = 222;
+
+            bool isKeyDown(int key) {
+                vec2 uv = vec2(float(key) / 255.0, 0.125);
+                return texture2D(iKeyboard, uv).r > 0.0;
+            }
+            bool isKeyPressed(int key) {
+                vec2 uv = vec2(float(key) / 255.0, 0.375);
+                return texture2D(iKeyboard, uv).r > 0.0;
+            }
+            bool isKeyToggled(int key) {
+                vec2 uv = vec2(float(key) / 255.0, 0.625);
+                return texture2D(iKeyboard, uv).r > 0.0;
+            }
+            bool isKeyReleased(int key) {
+                vec2 uv = vec2(float(key) / 255.0, 0.875);
+                return texture2D(iKeyboard, uv).r > 0.0;
+            }`;
+            keyboard.LineOffset = keyboard.Shader.split(/\r\n|\n/).length - 1;
+        }
+
         // Write all the shaders
         var shaderScripts = "";
         var buffersScripts = "";
-        for (let i in buffers) {
-            const buffer = buffers[i];
+        for (let buffer of buffers) {
             const include = buffer.IncludeName ? commonIncludes.find(include => include.Name == buffer.IncludeName) : ''
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
                 ${shaderPreamble}
+                ${keyboard.Shader}
                 ${include ? include.Code : ''}
                 ${buffer.Code}
             </script>`
@@ -171,6 +261,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
             if (buffer.UsesSelf)
                 pingPongTarget = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
+
+            if (buffer.UsesKeyboard)
+                buffer.LineOffset += keyboard.LineOffset;
 
             buffersScripts += `
             buffers.push({
@@ -198,8 +291,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         // add the common includes for compilation checking
-        for(let i in commonIncludes) {
-            const include = commonIncludes[i];
+        for (let include of commonIncludes) {
             shaderScripts += `
                 <script id="${include.Name}" type="x-shader/x-fragment">#version 300 es
                     precision highp float;
@@ -215,19 +307,22 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 });`;
         }
         
-        var textureScripts = "\n";
-        var textureLoadScript = `function(texture){ texture.minFilter = THREE.LinearFilter; }`;
+        let textureScripts = "\n";
+        let textureLoadScript = `function(texture) {
+            texture.minFilter = THREE.LinearFilter;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+        }`;
         for (let i in buffers) {
             const buffer = buffers[i];
             const textures =  buffer.Textures;
-            for (let j in textures) {
-                const texture = textures[j];
+            for (let texture of textures) {
                 const channel = texture.Channel;
                 const bufferIndex = texture.BufferIndex;
                 const texturePath = texture.LocalTexture;
                 const textureUrl = texture.RemoteTexture;
 
-                var value: string;
+                let value: string;
                 if (bufferIndex != null)
                     value = `buffers[${bufferIndex}].Target.texture`;
                 else if (texturePath != null)
@@ -239,6 +334,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
             if (buffer.UsesSelf) {
                 textureScripts += `buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
+            }
+
+            if (buffer.UsesKeyboard) {
+                useKeyboard = true;
+                textureScripts += `buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
             }
         }
 
@@ -443,10 +543,12 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 // WebGL2 inserts more lines into the shader
                 if (isWebGL2) {
-                    for (let i in buffers) {
-                        buffers[i].LineOffset += 16;
+                    for (let buffer of buffers) {
+                        buffer.LineOffset += 16;
                     }
                 }
+
+                ${keyboard.Init}
                 
                 var texLoader = new THREE.TextureLoader();
                 ${textureScripts}
@@ -463,8 +565,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 // Run every shader once to check for compile errors
                 let failed=0;
-                for(let i in commonIncludes) {
-                    let include = commonIncludes[i];
+                for (let include of commonIncludes) {
                     currentShader = {
                         Name: include.Name,
                         File: include.File,
@@ -474,8 +575,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) throw Error(\`Failed to compile \${include.Name}\`);
                 }
 
-                for (let i in buffers) {
-                    let buffer = buffers[i];
+                for (let buffer of buffers) {
                     currentShader = {
                         Name: buffer.Name,
                         File: buffer.File,
@@ -515,8 +615,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
                         resolution.x = canvas.clientWidth;
                         resolution.y = canvas.clientHeight;
-                        for (let i in buffers) {
-                            let buffer = buffers[i];
+                        for (let buffer of buffers) {
                             if (buffer.Target) {
                                 buffer.Target.setSize(resolution.x, resolution.y);
                             }
@@ -541,9 +640,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     frameCounter++;
                     ${advanceTimeScript}
 
-                    for (let i in buffers) {
-                        const buffer = buffers[i];
-
+                    for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
                         buffer.Shader.uniforms['iGlobalTime'].value = time;
@@ -555,18 +652,18 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         renderer.render(scene, camera, buffer.Target);
                     }
 
-                    for (let i in buffers) {
-                        const buffer = buffers[i];
+                    for (let buffer of buffers) {
                         if (buffer.PingPongTarget) {
                             [buffer.PingPongTarget, buffer.Target] = [buffer.Target, buffer.PingPongTarget];
                             buffer.Shader.uniforms[\`iChannel\${buffer.PingPongChannel}\`].value = buffer.PingPongTarget.texture;
-                            for (let j in buffer.Dependents) {
-                                const dependent = buffer.Dependents[j];
+                            for (let dependent of buffer.Dependents) {
                                 const dependentBuffer = buffers[dependent.Index];
                                 dependentBuffer.Shader.uniforms[\`iChannel\${dependent.Channel}\`] = { type: 't', value: buffer.Target.texture };
                             }
                         }
                     }
+
+                    ${keyboard.Update}
                 }
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
@@ -598,6 +695,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                     dragging = false;
                 }, false);
+
+                ${keyboard.Callbacks}
             </script>
         `;
         // console.log(shaderScripts);
@@ -650,7 +749,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         const config = vscode.workspace.getConfiguration('shader-toy');
 
-        var line_offset = 121;
+        var line_offset = 124;
         var textures = [];
         let includeName = '';
 
@@ -693,15 +792,18 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         LineCount: shaderFile.bufferCode.split(/\r\n|\n/).length
                     };
 
+
                     commonIncludes.push(include);
                 }
 
                 // offset the include line count
-                line_offset += include.LineCount;
+                // TODO: Why do we need to subtract one here?
+                line_offset += include.LineCount - 1;
 
                 // store the reference name for this include
                 includeName = name;
-            } else if (textureType == "buf") {
+            }
+            else if (textureType == "buf") {
                 if (file == "self") {
                     // Push self as feedback-buffer
                     textures.push({
@@ -754,13 +856,14 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }
         };
 
+        var usesKeyboard = false;
         var useTextureDefinitionInShaders = config.get<boolean>('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
             var channelMatch, texturePos, matchLength, passType;
 
             const findNextMatch = () => {
-                channelMatch = code.match(/^\s*#(iChannel|include)/m);
+                channelMatch = code.match(/^\s*#(iChannel|include|iKeyboard)/m);
                 texturePos = channelMatch ? channelMatch.index : -1;
                 matchLength = channelMatch ? channelMatch[0].length : 0;
                 passType = channelMatch && channelMatch[1];
@@ -768,36 +871,39 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             findNextMatch();
             while (texturePos >= 0) {
                 // Get channel number
-                var channelPos = texturePos + matchLength;
-                var spacePos = code.indexOf(" ", texturePos + matchLength);
-                var channel = parseInt(code.substring(channelPos, spacePos));
-                var endlinePosSize = 2;
-                var endlinePos = code.indexOf("\r\n", spacePos + 1);
-                if (endlinePos < 0) {
-                    endlinePosSize = 1;
-                    endlinePos = code.indexOf("\n", spacePos + 1);
-                }
-                var afterSpacePos = code.indexOf(" ", spacePos + 1);
-                var afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
-                var textureEndPos = Math.min(endlinePos,
-                    afterSpacePos > 0 ? afterSpacePos : code.length,
-                    afterCommentPos > 0 ? afterCommentPos : code.length);
+                let channelPos = texturePos + matchLength;
+                let endline = code.substring(channelPos).match(/\r\n|\r|\n/);
+                endline.index += channelPos;
+                let spacePos = Math.min(code.indexOf(" ", texturePos + matchLength), endline.index);
 
-                // Get dependencies' name
-                let texture = code.substring(spacePos + 1, textureEndPos);
-                
-                // Load the dependency
-                loadDependency(texture, channel, passType);
+                if (passType == "iKeyboard") {
+                    usesKeyboard = true;
+                }
+                else {
+                    let channel = parseInt(code.substring(channelPos, spacePos));
+
+                    let afterSpacePos = code.indexOf(" ", spacePos + 1);
+                    let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
+                    let textureEndPos = Math.min(endline.index,
+                        afterSpacePos > 0 ? afterSpacePos : code.length,
+                        afterCommentPos > 0 ? afterCommentPos : code.length);
+
+                    // Get dependencies' name
+                    let texture = code.substring(spacePos + 1, textureEndPos);
+                    
+                    // Load the dependency
+                    loadDependency(texture, channel, passType);
+                }
 
                 // Remove #iChannel define
-                code = code.replace(code.substring(texturePos, endlinePos + endlinePosSize), "");
+                code = code.replace(code.substring(texturePos, endline.index + endline[0].length), "");
                 findNextMatch();
                 line_offset--;
             }
         }
         else { // TODO: Ideally depracate this because it is counter-productive when working dependent shaders
             let textures = config.get('textures');
-            for(let i in textures) {
+            for (let i in textures) {
                 const texture = textures[i];
                 if (textures[i].length > 0) {
                     // Check for buffer to load to avoid circular loading
@@ -820,8 +926,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         }
 
         var definedTextures = {};
-        for (let i in textures) {
-            const texture = textures[i];
+        for (let texture of textures) {
             definedTextures[texture.Channel] = true;
         }
         if (config.get<boolean>('warnOnUndefinedTextures')) {
@@ -848,7 +953,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         // Translate buffer names to indices
         var usesSelf = false;
         var selfChannel = 0;
-        for (var i = 0; i < textures.length; i++) {
+        for (let i = 0; i < textures.length; i++) {
             let texture = textures[i];
             if (texture.Buffer) {
                 texture.BufferIndex = buffers.findIndex(findByName(texture.Buffer));
@@ -878,6 +983,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             UsesSelf: usesSelf,
             SelfChannel: selfChannel,
             Dependents: [],
+            UsesKeyboard: usesKeyboard,
             LineOffset: line_offset
         });
     }
