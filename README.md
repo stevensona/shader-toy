@@ -64,6 +64,15 @@ The following is an example of using textures in shaders:
 The extensions also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes:
 ![error example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example3.png)
 
+If you want to use keyboard input you can prepend ```#iKeyboard``` to your shader. This will expose to your shader the following functions:
+```
+bool isKeyPressed(int);
+bool isKeyReleased(int);
+bool isKeyDown(int);
+bool isKeyToggled(int);
+```
+Additionally it will expose variables such as ```Key_A``` to ```Key_Z```, ```Key_0``` to ```Key_9```, ```Key_UpArrow```, ```Key_LeftArrow```, ```Key_Shift```, etc. Use these constants together with the functions mentioned above to querry the state of a key. 
+
 ## Requirements
 
 * A graphics card supporting WebGL.
@@ -75,8 +84,7 @@ The extensions also supports highlighting of compilation errors in the text edit
 ## Todo
 
 * Improve compatibility with "shadertoy" shaders,
-* allow using audio channels like shadertoy.com does
-* allow using keyboard input like shadertoy.com does.
+* allow using audio channels like shadertoy.com does.
 
 ## Contributing
 
@@ -86,6 +94,12 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.7.6
+* Added experimental support for keyboard input.
+
+### 0.7.5
+* Added experimental support for includes, relative to the shader file.
 
 ### 0.7.4
 
