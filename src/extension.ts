@@ -580,16 +580,19 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
                     var rect = canvas.getBoundingClientRect();
-                    mouse.x = clientX - rect.left;
-                    mouse.y = resolution.y - clientY - rect.top;
+                    var mouseX = clientX - rect.left;
+                    var mouseY = resolution.y - clientY - rect.top;
 
-                    normalizedMouse.x = mouse.x / resolution.x;
-                    normalizedMouse.y = mouse.y / resolution.y;
+                    if (mouse.z + mouse.w != 0) {
+                        mouse.x = mouseX;
+                        mouse.y = mouseY;
+                    }
+
+                    normalizedMouse.x = mouseX / resolution.x;
+                    normalizedMouse.y = mouseY / resolution.y;
                 }
                 canvas.addEventListener('mousemove', function(evt) {
-                    if (mouse.z + mouse.w != 0) {
-                        updateMouse(evt.clientX, evt.clientY);
-                     } 
+                    updateMouse(evt.clientX, evt.clientY);
                 }, false);
                 canvas.addEventListener('mousedown', function(evt) {
                     if (evt.button == 0)
