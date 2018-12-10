@@ -195,7 +195,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                         resolution: { type: "v3", value: resolution },
                         time: { type: "f", value: 0.0 },
-                        mouse: { type: "v2", value: mouse },
+                        mouse: { type: "v2", value: normalizedMouse },
                     }
                 })
             });`;
@@ -437,6 +437,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
+                var normalizedMouse = new THREE.Vector2(0, 0);
                 var frameCounter = 0;
 
                 var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
@@ -557,7 +558,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                         buffer.Shader.uniforms['resolution'].value = resolution;
                         buffer.Shader.uniforms['time'].value = time;
-                        buffer.Shader.uniforms['mouse'].value = mouse;
+                        buffer.Shader.uniforms['mouse'].value = normalizedMouse;
 
                         quad.material = buffer.Shader;
                         renderer.render(scene, camera, buffer.Target);
@@ -581,6 +582,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     var rect = canvas.getBoundingClientRect();
                     mouse.x = clientX - rect.left;
                     mouse.y = resolution.y - clientY - rect.top;
+
+                    normalizedMouse.x = mouse.x / resolution.x;
+                    normalizedMouse.y = mouse.y / resolution.y;
                 }
                 canvas.addEventListener('mousemove', function(evt) {
                     if (mouse.z + mouse.w != 0) {
