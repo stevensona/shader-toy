@@ -193,7 +193,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         iFrame: { type: "i", value: 0 },
                         iMouse: { type: "v4", value: mouse },
 
-                        resolution: { type: "v3", value: resolution },
+                        resolution: { type: "v2", value: resolution },
                         time: { type: "f", value: 0.0 },
                         mouse: { type: "v2", value: normalizedMouse },
                     }
