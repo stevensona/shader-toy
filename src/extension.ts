@@ -285,6 +285,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         iTimeDelta: { type: "f", value: 0.0 },
                         iFrame: { type: "i", value: 0 },
                         iMouse: { type: "v4", value: mouse },
+
+                        resolution: { type: "v2", value: resolution },
+                        time: { type: "f", value: 0.0 },
+                        mouse: { type: "v2", value: normalizedMouse },
                     }
                 })
             });`;
@@ -533,6 +537,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
                 var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
+                var normalizedMouse = new THREE.Vector2(0, 0);
                 var frameCounter = 0;
 
                 var channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
@@ -647,7 +652,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;
-                        
+
+                        buffer.Shader.uniforms['resolution'].value = resolution;
+                        buffer.Shader.uniforms['time'].value = time;
+                        buffer.Shader.uniforms['mouse'].value = normalizedMouse;
+
                         quad.material = buffer.Shader;
                         renderer.render(scene, camera, buffer.Target);
                     }
@@ -668,13 +677,19 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
                     var rect = canvas.getBoundingClientRect();
-                    mouse.x = clientX - rect.left;
-                    mouse.y = resolution.y - clientY - rect.top;
+                    var mouseX = clientX - rect.left;
+                    var mouseY = resolution.y - clientY - rect.top;
+
+                    if (mouse.z + mouse.w != 0) {
+                        mouse.x = mouseX;
+                        mouse.y = mouseY;
+                    }
+
+                    normalizedMouse.x = mouseX / resolution.x;
+                    normalizedMouse.y = mouseY / resolution.y;
                 }
                 canvas.addEventListener('mousemove', function(evt) {
-                    if (mouse.z + mouse.w != 0) {
-                        updateMouse(evt.clientX, evt.clientY);
-                     } 
+                    updateMouse(evt.clientX, evt.clientY);
                 }, false);
                 canvas.addEventListener('mousedown', function(evt) {
                     if (evt.button == 0)
