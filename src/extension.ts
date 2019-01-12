@@ -258,9 +258,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             var target = "null";
             var pingPongTarget = "null";
             if (buffer != buffers[buffers.length - 1])
-                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
+                target = "new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
             if (buffer.UsesSelf)
-                pingPongTarget = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
+                pingPongTarget = "new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
 
             if (buffer.UsesKeyboard)
                 buffer.LineOffset += keyboard.LineOffset;
@@ -531,7 +531,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
 
                 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
-                var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+                var resolution = new THREE.Vector3();
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
                 var frameCounter = 0;
 
@@ -586,6 +586,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }
                 currentShader = {};
 
+                computeSize();
                 render();
 
                 function addLineNumbers( string ) {
@@ -611,31 +612,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 function render() {
                     requestAnimationFrame(render);
                     ${pauseWholeScript}
-            
-                    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
-                        resolution.x = canvas.clientWidth;
-                        resolution.y = canvas.clientHeight;
-                        for (let buffer of buffers) {
-                            if (buffer.Target) {
-                                buffer.Target.setSize(resolution.x, resolution.y);
-                            }
-                            if (buffer.PingPongTarget) {
-                                buffer.PingPongTarget.setSize(resolution.x, resolution.y);
-                            }
-                        }
-                        renderer.setSize(resolution.x, resolution.y, false);
-                        
-                        // Update Camera and Mesh
-                        quad.geometry = new THREE.PlaneGeometry(resolution.x, resolution.y);
-                        camera.left = -resolution.x / 2.0;
-                        camera.right = resolution.x / 2.0;
-                        camera.top = resolution.y / 2.0;
-                        camera.bottom = -resolution.y / 2.0;
-                        camera.updateProjectionMatrix();
-
-                        // Reset iFrame on resize for shaders that rely on first-frame setups
-                        frameCounter = 0;
-                    }
                     
                     frameCounter++;
                     ${advanceTimeScript}
@@ -664,6 +640,30 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     }
 
                     ${keyboard.Update}
+                }
+                function computeSize() {
+                    resolution.x = window.innerWidth;
+                    resolution.y = window.innerHeight;
+                    for (let buffer of buffers) {
+                        if (buffer.Target) {
+                            buffer.Target.setSize(resolution.x, resolution.y);
+                        }
+                        if (buffer.PingPongTarget) {
+                            buffer.PingPongTarget.setSize(resolution.x, resolution.y);
+                        }
+                    }
+                    renderer.setSize(resolution.x, resolution.y, false);
+                    
+                    // Update Camera and Mesh
+                    quad.geometry = new THREE.PlaneGeometry(resolution.x, resolution.y);
+                    camera.left = -resolution.x / 2.0;
+                    camera.right = resolution.x / 2.0;
+                    camera.top = resolution.y / 2.0;
+                    camera.bottom = -resolution.y / 2.0;
+                    camera.updateProjectionMatrix();
+
+                    // Reset iFrame on resize for shaders that rely on first-frame setups
+                    frameCounter = 0;
                 }
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
@@ -695,6 +695,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                     dragging = false;
                 }, false);
+                window.addEventListener('resize', function() {
+                    computeSize();
+                });
 
                 ${keyboard.Callbacks}
             </script>
