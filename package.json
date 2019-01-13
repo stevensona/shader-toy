@@ -24,6 +24,11 @@
     "contributes": {
         "configuration": {
             "properties": {
+                "shader-toy.forceAspectRatio": {
+                    "type": [ "number", "number" ],
+                    "default": [0, 0],
+                    "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
+                },
                 "shader-toy.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,
