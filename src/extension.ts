@@ -406,7 +406,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         text-align: center;
                         position: fixed;
                         position: relative;
-                        z-index: -1;
                     }
                     
                     .error {
@@ -444,6 +443,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         width: 100%;
                         height: 80px;
                         margin: auto;
+                        z-index: 1;
                     }
                     /* Hide the browser's default checkbox */
                     .button-container input {
@@ -468,6 +468,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         background-repeat: no-repeat;
                         background-position: center;
                         background-color: rgba(128, 128, 128, 0.5);
+                        z-index: 1;
                     }
                     .button-container:hover input ~ .pause-play {
                         background-color: lightgray;
@@ -502,6 +503,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         background-repeat: no-repeat;
                         background-position: center;
                         background-color: rgba(128, 128, 128, 0.5);
+                        z-index: 1;
                     }
                     #screenshot:hover {
                         background-color: lightgray;
