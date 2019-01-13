@@ -359,10 +359,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var pauseButtonScript = "";
         if (config.get<boolean>('showPauseButton')) {
             pauseButtonScript = `
-            <label class="button-container">
+                <label class="button-container">
                 <input id="pause-button" type="checkbox">
                 <span class="pause-play"></span>
-            </div>`;
+            `;
         }
 
         var pauseWholeScript = "";
@@ -380,6 +380,11 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             } else {
                 deltaTime = 0.0;
             }`;
+        }
+
+        var screenshotButtonScript = "";
+        if (config.get<boolean>('showScreenshotButton')) {
+            screenshotButtonScript = `<span id="screenshot"></span>`;
         }
 
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
@@ -479,6 +484,29 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         background-position: center;
                         background-color: rgba(128, 128, 128, 0.5);
                     }
+                    
+                    /* Custom screenshot button */
+                    #screenshot {
+                        position: absolute;
+                        border: none;
+                        right: 0px;
+                        padding: 26px;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 26px;
+                        border-radius: 8px;
+                        margin: 8px;
+                        transform: translateX(0%);
+                        background: url("file://${this.getResourcePath('screen.png')}");
+                        background-size: 26px;
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        background-color: rgba(128, 128, 128, 0.5);
+                    }
+                    #screenshot:hover {
+                        background-color: lightgray;
+                        transition-duration: 0.1s;
+                    }
                 </style>
             </head>
             <body>
@@ -486,6 +514,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 <div id="container">
                     ${pauseButtonScript}
                 </div>
+                ${screenshotButtonScript}
             </body>
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
@@ -529,6 +558,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                             pausedTime += clock.getDelta();
                     };
                 }
+                
+                {
+                    let screenshotButton = document.getElementById("screenshot");
+                    if (screenshotButton) {
+                        screenshotButton.addEventListener('click', saveScreenshot);
+                    }
+                }
 
                 var canvas = document.getElementById('canvas');
                 var gl = canvas.getContext('webgl2');
@@ -540,7 +576,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 if (supportsFloatFramebuffer) framebufferType = THREE.FloatType;
                 else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
 
-                var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
+                var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl, preserveDrawingBuffer: true });
                 var resolution = new THREE.Vector3();
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
                 var frameCounter = 0;
@@ -697,6 +733,16 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                     // Reset iFrame on resize for shaders that rely on first-frame setups
                     frameCounter = 0;
+                }
+                function saveScreenshot() {
+                    renderer.render(scene, camera);
+                    renderer.domElement.toBlob(function(blob){
+                        var a = document.createElement('a');
+                        var url = URL.createObjectURL(blob);
+                        a.href = url;
+                        a.download = 'shadertoy.png';
+                        a.click();
+                    }, 'image/png', 1.0);
                 }
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
