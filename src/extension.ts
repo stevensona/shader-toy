@@ -386,12 +386,22 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         const content = `
             <head>
                 <style>
-                    html, body, #canvas {
+                    html, body {
                         margin: 0;
                         padding: 0;
                         width: 100%;
                         height: 100%;
                         display: block;
+                    }
+                    #canvas {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        text-align: center;
+                        position: fixed;
+                        position: relative;
+                        z-index: -1;
                     }
                     
                     .error {
@@ -642,8 +652,31 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     ${keyboard.Update}
                 }
                 function computeSize() {
-                    resolution.x = window.innerWidth;
-                    resolution.y = window.innerHeight;
+                    var forceAspectRatio = (width, height) => {
+                        // Forced aspect ratio
+                        let forcedAspects = [${config.get<[ number, number ]>('forceAspectRatio')}];
+                        let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
+                        let aspectRatio = width / height;
+            
+                        if (forcedAspectRatio <= 0 || !isFinite(forcedAspectRatio)) {
+                            let resolution = new THREE.Vector3(width, height, 1.0);
+                            return resolution;
+                        }
+                        else if (aspectRatio < forcedAspectRatio) {
+                            let resolution = new THREE.Vector3(width, Math.floor(width / forcedAspectRatio), 1);
+                            return resolution;
+                        }
+                        else {
+                            let resolution = new THREE.Vector3(Math.floor(height * forcedAspectRatio), height, 1);
+                            return resolution;
+                        }
+                    };
+                    
+                    // Compute forced aspect ratio and align canvas
+                    resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
+                    canvas.style.left = \`\${(window.innerWidth - resolution.x) / 2}px\`;
+                    canvas.style.top = \`\${(window.innerHeight - resolution.y) / 2}px\`;
+
                     for (let buffer of buffers) {
                         if (buffer.Target) {
                             buffer.Target.setSize(resolution.x, resolution.y);
@@ -702,8 +735,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 ${keyboard.Callbacks}
             </script>
         `;
-        // console.log(shaderScripts);
-        // require("fs").writeFileSync(__dirname + "../../src/preview.html", content);
+        // console.log(content);
+        // require("fs").writeFileSync(__dirname + "/../../src/preview.html", content);
 
         return content;
     }
