@@ -161,3 +161,7 @@ Add support for a few more of the uniforms, and implements a 1 second time delay
 ### 0.1.1
 
 Initial release of shadertoy for vscode. Many uniforms not available.
+
+## Acknowledgements
+
+Screenshot feature's camera icon made by [Smashicons](https://www.flaticon.com/authors/smashicons) from www.flaticon.com.
