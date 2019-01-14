@@ -258,9 +258,9 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             var target = "null";
             var pingPongTarget = "null";
             if (buffer != buffers[buffers.length - 1])
-                target = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
+                target = "new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
             if (buffer.UsesSelf)
-                pingPongTarget = "new THREE.WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
+                pingPongTarget = "new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
 
             if (buffer.UsesKeyboard)
                 buffer.LineOffset += keyboard.LineOffset;
@@ -363,10 +363,10 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         var pauseButtonScript = "";
         if (config.get<boolean>('showPauseButton')) {
             pauseButtonScript = `
-            <label class="button-container">
+                <label class="button-container">
                 <input id="pause-button" type="checkbox">
                 <span class="pause-play"></span>
-            </div>`;
+            `;
         }
 
         var pauseWholeScript = "";
@@ -386,16 +386,30 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
             }`;
         }
 
+        var screenshotButtonScript = "";
+        if (config.get<boolean>('showScreenshotButton')) {
+            screenshotButtonScript = `<span id="screenshot"></span>`;
+        }
+
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const content = `
             <head>
                 <style>
-                    html, body, #canvas {
+                    html, body {
                         margin: 0;
                         padding: 0;
                         width: 100%;
                         height: 100%;
                         display: block;
+                    }
+                    #canvas {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        text-align: center;
+                        position: fixed;
+                        position: relative;
                     }
                     
                     .error {
@@ -433,6 +447,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         width: 100%;
                         height: 80px;
                         margin: auto;
+                        z-index: 1;
                     }
                     /* Hide the browser's default checkbox */
                     .button-container input {
@@ -457,6 +472,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         background-repeat: no-repeat;
                         background-position: center;
                         background-color: rgba(128, 128, 128, 0.5);
+                        z-index: 1;
                     }
                     .button-container:hover input ~ .pause-play {
                         background-color: lightgray;
@@ -473,6 +489,30 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         background-position: center;
                         background-color: rgba(128, 128, 128, 0.5);
                     }
+                    
+                    /* Custom screenshot button */
+                    #screenshot {
+                        position: absolute;
+                        border: none;
+                        right: 0px;
+                        padding: 26px;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 26px;
+                        border-radius: 8px;
+                        margin: 8px;
+                        transform: translateX(0%);
+                        background: url("file://${this.getResourcePath('screen.png')}");
+                        background-size: 26px;
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        background-color: rgba(128, 128, 128, 0.5);
+                        z-index: 1;
+                    }
+                    #screenshot:hover {
+                        background-color: lightgray;
+                        transition-duration: 0.1s;
+                    }
                 </style>
             </head>
             <body>
@@ -480,6 +520,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 <div id="container">
                     ${pauseButtonScript}
                 </div>
+                ${screenshotButtonScript}
             </body>
             <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
             <script src="file://${this.getResourcePath('three.min.js')}"></script>
@@ -523,6 +564,13 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                             pausedTime += clock.getDelta();
                     };
                 }
+                
+                {
+                    let screenshotButton = document.getElementById("screenshot");
+                    if (screenshotButton) {
+                        screenshotButton.addEventListener('click', saveScreenshot);
+                    }
+                }
 
                 var canvas = document.getElementById('canvas');
                 var gl = canvas.getContext('webgl2');
@@ -534,8 +582,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 if (supportsFloatFramebuffer) framebufferType = THREE.FloatType;
                 else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
 
-                var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl });
-                var resolution = new THREE.Vector3(canvas.clientWidth, canvas.clientHeight, 1.0);
+                var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl, preserveDrawingBuffer: true });
+                var resolution = new THREE.Vector3();
                 var mouse = new THREE.Vector4(0, 0, 0, 0);
                 var normalizedMouse = new THREE.Vector2(0, 0);
                 var frameCounter = 0;
@@ -591,6 +639,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }
                 currentShader = {};
 
+                computeSize();
                 render();
 
                 function addLineNumbers( string ) {
@@ -616,31 +665,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 function render() {
                     requestAnimationFrame(render);
                     ${pauseWholeScript}
-            
-                    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
-                        resolution.x = canvas.clientWidth;
-                        resolution.y = canvas.clientHeight;
-                        for (let buffer of buffers) {
-                            if (buffer.Target) {
-                                buffer.Target.setSize(resolution.x, resolution.y);
-                            }
-                            if (buffer.PingPongTarget) {
-                                buffer.PingPongTarget.setSize(resolution.x, resolution.y);
-                            }
-                        }
-                        renderer.setSize(resolution.x, resolution.y, false);
-                        
-                        // Update Camera and Mesh
-                        quad.geometry = new THREE.PlaneGeometry(resolution.x, resolution.y);
-                        camera.left = -resolution.x / 2.0;
-                        camera.right = resolution.x / 2.0;
-                        camera.top = resolution.y / 2.0;
-                        camera.bottom = -resolution.y / 2.0;
-                        camera.updateProjectionMatrix();
-
-                        // Reset iFrame on resize for shaders that rely on first-frame setups
-                        frameCounter = 0;
-                    }
                     
                     frameCounter++;
                     ${advanceTimeScript}
@@ -673,6 +697,63 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     }
 
                     ${keyboard.Update}
+                }
+                function computeSize() {
+                    var forceAspectRatio = (width, height) => {
+                        // Forced aspect ratio
+                        let forcedAspects = [${config.get<[ number, number ]>('forceAspectRatio')}];
+                        let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
+                        let aspectRatio = width / height;
+            
+                        if (forcedAspectRatio <= 0 || !isFinite(forcedAspectRatio)) {
+                            let resolution = new THREE.Vector3(width, height, 1.0);
+                            return resolution;
+                        }
+                        else if (aspectRatio < forcedAspectRatio) {
+                            let resolution = new THREE.Vector3(width, Math.floor(width / forcedAspectRatio), 1);
+                            return resolution;
+                        }
+                        else {
+                            let resolution = new THREE.Vector3(Math.floor(height * forcedAspectRatio), height, 1);
+                            return resolution;
+                        }
+                    };
+                    
+                    // Compute forced aspect ratio and align canvas
+                    resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
+                    canvas.style.left = \`\${(window.innerWidth - resolution.x) / 2}px\`;
+                    canvas.style.top = \`\${(window.innerHeight - resolution.y) / 2}px\`;
+
+                    for (let buffer of buffers) {
+                        if (buffer.Target) {
+                            buffer.Target.setSize(resolution.x, resolution.y);
+                        }
+                        if (buffer.PingPongTarget) {
+                            buffer.PingPongTarget.setSize(resolution.x, resolution.y);
+                        }
+                    }
+                    renderer.setSize(resolution.x, resolution.y, false);
+                    
+                    // Update Camera and Mesh
+                    quad.geometry = new THREE.PlaneGeometry(resolution.x, resolution.y);
+                    camera.left = -resolution.x / 2.0;
+                    camera.right = resolution.x / 2.0;
+                    camera.top = resolution.y / 2.0;
+                    camera.bottom = -resolution.y / 2.0;
+                    camera.updateProjectionMatrix();
+
+                    // Reset iFrame on resize for shaders that rely on first-frame setups
+                    frameCounter = 0;
+                }
+                function saveScreenshot() {
+                    renderer.render(scene, camera);
+                    renderer.domElement.toBlob(function(blob){
+                        var a = document.createElement('a');
+                        var url = URL.createObjectURL(blob);
+                        a.href = url;
+                        a.download = 'shadertoy.png';
+                        a.click();
+                    }, 'image/png', 1.0);
                 }
                 let dragging = false;
                 function updateMouse(clientX, clientY) {
@@ -710,12 +791,15 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                     dragging = false;
                 }, false);
+                window.addEventListener('resize', function() {
+                    computeSize();
+                });
 
                 ${keyboard.Callbacks}
             </script>
         `;
-        // console.log(shaderScripts);
-        // require("fs").writeFileSync(__dirname + "../../src/preview.html", content);
+        // console.log(content);
+        // require("fs").writeFileSync(__dirname + "/../../src/preview.html", content);
 
         return content;
     }

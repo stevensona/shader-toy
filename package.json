@@ -24,6 +24,11 @@
     "contributes": {
         "configuration": {
             "properties": {
+                "shader-toy.forceAspectRatio": {
+                    "type": [ "number", "number" ],
+                    "default": [0, 0],
+                    "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
+                },
                 "shader-toy.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,
@@ -38,6 +43,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Reload OpenGL viewport when editor changes."
+                },
+                "shader-toy.showScreenshotButton": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Shows a screenshot button in the OpenGL viewport which allows to save the current frame as a png file."
                 },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",

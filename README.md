@@ -95,6 +95,10 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.7.9
+* Added setting to enforce aspect ratio, this has to be entered manually into users settings.json,
+* added setting to enable a screenshot button to save the current frame as a png, enabled by default.
+
 ### 0.7.6
 * Added experimental support for keyboard input.
 
