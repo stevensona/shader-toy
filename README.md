@@ -8,7 +8,7 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iTimeDelta```, ```iFrame```, ```iMouse```, and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by inserting code of the following form at the top of your shader
+Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iTimeDelta```, ```iFrame```, ```iMouse```, ```iMouseButton``` and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by inserting code of the following form at the top of your shader
 ```
 #iChannel0 file://./duck.png
 #iChannel1 https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg
@@ -94,6 +94,10 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.7.10
+* Fixed behaviour of iMouse to resemble shaderoty.com as close as possible,
+* added iMouseButton uniform which holds left mousebutton in x and right mousebutton in y, 0 being up and 1 being down.
 
 ### 0.7.9
 * Added setting to enforce aspect ratio, this has to be entered manually into users settings.json,
