@@ -101,6 +101,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         uniform float       iChannelTime[4];
         uniform vec3        iChannelResolution[4];
         uniform vec4        iMouse;
+        uniform vec4        iMouseButton;
         uniform sampler2D   iChannel0;
         uniform sampler2D   iChannel1;
         uniform sampler2D   iChannel2;
@@ -285,6 +286,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         iTimeDelta: { type: "f", value: 0.0 },
                         iFrame: { type: "i", value: 0 },
                         iMouse: { type: "v4", value: mouse },
+                        iMouseButton: { type: "v2", value: mouseButton },
 
                         resolution: { type: "v2", value: resolution },
                         time: { type: "f", value: 0.0 },
@@ -584,7 +586,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
                 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl, preserveDrawingBuffer: true });
                 var resolution = new THREE.Vector3();
-                var mouse = new THREE.Vector4(0, 0, 0, 0);
+                var mouse = new THREE.Vector4(-1, -1, -1, -1);
+                var mouseButton = new THREE.Vector4(0, 0, 0, 0);
                 var normalizedMouse = new THREE.Vector2(0, 0);
                 var frameCounter = 0;
 
@@ -676,6 +679,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;
+                        buffer.Shader.uniforms['iMouseButton'].value = mouseButton;
 
                         buffer.Shader.uniforms['resolution'].value = resolution;
                         buffer.Shader.uniforms['time'].value = time;
@@ -761,7 +765,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     var mouseX = clientX - rect.left;
                     var mouseY = resolution.y - clientY - rect.top;
 
-                    if (mouse.z + mouse.w != 0) {
+                    if (mouseButton.x + mouseButton.y != 0) {
                         mouse.x = mouseX;
                         mouse.y = mouseY;
                     }
@@ -774,22 +778,26 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 }, false);
                 canvas.addEventListener('mousedown', function(evt) {
                     if (evt.button == 0)
-                        mouse.z = 1;
+                        mouseButton.x = 1;
                     if (evt.button == 2)
-                        mouse.w = 1;
+                        mouseButton.y = 1;
 
                     if (!dragging) {
                         updateMouse(evt.clientX, evt.clientY);
+                        mouse.z = mouse.x;
+                        mouse.w = mouse.y;
                         dragging = true
                     }
                 }, false);
                 canvas.addEventListener('mouseup', function(evt) {
                     if (evt.button == 0)
-                        mouse.z = 0;
+                        mouseButton.x = 0;
                     if (evt.button == 2)
-                        mouse.w = 0;
+                        mouseButton.y = 0;
 
                     dragging = false;
+                    mouse.z = -mouse.z;
+                    mouse.w = -mouse.w;
                 }, false);
                 window.addEventListener('resize', function() {
                     computeSize();
@@ -848,7 +856,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
 
         const config = vscode.workspace.getConfiguration('shader-toy');
 
-        var line_offset = 124;
+        var line_offset = 125;
         var textures = [];
         let includeName = '';
 
