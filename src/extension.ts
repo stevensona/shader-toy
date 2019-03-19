@@ -2,55 +2,75 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ExtensionContext, TextDocumentContentProvider, EventEmitter, Event, Uri, ViewColumn } from 'vscode';
 
-export function activate(context: ExtensionContext) {
-    let previewUri = Uri.parse('glsl-preview://authority/glsl-preview');
-    let provider = new GLSLDocumentContentProvider(context);
-    let registration = vscode.workspace.registerTextDocumentContentProvider('glsl-preview', provider);
+export function activate(context: vscode.ExtensionContext) {
+    let webviewPanel: vscode.WebviewPanel | undefined = undefined;
     const config = vscode.workspace.getConfiguration('shader-toy');
     let reloadDelay: number = config.get<number>('reloadOnEditTextDelay') || 1.0;
     let timeout: NodeJS.Timeout;
-    let editor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
+    let activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
+
+    const updateWebview = () => {
+        if (webviewPanel !== undefined && activeEditor !== undefined) {
+            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor).generateWebviewConent();
+        }
+        else if (webviewPanel !== undefined) {
+            vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
+        }
+    };
 
     if (config.get<boolean>('reloadOnEditText')) {
-        vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
+        vscode.workspace.onDidChangeTextDocument((changingEditor: vscode.TextDocumentChangeEvent) => {
             clearTimeout(timeout);
-            timeout = setTimeout( function() { 
-                if(vscode.window.activeTextEditor && e && e.document === vscode.window.activeTextEditor.document) {
-                    provider.update(previewUri);
+            timeout = setTimeout(() => { 
+                if (changingEditor !== undefined && activeEditor !== undefined && changingEditor.document === activeEditor.document) {
+                    updateWebview();
                 }
             }, reloadDelay * 1000);
         });
     }
     if (config.get<boolean>('reloadOnChangeEditor')) {
-        vscode.window.onDidChangeActiveTextEditor((e: vscode.TextEditor | undefined) => {
-            if(e && e.document === e.document) {
-                provider.update(previewUri);
-                editor = e;
+        vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
+            if (swappedEditor !== undefined) {
+                activeEditor = swappedEditor;
+                updateWebview();
             }
         });
     }
 
     let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
-        return vscode.commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Two, 'GLSL Preview')
-        .then((success) => {}, (reason) => { vscode.window.showErrorMessage(reason); });
+        if (webviewPanel) {
+            webviewPanel.dispose();
+        }
+        
+        let options: vscode.WebviewOptions = {
+            enableScripts: true,
+            localResourceRoots: undefined
+        };
+        webviewPanel = vscode.window.createWebviewPanel(
+            'shadertoy',
+            'GLSL Preview',
+            vscode.ViewColumn.Two,
+            options
+        );
+
+        updateWebview();
     });
     let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number, file: string) => {
         let highlightLine = (document: vscode.TextDocument, line: number) => {
             let range = document.lineAt(line - 1).range;
             vscode.window.showTextDocument(document, vscode.ViewColumn.One, true);
-            if (editor) {
-                editor.selection = new vscode.Selection(range.start, range.end);
-                editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+            if (activeEditor) {
+                activeEditor.selection = new vscode.Selection(range.start, range.end);
+                activeEditor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
             }
         };
 
-        if (editor) {
-            let currentFile = editor.document.fileName;
+        if (activeEditor) {
+            let currentFile = activeEditor.document.fileName;
             currentFile = currentFile.replace(/\\/g, '/');
             if (currentFile === file) {
-                highlightLine(editor.document, line);
+                highlightLine(activeEditor.document, line);
                 return;
             }
         }
@@ -63,7 +83,7 @@ export function activate(context: ExtensionContext) {
         });
     });
     
-    context.subscriptions.push(previewCommand, registration);
+    context.subscriptions.push(previewCommand);
     context.subscriptions.push(errorCommand);
 }
 export function deactivate() {
@@ -101,29 +121,24 @@ type IncludeDefinition = {
     LineCount: number
 };
 
-class GLSLDocumentContentProvider implements TextDocumentContentProvider {
-    private _onDidChange = new EventEmitter<Uri>();
-    private _context: ExtensionContext;
+class WebviewContentProvider {
+    private context: vscode.ExtensionContext;
+    private editor: vscode.TextEditor;
 
-    constructor(context: ExtensionContext) {
-        this._context = context;
+    constructor(context: vscode.ExtensionContext, editor: vscode.TextEditor) {
+        this.context = context;
+        this.editor = editor;
     }
 
     private getResourcePath(mediaFile: string) : string {
-        let resourcePath = this._context.asAbsolutePath(path.join('resources', mediaFile));
+        let resourcePath = this.context.asAbsolutePath(path.join('resources', mediaFile));
         resourcePath = resourcePath.replace(/\\/g, '/');
-        return resourcePath;
+        return "vscode-resource:/" + resourcePath;
     }
     
-    public provideTextDocumentContent(uri: Uri): string {
-        let activeEditor = vscode.window.activeTextEditor;
-        if (!activeEditor) {
-            vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
-            return "";
-        }
-        
-        let shader = activeEditor.document.getText();
-        let shaderName = activeEditor.document.fileName;
+    public generateWebviewConent(): string {
+        let shader = this.editor.document.getText();
+        let shaderName = this.editor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
 
         let shaderPreamble = `
@@ -367,7 +382,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
                 else if (texturePath !== undefined) {
-                    value = `texLoader.load('file://${texturePath}', ${textureLoadScript})`;
+                    value = `texLoader.load('vscode-resource:/${texturePath}', ${textureLoadScript})`;
                 }
                 else {
                     value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
@@ -388,7 +403,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         let frameTimeScript = "";
         if (config.get<boolean>('printShaderFrameTime')) {
             frameTimeScript = `
-            <script src="file://${this.getResourcePath('stats.min.js')}" onload="
+            <script src="${this.getResourcePath('stats.min.js')}" onload="
                 let stats = new Stats();
                 stats.showPanel(1);
                 document.body.appendChild(stats.dom);
@@ -506,7 +521,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         border-radius: 8px;
                         margin: auto;
                         transform: translateX(-50%);
-                        background: url("file://${this.getResourcePath('pause.png')}");
+                        background: url("${this.getResourcePath('pause.png')}");
                         background-size: 40px;
                         background-repeat: no-repeat;
                         background-position: center;
@@ -522,7 +537,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         transition-duration: 0.2s;
                     }
                     .button-container input:checked ~ .pause-play {
-                        background: url("file://${this.getResourcePath('play.png')}");
+                        background: url("${this.getResourcePath('play.png')}");
                         background-size: 40px;
                         background-repeat: no-repeat;
                         background-position: center;
@@ -541,7 +556,7 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                         border-radius: 8px;
                         margin: 8px;
                         transform: translateX(0%);
-                        background: url("file://${this.getResourcePath('screen.png')}");
+                        background: url("${this.getResourcePath('screen.png')}");
                         background-size: 26px;
                         background-repeat: no-repeat;
                         background-position: center;
@@ -561,8 +576,8 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
                 </div>
                 ${screenshotButtonScript}
             </body>
-            <script src="file://${this.getResourcePath('jquery.min.js')}"></script>
-            <script src="file://${this.getResourcePath('three.min.js')}"></script>
+            <script src="${this.getResourcePath('jquery.min.js')}"></script>
+            <script src="${this.getResourcePath('three.min.js')}"></script>
             ${frameTimeScript}
             <canvas id="canvas"></canvas>
 
@@ -847,14 +862,6 @@ class GLSLDocumentContentProvider implements TextDocumentContentProvider {
         // require("fs").writeFileSync(__dirname + "/../../src/preview.html", content);
 
         return content;
-    }
-
-    get onDidChange(): Event<Uri> {
-        return this._onDidChange.event;
-    }
-
-    public update(uri: Uri) {
-        this._onDidChange.fire(uri);
     }
 
     readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
