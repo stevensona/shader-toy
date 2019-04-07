@@ -385,7 +385,9 @@ class WebviewContentProvider {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
                 else if (texturePath !== undefined) {
-                    value = `texLoader.load('${this.getResourcePath(texturePath)}', ${textureLoadScript})`;
+                    const fullPath = vscode.Uri.file(texturePath);
+                    const resourcePath = fullPath.with({ scheme: 'vscode-resource' });
+                    value = `texLoader.load('${resourcePath.toString()}', ${textureLoadScript})`;
                 }
                 else {
                     value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
