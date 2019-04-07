@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     if (config.get<boolean>('reloadOnChangeEditor')) {
         vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
-            if (swappedEditor !== undefined) {
+            if (swappedEditor !== undefined && swappedEditor.document.lineCount > 0) {
                 activeEditor = swappedEditor;
                 updateWebview();
             }
@@ -131,9 +131,12 @@ class WebviewContentProvider {
     }
 
     private getResourcePath(mediaFile: string) : string {
-        let resourcePath = this.context.asAbsolutePath(path.join('resources', mediaFile));
-        resourcePath = resourcePath.replace(/\\/g, '/');
-        return "vscode-resource:/" + resourcePath;
+        const fullPath = vscode.Uri.file(
+            path.join(this.context.extensionPath, 'resources', mediaFile)
+        );
+        const resourcePath = fullPath.with({ scheme: 'vscode-resource' });
+        const pathAsString = resourcePath.toString();
+        return pathAsString;
     }
     
     public generateWebviewConent(): string {
@@ -382,7 +385,7 @@ class WebviewContentProvider {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
                 else if (texturePath !== undefined) {
-                    value = `texLoader.load('vscode-resource:/${texturePath}', ${textureLoadScript})`;
+                    value = `texLoader.load('${this.getResourcePath(texturePath)}', ${textureLoadScript})`;
                 }
                 else {
                     value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
