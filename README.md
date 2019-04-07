@@ -95,6 +95,13 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.8.1
+* Fixed issue with path generation on Linux and MacOS resulting in a broken experience,
+* fixed issue where editor changes would trigger a shader reload even if they were not text editors.
+
+### 0.8.0
+* Refactored a lot of code to use Visual Studio Code's _WebView API_ instead of its deprecated _PreviewHtml_ command.
+
 ### 0.7.10
 * Fixed behaviour of iMouse to resemble shaderoty.com as close as possible,
 * added iMouseButton uniform which holds left mousebutton in x and right mousebutton in y, 0 being up and 1 being down.
