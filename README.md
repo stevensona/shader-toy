@@ -95,7 +95,10 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
-### 0.8.1
+### 0.8.3
+* Hotfix for texture loading bug introduced in the last version.
+
+### 0.8.2
 * Fixed issue with path generation on Linux and MacOS resulting in a broken experience,
 * fixed issue where editor changes would trigger a shader reload even if they were not text editors.
 

@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     if (config.get<boolean>('reloadOnChangeEditor')) {
         vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
-            if (swappedEditor !== undefined && swappedEditor.document.lineCount > 0) {
+            if (swappedEditor !== undefined && swappedEditor.document.getText() !== "") {
                 activeEditor = swappedEditor;
                 updateWebview();
             }
@@ -385,7 +385,9 @@ class WebviewContentProvider {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
                 else if (texturePath !== undefined) {
-                    value = `texLoader.load('${this.getResourcePath(texturePath)}', ${textureLoadScript})`;
+                    const fullPath = vscode.Uri.file(texturePath);
+                    const resourcePath = fullPath.with({ scheme: 'vscode-resource' });
+                    value = `texLoader.load('${resourcePath.toString()}', ${textureLoadScript})`;
                 }
                 else {
                     value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
