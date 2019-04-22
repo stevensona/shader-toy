@@ -43,10 +43,15 @@ export function activate(context: vscode.ExtensionContext) {
 
     registerCallbacks();
 
-    let startingRenderTime: number = 0;
+    let startingData = {
+        time: 0,
+        mouse: {x: -1, y: -1, z: -1, w: -1 },
+        normalizedMouse: {x: 0, y: 0 }
+    };
     const updateWebview = () => {
         if (webviewPanel !== undefined && activeEditor !== undefined) {
-            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor).generateWebviewConent(startingRenderTime);
+            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor)
+                .generateWebviewConent(startingData.time, startingData.mouse, startingData.normalizedMouse);
         }
         else if (webviewPanel !== undefined) {
             vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
@@ -82,7 +87,11 @@ export function activate(context: vscode.ExtensionContext) {
             (message: any) => {
               switch (message.command) {
                 case 'updateTime':
-                    startingRenderTime = message.time;
+                    startingData.time = message.time;
+                    return;
+                case 'updateMouse':
+                    startingData.mouse = message.mouse;
+                    startingData.normalizedMouse = message.normalizedMouse;
                     return;
                 }
             },
@@ -179,7 +188,8 @@ class WebviewContentProvider {
         return pathAsString;
     }
     
-    public generateWebviewConent(startingTime: number): string {
+    // TODO: Refactor to store mouse types
+    public generateWebviewConent(startingTime: number, startingMouse: {x: number, y: number, z: number, w: number }, startingNormalizedMouse: {x: number, y: number }): string {
         let shader = this.editor.document.getText();
         let shaderName = this.editor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
@@ -770,9 +780,9 @@ class WebviewContentProvider {
 
                 let renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl, preserveDrawingBuffer: true });
                 let resolution = new THREE.Vector3();
-                let mouse = new THREE.Vector4(-1, -1, -1, -1);
+                let mouse = new THREE.Vector4(${startingMouse.x}, ${startingMouse.y}, ${startingMouse.z}, ${startingMouse.w});
                 let mouseButton = new THREE.Vector4(0, 0, 0, 0);
-                let normalizedMouse = new THREE.Vector2(0, 0);
+                let normalizedMouse = new THREE.Vector2(${startingNormalizedMouse.x}, ${startingNormalizedMouse.y});
                 let frameCounter = 0;
 
                 let channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
@@ -946,8 +956,23 @@ class WebviewContentProvider {
                         a.click();
                     }, 'image/png', 1.0);
                 }
+                function updateMouse() {
+                    vscode.postMessage({
+                        command: 'updateMouse',
+                        mouse: {
+                            x: mouse.x,
+                            y: mouse.y,
+                            z: mouse.z,
+                            w: mouse.w
+                        },
+                        normalizedMouse: {
+                            x: normalizedMouse.x,
+                            y: normalizedMouse.y
+                        }
+                    });
+                }
                 let dragging = false;
-                function updateMouse(clientX, clientY) {
+                function updateNormalizedMouseCoordinates(clientX, clientY) {
                     let rect = canvas.getBoundingClientRect();
                     let mouseX = clientX - rect.left;
                     let mouseY = resolution.y - clientY - rect.top;
@@ -961,7 +986,8 @@ class WebviewContentProvider {
                     normalizedMouse.y = mouseY / resolution.y;
                 }
                 canvas.addEventListener('mousemove', function(evt) {
-                    updateMouse(evt.clientX, evt.clientY);
+                    updateNormalizedMouseCoordinates(evt.clientX, evt.clientY);
+                    updateMouse();
                 }, false);
                 canvas.addEventListener('mousedown', function(evt) {
                     if (evt.button == 0)
@@ -970,11 +996,13 @@ class WebviewContentProvider {
                         mouseButton.y = 1;
 
                     if (!dragging) {
-                        updateMouse(evt.clientX, evt.clientY);
+                        updateNormalizedMouseCoordinates(evt.clientX, evt.clientY);
                         mouse.z = mouse.x;
                         mouse.w = mouse.y;
                         dragging = true
                     }
+
+                    updateMouse();
                 }, false);
                 canvas.addEventListener('mouseup', function(evt) {
                     if (evt.button == 0)
@@ -985,6 +1013,8 @@ class WebviewContentProvider {
                     dragging = false;
                     mouse.z = -mouse.z;
                     mouse.w = -mouse.w;
+
+                    updateMouse();
                 }, false);
                 window.addEventListener('resize', function() {
                     computeSize();
