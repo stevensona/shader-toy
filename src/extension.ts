@@ -46,12 +46,13 @@ export function activate(context: vscode.ExtensionContext) {
     let startingData = {
         time: 0,
         mouse: {x: -1, y: -1, z: -1, w: -1 },
-        normalizedMouse: {x: 0, y: 0 }
+        normalizedMouse: {x: 0, y: 0 },
+        keys: <number[]>[]
     };
     const updateWebview = () => {
         if (webviewPanel !== undefined && activeEditor !== undefined) {
             webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor)
-                .generateWebviewConent(startingData.time, startingData.mouse, startingData.normalizedMouse);
+                .generateWebviewConent(startingData.time, startingData.mouse, startingData.normalizedMouse, startingData.keys);
         }
         else if (webviewPanel !== undefined) {
             vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
@@ -92,6 +93,9 @@ export function activate(context: vscode.ExtensionContext) {
                 case 'updateMouse':
                     startingData.mouse = message.mouse;
                     startingData.normalizedMouse = message.normalizedMouse;
+                    return;
+                case 'updateKeyboard':
+                    startingData.keys = message.keys;
                     return;
                 }
             },
@@ -189,7 +193,9 @@ class WebviewContentProvider {
     }
     
     // TODO: Refactor to store mouse types
-    public generateWebviewConent(startingTime: number, startingMouse: {x: number, y: number, z: number, w: number }, startingNormalizedMouse: {x: number, y: number }): string {
+    public generateWebviewConent(startingTime: number, startingMouse: {x: number, y: number, z: number, w: number },
+        startingNormalizedMouse: {x: number, y: number }, startingKeys: number[]): string {
+
         let shader = this.editor.document.getText();
         let shaderName = this.editor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
@@ -276,15 +282,30 @@ class WebviewContentProvider {
             keyBoardTexture.magFilter = THREE.NearestFilter;
             keyBoardTexture.needsUpdate = true;
             let pressedKeys = [];
-            let releasedKeys = [];`;
+            let releasedKeys = [];
+            let toggledKeys = [${startingKeys}];
+            for (let key of toggledKeys) {
+                keyBoardData[key + 512] = 255; // Toggled
+            }
+            `;
 
             keyboardScripts.Update = `
             // Update keyboard data
             if (pressedKeys.length > 0 || releasedKeys.length > 0) {
-                for (let key of pressedKeys)
+                for (let key of pressedKeys) {
                     keyBoardData[key + 256] = 0;
-                for (let key of releasedKeys)
+                }
+                for (let key of releasedKeys) {
                     keyBoardData[key + 768] = 0;
+                }
+
+                if (pressedKeys.length > 0) {
+                    vscode.postMessage({
+                        command: 'updateKeyboard',
+                        keys: toggledKeys
+                    });
+                }
+                
                 keyBoardTexture.needsUpdate = true;
                 pressedKeys = [];
                 releasedKeys = [];
@@ -299,6 +320,16 @@ class WebviewContentProvider {
                         keyBoardData[i] = 255; // Held
                         keyBoardData[i + 256] = 255; // Pressed
                         keyBoardData[i + 512] = (keyBoardData[i + 512] == 255 ? 0 : 255); // Toggled
+
+                        if (keyBoardData[i + 512] > 0) {
+                            toggledKeys.push(i);
+                        }
+                        else {
+                            toggledKeys = toggledKeys.filter(function(value, index, arr){
+                                return value != i;
+                            });
+                        }
+
                         pressedKeys.push(i);
                         keyBoardTexture.needsUpdate = true;
                     }
