@@ -97,6 +97,11 @@ type TextureDefinition = {
     RemoteTexture?: string,
     Self?: boolean
 };
+type AudioDefinition = {
+    Channel: number,
+    LocalPath?: string,
+    RemotePath?: string,
+};
 type BufferDependency = {
     Index: number,
     Channel: number
@@ -105,7 +110,8 @@ type BufferDefinition = {
     Name: string,
     File: string,
     Code: string,
-    Textures: TextureDefinition[],
+    TextureInputs: TextureDefinition[],
+    AudioInputs: AudioDefinition[],
     UsesSelf: boolean,
     SelfChannel: number,
     Dependents: BufferDependency[],
@@ -188,11 +194,12 @@ class WebviewContentProvider {
                     Name: "final-blit",
                     File: "final-blit",
                     Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
-                    Textures: [{
+                    TextureInputs: [{
                         Channel: 0,
                         Buffer: finalBuffer.Name,
                         BufferIndex: finalBufferIndex,
                     }],
+                    AudioInputs: [],
                     UsesSelf: false,
                     SelfChannel: -1,
                     Dependents: [],
@@ -209,7 +216,7 @@ class WebviewContentProvider {
             }
         }
 
-        let keyboard = {
+        let keyboardScripts = {
             Init: "",
             Update: "",
             Callbacks: "",
@@ -217,7 +224,7 @@ class WebviewContentProvider {
             LineOffset: 0
         };
         if (useKeyboard) {
-            keyboard.Init = `
+            keyboardScripts.Init = `
             const numKeys = 256;
             const numStates = 4;
             let keyBoardData = new Uint8Array(numKeys * numStates);
@@ -227,7 +234,7 @@ class WebviewContentProvider {
             let pressedKeys = [];
             let releasedKeys = [];`;
 
-            keyboard.Update = `
+            keyboardScripts.Update = `
             // Update keyboard data
             if (pressedKeys.length > 0 || releasedKeys.length > 0) {
                 for (let key of pressedKeys)
@@ -239,7 +246,7 @@ class WebviewContentProvider {
                 releasedKeys = [];
             }`;
 
-            keyboard.Callbacks = `
+            keyboardScripts.Callbacks = `
             document.addEventListener('keydown', function(evt) {
                 const i = evt.keyCode;
                 if (i >= 0 && i <= 255) {
@@ -263,7 +270,7 @@ class WebviewContentProvider {
                 }
             });`;
             
-            keyboard.Shader = `
+            keyboardScripts.Shader = `
             const int Key_Backspace = 8, Key_Tab = 9, Key_Enter = 13, Key_Shift = 16, Key_Ctrl = 17, Key_Alt = 18, Key_Pause = 19, Key_Caps = 20, Key_Escape = 27, Key_PageUp = 33, Key_PageDown = 34, Key_End = 35,
                 Key_Home = 36, Key_LeftArrow = 37, Key_UpArrow = 38, Key_RightArrow = 39, Key_DownArrow = 40, Key_Insert = 45, Key_Delete = 46, Key_0 = 48, Key_1 = 49, Key_2 = 50, Key_3 = 51, Key_4 = 52,
                 Key_5 = 53, Key_6 = 54, Key_7 = 55, Key_8 = 56, Key_9 = 57, Key_A = 65, Key_B = 66, Key_C = 67, Key_D = 68, Key_E = 69, Key_F = 70, Key_G = 71, Key_H = 72,
@@ -288,7 +295,7 @@ class WebviewContentProvider {
                 vec2 uv = vec2(float(key) / 255.0, 0.875);
                 return texture2D(iKeyboard, uv).r > 0.0;
             }`;
-            keyboard.LineOffset = keyboard.Shader.split(/\r\n|\n/).length - 1;
+            keyboardScripts.LineOffset = keyboardScripts.Shader.split(/\r\n|\n/).length - 1;
         }
 
         // Write all the shaders
@@ -299,7 +306,7 @@ class WebviewContentProvider {
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
                 ${shaderPreamble}
-                ${keyboard.Shader}
+                ${keyboardScripts.Shader}
                 ${include ? include.Code : ''}
                 ${buffer.Code}
             </script>`;
@@ -315,7 +322,7 @@ class WebviewContentProvider {
             }
 
             if (buffer.UsesKeyboard) {
-                buffer.LineOffset += keyboard.LineOffset;
+                buffer.LineOffset += keyboardScripts.LineOffset;
             }
 
             buffersScripts += `
@@ -371,28 +378,88 @@ class WebviewContentProvider {
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
         }`;
+
+        let audioScripts = {
+            Init: "",
+            Elements: "",
+            Pause: "",
+            Resume: ""
+        };
+
         for (let i in buffers) {
             const buffer = buffers[i];
-            const textures =  buffer.Textures;
+            const textures =  buffer.TextureInputs;
             for (let texture of textures) {
                 const channel = texture.Channel;
-                const bufferIndex = texture.BufferIndex;
-                const texturePath = texture.LocalTexture;
-                const textureUrl = texture.RemoteTexture;
 
-                let value: string;
+                const bufferIndex = texture.BufferIndex;
+                const localPath = texture.LocalTexture;
+                const remotePath = texture.RemoteTexture;
+
+                let value: string | undefined;
                 if (bufferIndex !== undefined) {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
-                else if (texturePath !== undefined) {
-                    const fullPath = vscode.Uri.file(texturePath);
-                    const resourcePath = fullPath.with({ scheme: 'vscode-resource' });
-                    value = `texLoader.load('${resourcePath.toString()}', ${textureLoadScript})`;
+                else if (localPath !== undefined) {
+                    const resolvedPath = vscode.Uri.file(localPath).with({ scheme: 'vscode-resource' });
+                    value = `texLoader.load('${resolvedPath.toString()}', ${textureLoadScript})`;
                 }
-                else {
-                    value = `texLoader.load('https://${textureUrl}', ${textureLoadScript})`;
+                else if (remotePath !== undefined) {
+                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript})`;
                 }
-                textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
+
+                if (value !== undefined) {
+                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
+                }
+            }
+
+            const audios =  buffer.AudioInputs;
+            for (let j in audios) {
+                const audio = audios[j];
+
+                const channel = audio.Channel;
+                
+                const localPath = audio.LocalPath;
+                const remotePath = audio.RemotePath;
+
+                if (localPath !== undefined) {
+                    const resolvedPath = vscode.Uri.file(localPath).with({ scheme: 'vscode-resource' });
+                    audioScripts.Elements += `<audio src="${resolvedPath}" crossOrigin="anonymous" id=audio_${i}_${j}></audio>`;
+                }
+                else if (remotePath !== undefined) {
+                    audioScripts.Elements += `<audio src="https://${remotePath} crossOrigin="anonymous" id=audio_${i}_${j}"></audio>`;
+                }
+
+                let mediaInitialization = `
+                (() => {
+                    const audioElement = document.querySelector('audio[id=audio_${i}_${j}]');
+                    const audioElementSource = audioContext.createMediaElementSource(audioElement);
+                    audioElementSource.connect(audioContext.destination);
+                    return {
+                        Element: audioElement,
+                        Source: audioElementSource
+                    };
+                })()
+                `;
+                audioScripts.Init += `
+                audios.push({
+                    Channel: ${channel},
+                    Media: ${mediaInitialization}
+                })
+                `;
+                audioScripts.Pause = `
+                for (let audio of audios) {
+                    audio.Media.Element.pause();
+                }
+                `;
+                audioScripts.Resume = `
+                for (let audio of audios) {
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+                    audio.Media.Element.play();
+                }
+                `;
             }
 
             if (buffer.UsesSelf) {
@@ -403,6 +470,17 @@ class WebviewContentProvider {
                 useKeyboard = true;
                 textureScripts += `buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
             }
+        }
+
+        if (audioScripts.Elements !== "") {
+            audioScripts.Init = `
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioContext = new AudioContext();
+            
+            const fileReader = new FileReader();
+
+            let audios = [];
+            ` + audioScripts.Init;
         }
 
         let frameTimeScript = "";
@@ -584,6 +662,9 @@ class WebviewContentProvider {
             <script src="${this.getResourcePath('jquery.min.js')}"></script>
             <script src="${this.getResourcePath('three.min.js')}"></script>
             ${frameTimeScript}
+
+            ${audioScripts.Elements}
+
             <canvas id="canvas"></canvas>
 
             ${shaderScripts}
@@ -603,11 +684,11 @@ class WebviewContentProvider {
                     };
                 })();
                 // Development feature: Output warnings from third-party libraries
-                // (function(){
-                //     console.warn = function (message) {
-                //         $("#message").append(message + '<br>');
-                //     };
-                // })();
+                (function(){
+                    console.warn = function (message) {
+                        $("#message").append(message + '<br>');
+                    };
+                })();
 
                 let clock = new THREE.Clock();
                 let pausedTime = 0.0;
@@ -619,8 +700,13 @@ class WebviewContentProvider {
                 if (pauseButton) {
                     pauseButton.onclick = function(){
                         paused = pauseButton.checked;
-                        if (!paused)
+                        if (!paused) {
+                            ${audioScripts.Resume}
                             pausedTime += clock.getDelta();
+                        }
+                        else {
+                            ${audioScripts.Pause}
+                        }
                     };
                 }
                 
@@ -661,7 +747,10 @@ class WebviewContentProvider {
                     }
                 }
 
-                ${keyboard.Init}
+                ${keyboardScripts.Init}
+                
+                ${audioScripts.Init}
+                ${audioScripts.Resume}
                 
                 let texLoader = new THREE.TextureLoader();
                 ${textureScripts}
@@ -757,7 +846,7 @@ class WebviewContentProvider {
                         }
                     }
 
-                    ${keyboard.Update}
+                    ${keyboardScripts.Update}
                 }
                 function computeSize() {
                     let forceAspectRatio = (width, height) => {
@@ -860,7 +949,7 @@ class WebviewContentProvider {
                     computeSize();
                 });
 
-                ${keyboard.Callbacks}
+                ${keyboardScripts.Callbacks}
             </script>
         `;
         // console.log(content);
@@ -909,12 +998,13 @@ class WebviewContentProvider {
 
         let line_offset = 125;
         let textures: TextureDefinition[] = [];
+        let audios: AudioDefinition[] = [];
         let includeName: string | undefined;
 
         const loadDependency = (file: string, channel: number, passType: string) => {
             // Get type and name of file
             let colonPos = file.indexOf('://', 0);
-            let textureType = file.substring(0, colonPos);
+            let inputType = file.substring(0, colonPos);
 
             // Fix path to use '/' over '\\' and relative to the current working directory
             file = file.substring(colonPos + 3, file.length);
@@ -935,7 +1025,7 @@ class WebviewContentProvider {
             file = file.replace(/\\/g, '/');
             file = file.replace(/\.\//g, "");
 
-            if (passType === "include" && textureType === "glsl") {
+            if (passType === "include" && inputType === "glsl") {
                 const path = require("path");
                 const name = path.basename(file);
 
@@ -967,7 +1057,7 @@ class WebviewContentProvider {
                 // store the reference name for this include
                 includeName = name;
             }
-            else if (textureType === "buf") {
+            else if (inputType === "buf") {
                 if (file === "self") {
                     // Push self as feedback-buffer
                     textures.push({
@@ -993,19 +1083,28 @@ class WebviewContentProvider {
                     });
                 }
             }
-            else if (textureType === "file") {
+            else if (inputType === "file") {
                 // Push texture
                 textures.push({
                     Channel: channel,
                     LocalTexture: file,
                 });
             }
-            else {
+            else if (inputType === "https") {
                 textures.push({
                     Channel: channel,
                     RemoteTexture: file,
                 });
             }
+            else if (inputType === "audio") {
+                audios.push({
+                    Channel: channel,
+                    LocalPath: file
+                });
+            }
+
+            // TODO: Distinguish between texture, buffer and audio by mime or extensions
+            // Then we can use file:// or https:// for everything, allowing remote buffers
         };
 
         let usesKeyboard = false;
@@ -1144,7 +1243,8 @@ class WebviewContentProvider {
             File: name,
             Code: code,
             IncludeName: includeName,
-            Textures: textures,
+            TextureInputs: textures,
+            AudioInputs: audios,
             UsesSelf: usesSelf,
             SelfChannel: selfChannel,
             Dependents: [],
