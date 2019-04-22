@@ -10,6 +10,39 @@ export function activate(context: vscode.ExtensionContext) {
     let timeout: NodeJS.Timeout;
     let activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
 
+    let changeTextEvent: vscode.Disposable | undefined;
+    let changeEditorEvent: vscode.Disposable | undefined;
+
+    let registerCallbacks = () => {
+        if (changeTextEvent !== undefined) {
+            changeTextEvent.dispose();
+        }
+        if (changeEditorEvent !== undefined) {
+            changeEditorEvent.dispose();
+        }
+
+        if (config.get<boolean>('reloadOnEditText')) {
+            changeTextEvent = vscode.workspace.onDidChangeTextDocument((changingEditor: vscode.TextDocumentChangeEvent) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => { 
+                    if (changingEditor !== undefined && activeEditor !== undefined && changingEditor.document === activeEditor.document) {
+                        updateWebview();
+                    }
+                }, reloadDelay * 1000);
+            });
+        }
+        if (config.get<boolean>('reloadOnChangeEditor')) {
+            changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
+                if (swappedEditor !== undefined && swappedEditor.document.getText() !== "") {
+                    activeEditor = swappedEditor;
+                    updateWebview();
+                }
+            });
+        }
+    };
+
+    registerCallbacks();
+
     const updateWebview = () => {
         if (webviewPanel !== undefined && activeEditor !== undefined) {
             webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor).generateWebviewConent();
@@ -19,24 +52,12 @@ export function activate(context: vscode.ExtensionContext) {
         }
     };
 
-    if (config.get<boolean>('reloadOnEditText')) {
-        vscode.workspace.onDidChangeTextDocument((changingEditor: vscode.TextDocumentChangeEvent) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => { 
-                if (changingEditor !== undefined && activeEditor !== undefined && changingEditor.document === activeEditor.document) {
-                    updateWebview();
-                }
-            }, reloadDelay * 1000);
-        });
-    }
-    if (config.get<boolean>('reloadOnChangeEditor')) {
-        vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
-            if (swappedEditor !== undefined && swappedEditor.document.getText() !== "") {
-                activeEditor = swappedEditor;
-                updateWebview();
-            }
-        });
-    }
+    vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
+        if (e.affectsConfiguration("shader-toy")) {
+            registerCallbacks();
+            updateWebview();
+        }
+    });
 
     let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
         if (webviewPanel) {
