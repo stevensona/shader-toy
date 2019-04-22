@@ -43,9 +43,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     registerCallbacks();
 
+    let startingRenderTime: number = 0;
     const updateWebview = () => {
         if (webviewPanel !== undefined && activeEditor !== undefined) {
-            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor).generateWebviewConent();
+            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor).generateWebviewConent(startingRenderTime);
         }
         else if (webviewPanel !== undefined) {
             vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
@@ -76,6 +77,18 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         updateWebview();
+        
+        webviewPanel.webview.onDidReceiveMessage(
+            (message: any) => {
+              switch (message.command) {
+                case 'updateTime':
+                    startingRenderTime = message.time;
+                    return;
+                }
+            },
+            undefined,
+            context.subscriptions
+        );
     });
     let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number, file: string) => {
         let highlightLine = (document: vscode.TextDocument, line: number) => {
@@ -166,7 +179,7 @@ class WebviewContentProvider {
         return pathAsString;
     }
     
-    public generateWebviewConent(): string {
+    public generateWebviewConent(startingTime: number): string {
         let shader = this.editor.document.getText();
         let shaderName = this.editor.document.fileName;
         const config = vscode.workspace.getConfiguration('shader-toy');
@@ -530,7 +543,7 @@ class WebviewContentProvider {
         let pauseWholeScript = "";
         let advanceTimeScript = `
         deltaTime = clock.getDelta();
-        time = clock.getElapsedTime() - pausedTime;`;
+        time = startingTime + clock.getElapsedTime() - pausedTime;`;
         if (config.get<boolean>('pauseWholeRender')) {
             pauseWholeScript = `if (paused) return;`;
         }
@@ -538,7 +551,11 @@ class WebviewContentProvider {
             advanceTimeScript = `
             if (paused == false) {
                 deltaTime = clock.getDelta();
-                time = clock.getElapsedTime() - pausedTime;
+                time = startingTime + clock.getElapsedTime() - pausedTime;
+                vscode.postMessage({
+                    command: 'updateTime',
+                    time: time
+                });
             } else {
                 deltaTime = 0.0;
             }`;
@@ -705,16 +722,19 @@ class WebviewContentProvider {
                     };
                 })();
                 // Development feature: Output warnings from third-party libraries
-                (function(){
-                    console.warn = function (message) {
-                        $("#message").append(message + '<br>');
-                    };
-                })();
+                // (function(){
+                //     console.warn = function (message) {
+                //         $("#message").append(message + '<br>');
+                //     };
+                // })();
+
+                const vscode = acquireVsCodeApi();
 
                 let clock = new THREE.Clock();
                 let pausedTime = 0.0;
                 let deltaTime = 0.0;
-                let time = 0.0;
+                let startingTime = ${startingTime};
+                let time = startingTime;
 
                 let paused = false;
                 let pauseButton = document.getElementById('pause-button');
