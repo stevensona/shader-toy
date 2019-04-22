@@ -33,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
         if (config.get<boolean>('reloadOnChangeEditor')) {
             changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
-                if (swappedEditor !== undefined && swappedEditor.document.getText() !== "") {
+                if (swappedEditor !== undefined && swappedEditor.document.getText() !== "" && swappedEditor !== activeEditor) {
                     activeEditor = swappedEditor;
                     updateWebview();
                 }
