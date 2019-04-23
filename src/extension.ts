@@ -35,6 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
             changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
                 if (swappedEditor !== undefined && swappedEditor.document.getText() !== "" && swappedEditor !== activeEditor) {
                     activeEditor = swappedEditor;
+                    resetStartingData();
                     updateWebview();
                 }
             });
@@ -57,6 +58,14 @@ export function activate(context: vscode.ExtensionContext) {
         else if (webviewPanel !== undefined) {
             vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
         }
+    };
+    const resetStartingData = () => {
+        startingData = {
+            time: 0,
+            mouse: {x: -1, y: -1, z: -1, w: -1 },
+            normalizedMouse: {x: 0, y: 0 },
+            keys: <number[]>[]
+        };
     };
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
