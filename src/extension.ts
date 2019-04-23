@@ -5,7 +5,7 @@ import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
     let webviewPanel: vscode.WebviewPanel | undefined = undefined;
-    const config = vscode.workspace.getConfiguration('shader-toy');
+    let config = vscode.workspace.getConfiguration('shader-toy');
     let reloadDelay: number = config.get<number>('reloadOnEditTextDelay') || 1.0;
     let timeout: NodeJS.Timeout;
     let activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
@@ -34,8 +34,10 @@ export function activate(context: vscode.ExtensionContext) {
         if (config.get<boolean>('reloadOnChangeEditor')) {
             changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
                 if (swappedEditor !== undefined && swappedEditor.document.getText() !== "" && swappedEditor !== activeEditor) {
+                    if (config.get<boolean>('resetStateOnChangeEditor')) {
+                        resetStartingData();
+                    }
                     activeEditor = swappedEditor;
-                    resetStartingData();
                     updateWebview();
                 }
             });

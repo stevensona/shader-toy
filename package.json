@@ -50,6 +50,11 @@
                     "default": false,
                     "description": "Reload OpenGL viewport when editor changes."
                 },
+                "shader-toy.resetStateOnChangeEditor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Reset state of time, mouse and keyboard when reloading OpenGL viewport through an editor change."
+                },
                 "shader-toy.showScreenshotButton": {
                     "type": "boolean",
                     "default": true,
