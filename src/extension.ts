@@ -72,6 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
         if (e.affectsConfiguration("shader-toy")) {
+            config = vscode.workspace.getConfiguration('shader-toy');
             registerCallbacks();
             updateWebview();
         }
