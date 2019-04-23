@@ -93,6 +93,9 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.ViewColumn.Two,
             options
         );
+        webviewPanel.iconPath = vscode.Uri.file(
+            path.join(context.extensionPath, 'resources', 'thumb.png')
+        );
 
         updateWebview();
         
