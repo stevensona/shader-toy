@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext) {
     let startingData = new RenderStartingData();
     const updateWebview = () => {
         if (webviewPanel !== undefined && activeEditor !== undefined) {
-            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor)
+            webviewPanel.webview.html = new WebviewContentProvider(context, config, activeEditor)
                 .generateWebviewConent(startingData.Time, startingData.Mouse, startingData.NormalizedMouse, startingData.Keys);
         }
         else if (webviewPanel !== undefined) {

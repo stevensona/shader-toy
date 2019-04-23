@@ -6,10 +6,12 @@ import * as types from'./typenames';
 
 export class WebviewContentProvider {
     private context: vscode.ExtensionContext;
+    private config: vscode.WorkspaceConfiguration;
     private editor: vscode.TextEditor;
-
-    constructor(context: vscode.ExtensionContext, editor: vscode.TextEditor) {
+    
+    constructor(context: vscode.ExtensionContext, config: vscode.WorkspaceConfiguration, editor: vscode.TextEditor) {
         this.context = context;
+        this.config = config;
         this.editor = editor;
     }
 
@@ -21,12 +23,14 @@ export class WebviewContentProvider {
         const pathAsString = resourcePath.toString();
         return pathAsString;
     }
-    
+    private getConfig<T>(section: string): T | undefined {
+        return this.config.get<T>(section);
+    }
+
     public generateWebviewConent(startingTime: number, startingMouse: types.Mouse, startingNormalizedMouse: types.NormalizedMouse, startingKeys: types.Keys): string {
 
         let shader = this.editor.document.getText();
         let shaderName = this.editor.document.fileName;
-        const config = vscode.workspace.getConfiguration('shader-toy');
 
         let shaderPreamble = `
         uniform vec3        iResolution;
@@ -387,7 +391,7 @@ export class WebviewContentProvider {
         }
 
         let frameTimeScript = "";
-        if (config.get<boolean>('printShaderFrameTime')) {
+        if (this.getConfig<boolean>('printShaderFrameTime')) {
             frameTimeScript = `
             <script src="${this.getResourcePath('stats.min.js')}" onload="
                 let stats = new Stats();
@@ -401,7 +405,7 @@ export class WebviewContentProvider {
         }
 
         let pauseButtonScript = "";
-        if (config.get<boolean>('showPauseButton')) {
+        if (this.getConfig<boolean>('showPauseButton')) {
             pauseButtonScript = `
                 <label class="button-container">
                 <input id="pause-button" type="checkbox">
@@ -413,7 +417,7 @@ export class WebviewContentProvider {
         let advanceTimeScript = `
         deltaTime = clock.getDelta();
         time = startingTime + clock.getElapsedTime() - pausedTime;`;
-        if (config.get<boolean>('pauseWholeRender')) {
+        if (this.getConfig<boolean>('pauseWholeRender')) {
             pauseWholeScript = `if (paused) return;`;
         }
         else {
@@ -431,7 +435,7 @@ export class WebviewContentProvider {
         }
 
         let screenshotButtonScript = "";
-        if (config.get<boolean>('showScreenshotButton')) {
+        if (this.getConfig<boolean>('showScreenshotButton')) {
             screenshotButtonScript = `<span id="screenshot"></span>`;
         }
 
@@ -761,7 +765,7 @@ export class WebviewContentProvider {
                 function computeSize() {
                     let forceAspectRatio = (width, height) => {
                         // Forced aspect ratio
-                        let forcedAspects = [${config.get<[ number, number ]>('forceAspectRatio')}];
+                        let forcedAspects = [${this.getConfig<[ number, number ]>('forceAspectRatio')}];
                         let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
                         let aspectRatio = width / height;
             
@@ -924,8 +928,6 @@ export class WebviewContentProvider {
             return;
         }
 
-        const config = vscode.workspace.getConfiguration('shader-toy');
-
         let line_offset = 125;
         let textures: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
@@ -1038,7 +1040,7 @@ export class WebviewContentProvider {
         };
 
         let usesKeyboard = false;
-        let useTextureDefinitionInShaders = config.get<boolean>('useInShaderTextures');
+        let useTextureDefinitionInShaders = this.getConfig<boolean>('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
             // Find all #iChannel defines, which define textures and other shaders
             type Match = {
@@ -1095,7 +1097,7 @@ export class WebviewContentProvider {
         }
         else {
             vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
-            let textures: any[] | undefined = config.get('textures');
+            let textures: any[] | undefined = this.getConfig('textures');
             if (textures) {
                 for (let i in textures) {
                     const texture: any = textures[i];
@@ -1124,7 +1126,7 @@ export class WebviewContentProvider {
         for (let texture of textures) {
             definedTextures[texture.Channel] = true;
         }
-        if (config.get<boolean>('warnOnUndefinedTextures')) {
+        if (this.getConfig<boolean>('warnOnUndefinedTextures')) {
             for (let i = 0; i < 9; i++) {
                 if (code.search("iChannel" + i) > 0) {
                     if (definedTextures[i] === null) {
