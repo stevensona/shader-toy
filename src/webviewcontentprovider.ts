@@ -1093,7 +1093,8 @@ export class WebviewContentProvider {
                 }
             }
         }
-        else { // TODO: Ideally depracate this because it is counter-productive when working dependent shaders
+        else {
+            vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
             let textures: any[] | undefined = config.get('textures');
             if (textures) {
                 for (let i in textures) {
