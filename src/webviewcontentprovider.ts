@@ -471,6 +471,7 @@ export class WebviewContentProvider {
                         border-width: thin;
                         border-style: solid;
                         line-height: 1.4em;
+                        cursor:pointer;
                     }
                     .error:hover {
                         color: black;
@@ -581,14 +582,25 @@ export class WebviewContentProvider {
             ${shaderScripts}
 
             <script type="text/javascript">
+                const vscode = acquireVsCodeApi();
+
+                let revealError = function(line, file) {
+                    vscode.postMessage({
+                        command: 'showGlslsError',
+                        line: line,
+                        file: file
+                    });
+                };
+
                 let currentShader = {};
                 (function(){
                     console.error = function (message) {
                         if('7' in arguments) {
-                            $("#message").append('<h3>Shader failed to compile - ' + currentShader.Name + '</h3><ul>');
+                            $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
+                            $("#message").append('<ul>');
                             $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
                                 let lineNumber = Number(c) - currentShader.LineOffset;
-                                return '<li><a class="error" unselectable href="'+ encodeURI('command:shader-toy.onGlslError?' + JSON.stringify([lineNumber, currentShader.File])) + '">Line ' + String(lineNumber) + '</a>';
+                                return \`${`<li><a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber} </a>`}\`;
                             }));
                             $("#message").append('</ul>');
                         }
@@ -600,8 +612,6 @@ export class WebviewContentProvider {
                 //         $("#message").append(message + '<br>');
                 //     };
                 // })();
-
-                const vscode = acquireVsCodeApi();
 
                 let clock = new THREE.Clock();
                 let pausedTime = 0.0;

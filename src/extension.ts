@@ -91,6 +91,33 @@ export function activate(context: vscode.ExtensionContext) {
 
         updateWebview();
         
+        let revealLine = (file: string, line: number) => {
+            let highlightLine = (document: vscode.TextDocument, line: number) => {
+                let range = document.lineAt(line - 1).range;
+                vscode.window.showTextDocument(document, vscode.ViewColumn.One, true);
+                if (activeEditor) {
+                    activeEditor.selection = new vscode.Selection(range.start, range.end);
+                    activeEditor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                }
+            };
+    
+            if (activeEditor) {
+                let currentFile = activeEditor.document.fileName;
+                currentFile = currentFile.replace(/\\/g, '/');
+                if (currentFile === file) {
+                    highlightLine(activeEditor.document, line);
+                    return;
+                }
+            }
+    
+            let newDocument = vscode.workspace.openTextDocument(file);
+            newDocument.then((document: vscode.TextDocument) => {
+                highlightLine(document, line);
+            }, (reason) => {
+                vscode.window.showErrorMessage(`Could not open ${file} because ${reason}`);
+            });
+        };
+
         webviewPanel.webview.onDidReceiveMessage(
             (message: any) => {
               switch (message.command) {
@@ -104,41 +131,20 @@ export function activate(context: vscode.ExtensionContext) {
                 case 'updateKeyboard':
                     startingData.Keys = message.keys;
                     return;
+                case 'showGlslsError':
+                    let file: string = message.file;
+                    let line: number = message.line;
+
+                    revealLine(file, line);
+                    return;
                 }
             },
             undefined,
             context.subscriptions
         );
     });
-    let errorCommand = vscode.commands.registerCommand('shader-toy.onGlslError', (line: number, file: string) => {
-        let highlightLine = (document: vscode.TextDocument, line: number) => {
-            let range = document.lineAt(line - 1).range;
-            vscode.window.showTextDocument(document, vscode.ViewColumn.One, true);
-            if (activeEditor) {
-                activeEditor.selection = new vscode.Selection(range.start, range.end);
-                activeEditor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-            }
-        };
-
-        if (activeEditor) {
-            let currentFile = activeEditor.document.fileName;
-            currentFile = currentFile.replace(/\\/g, '/');
-            if (currentFile === file) {
-                highlightLine(activeEditor.document, line);
-                return;
-            }
-        }
-
-        let newDocument = vscode.workspace.openTextDocument(file);
-        newDocument.then((document: vscode.TextDocument) => {
-            highlightLine(document, line);
-        }, (reason) => {
-            vscode.window.showErrorMessage(`Could not open ${file} because ${reason}`);
-        });
-    });
     
     context.subscriptions.push(previewCommand);
-    context.subscriptions.push(errorCommand);
 }
 export function deactivate() {
 }
