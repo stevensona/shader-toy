@@ -53,6 +53,7 @@ export class WebviewContentProvider {
         uniform sampler2D   iChannel8;
         uniform sampler2D   iChannel9;
         uniform sampler2D   iKeyboard;
+        uniform float       iSampleRate;
 
         #define SHADER_TOY`;
 
@@ -254,6 +255,8 @@ export class WebviewContentProvider {
                         iMouse: { type: "v4", value: mouse },
                         iMouseButton: { type: "v2", value: mouseButton },
 
+                        iSampleRate: audioContext.sampleRate,
+
                         resolution: { type: "v2", value: resolution },
                         time: { type: "f", value: 0.0 },
                         mouse: { type: "v2", value: normalizedMouse },
@@ -402,6 +405,13 @@ export class WebviewContentProvider {
             `;
             audioScripts.Resume = `
             audioContext.resume();
+            `;
+        }
+        else {
+            audioScripts.Init = `
+            const audioContext = {
+                sampleRate: 0
+            };
             `;
         }
 
@@ -672,6 +682,9 @@ export class WebviewContentProvider {
                 let frameCounter = 0;
 
                 let channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
+                
+                ${audioScripts.Init}
+                ${audioScripts.Resume}
 
                 let buffers = [];
                 let commonIncludes = [];
@@ -685,9 +698,6 @@ export class WebviewContentProvider {
                 }
 
                 ${keyboardScripts.Init}
-                
-                ${audioScripts.Init}
-                ${audioScripts.Resume}
                 
                 let texLoader = new THREE.TextureLoader();
                 ${textureScripts}
@@ -951,7 +961,7 @@ export class WebviewContentProvider {
             return;
         }
 
-        let line_offset = 125;
+        let line_offset = 126;
         let textures: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
         let includeName: string | undefined;
