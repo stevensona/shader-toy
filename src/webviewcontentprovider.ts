@@ -293,6 +293,7 @@ export class WebviewContentProvider {
 
         let audioScripts = {
             Init: "",
+            Update: "",
             Pause: "",
             Resume: ""
         };
@@ -355,13 +356,31 @@ export class WebviewContentProvider {
                                     .then(function(buffer) {
                                         let audio = audioContext.createBufferSource();
                                         audio.buffer = buffer;
-                                        audio.connect(audioContext.destination);
+                                        
+                                        let analyser = audioContext.createAnalyser();
+                                        analyser.fftSize = 512;
+
+                                        const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
+                                        const dataArray = new Uint8Array(dataSize * 2);
+
+                                        let texture = new THREE.DataTexture(dataArray, dataSize, 2, THREE.LuminanceFormat, THREE.UnsignedByteType);
+                                        texture.magFilter = THREE.LinearFilter;
+                                        texture.needsUpdate = true;
+
+                                        buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: texture };
+
+                                        audio.connect(analyser);
+                                        analyser.connect(audioContext.destination);
                                         audio.start(0);
             
                                         audios.push({
                                             Channel: ${channel},
                                             Media: audio,
-                                            Time: 0
+                                            Analyser: analyser,
+                                            AmplitudeSamples: analyser.fftSize,
+                                            FrequencySamples: analyser.frequencyBinCount,
+                                            Data: dataArray,
+                                            Texture: texture
                                         })
                                     })
                                     .catch(function(e){
@@ -379,6 +398,7 @@ export class WebviewContentProvider {
                             });
                         });
                     `;
+                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel0 = { type: 't', value: null };\n`;
                 }
             }
 
@@ -401,6 +421,35 @@ export class WebviewContentProvider {
 
             let audios = [];
             ` + audioScripts.Init;
+
+            audioScripts.Update = `
+            for (let audio of audios) {
+                // Get audio data
+                audio.Analyser.getByteFrequencyData(audio.Data.subarray(0, audio.Data.length / 2));
+                audio.Analyser.getByteTimeDomainData(audio.Data.subarray(audio.Data.length / 2, -1));
+
+                // Scale buffer to fill the whole range because
+                // frequency data and amplitude data are not necessarily the same length
+                audio.Data.subarray(0, audio.Data.length / 2).set(
+                    audio.Data.slice(0, audio.Data.length / 2)
+                        .map(function(value, index, array) {
+                            index = index / (audio.Data.length / 2);
+                            index = Math.floor(index * audio.FrequencySamples);
+                            return array[index];
+                        })
+                    );
+                audio.Data.subarray(audio.Data.length / 2, -1).set(
+                    audio.Data.slice(audio.Data.length / 2, -1)
+                        .map(function(value, index, array) {
+                            index = index / (audio.Data.length / 2);
+                            index = index * audio.AmplitudeSamples;
+                            return array[index];
+                        })
+                    );
+                
+                audio.Texture.needsUpdate = true;
+            }
+            `;
 
             audioScripts.Pause = `
             audioContext.suspend();
@@ -782,6 +831,9 @@ export class WebviewContentProvider {
                     ${advanceTimeScript}
                     updateDate();
 
+                    ${audioScripts.Update}
+                    ${keyboardScripts.Update}
+
                     for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
@@ -805,12 +857,10 @@ export class WebviewContentProvider {
                             buffer.Shader.uniforms[\`iChannel\${buffer.PingPongChannel}\`].value = buffer.PingPongTarget.texture;
                             for (let dependent of buffer.Dependents) {
                                 const dependentBuffer = buffers[dependent.Index];
-                                dependentBuffer.Shader.uniforms[\`iChannel\${dependent.Channel}\`] = { type: 't', value: buffer.Target.texture };
+                                dependentBuffer.Shader.uniforms[\`iChannel\${dependent.Channel}\`].value = buffer.Target.texture;
                             }
                         }
                     }
-
-                    ${keyboardScripts.Update}
                 }
                 function computeSize() {
                     let forceAspectRatio = (width, height) => {
