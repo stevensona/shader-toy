@@ -38,6 +38,7 @@ export class WebviewContentProvider {
         uniform float       iTime;
         uniform float       iTimeDelta;
         uniform int         iFrame;
+        uniform vec4        iDate;
         uniform float       iChannelTime[4];
         uniform vec3        iChannelResolution[4];
         uniform vec4        iMouse;
@@ -255,7 +256,8 @@ export class WebviewContentProvider {
                         iMouse: { type: "v4", value: mouse },
                         iMouseButton: { type: "v2", value: mouseButton },
 
-                        iSampleRate: audioContext.sampleRate,
+                        iDate: { type: "v4", value: date },
+                        iSampleRate: { type: "f", value: audioContext.sampleRate },
 
                         resolution: { type: "v2", value: resolution },
                         time: { type: "f", value: 0.0 },
@@ -642,6 +644,20 @@ export class WebviewContentProvider {
                 let startingTime = ${startingTime};
                 let time = startingTime;
 
+                let date = new THREE.Vector4();
+
+                let updateDate = function() {
+                    let today = new Date();
+                    date.x = today.getFullYear();
+                    date.y = today.getMonth();
+                    date.z = today.getDate();
+                    date.w = today.getHours() * 60 * 60 
+                        + today.getMinutes() * 60
+                        + today.getSeconds()
+                        + today.getMilliseconds() * 0.001;
+                };
+                updateDate();
+
                 let paused = false;
                 let pauseButton = document.getElementById('pause-button');
                 if (pauseButton) {
@@ -764,6 +780,7 @@ export class WebviewContentProvider {
                     
                     frameCounter++;
                     ${advanceTimeScript}
+                    updateDate();
 
                     for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
@@ -961,7 +978,7 @@ export class WebviewContentProvider {
             return;
         }
 
-        let line_offset = 126;
+        let line_offset = 127;
         let textures: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
         let includeName: string | undefined;
