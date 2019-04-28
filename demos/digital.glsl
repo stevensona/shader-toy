@@ -36,7 +36,7 @@
 // Two-digit render
 #define Z(n) ; D(n % 10) D(n / 10)
 
-void mainImage(out vec4 O, in vec2 U)
+void mainImage(out vec4 O, vec2 U)
 {
     vec2 R = iResolution.xy;
     U += U - R;
