@@ -288,7 +288,6 @@ export class WebviewContentProvider {
 
         let audioScripts = {
             Init: "",
-            Elements: "",
             Pause: "",
             Resume: ""
         };
@@ -329,44 +328,53 @@ export class WebviewContentProvider {
                 const localPath = audio.LocalPath;
                 const remotePath = audio.RemotePath;
 
+                let path: string | undefined;
+
                 if (localPath !== undefined) {
-                    const resolvedPath = vscode.Uri.file(localPath).with({ scheme: 'vscode-resource' });
-                    audioScripts.Elements += `<audio src="${resolvedPath}" crossOrigin="anonymous" id=audio_${i}_${j}></audio>`;
+                    path = vscode.Uri.file(localPath).with({ scheme: 'vscode-resource' }).toString();
                 }
                 else if (remotePath !== undefined) {
-                    audioScripts.Elements += `<audio src="https://${remotePath} crossOrigin="anonymous" id=audio_${i}_${j}"></audio>`;
+                    path = "https://" + remotePath;
                 }
 
-                let mediaInitialization = `
-                (() => {
-                    const audioElement = document.querySelector('audio[id=audio_${i}_${j}]');
-                    const audioElementSource = audioContext.createMediaElementSource(audioElement);
-                    audioElementSource.connect(audioContext.destination);
-                    return {
-                        Element: audioElement,
-                        Source: audioElementSource
-                    };
-                })()
-                `;
-                audioScripts.Init += `
-                audios.push({
-                    Channel: ${channel},
-                    Media: ${mediaInitialization}
-                })
-                `;
-                audioScripts.Pause = `
-                for (let audio of audios) {
-                    audio.Media.Element.pause();
+                if (path !== undefined) {
+                    audioScripts.Init += `
+                    fetch('${path}')
+                        .then(function(response) {
+                            return response.blob();
+                        })
+                        .then(function(blob) {
+                            let reader = new FileReader();
+                            reader.onload = function() {
+                                audioContext.decodeAudioData(reader.result)
+                                    .then(function(buffer) {
+                                        let audio = audioContext.createBufferSource();
+                                        audio.buffer = buffer;
+                                        audio.connect(audioContext.destination);
+                                        audio.start(0);
+            
+                                        audios.push({
+                                            Channel: ${channel},
+                                            Media: audio,
+                                            Time: 0
+                                        })
+                                    })
+                                    .catch(function(e){
+                                        console.warn("Error: " + e.message);
+                                    });
+                            };
+
+                            let file = new File([ blob ], "${path}");
+                            reader.readAsArrayBuffer(file);
+                        }).
+                        catch(function(){
+                            vscode.postMessage({
+                                command: 'errorMessage',
+                                message: "Failed loading audio file: ${audio.UserPath}"
+                            });
+                        });
+                    `;
                 }
-                `;
-                audioScripts.Resume = `
-                for (let audio of audios) {
-                    if (audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
-                    audio.Media.Element.play();
-                }
-                `;
             }
 
             if (buffer.UsesSelf) {
@@ -379,7 +387,7 @@ export class WebviewContentProvider {
             }
         }
 
-        if (audioScripts.Elements !== "") {
+        if (audioScripts.Init !== "") {
             audioScripts.Init = `
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const audioContext = new AudioContext();
@@ -388,6 +396,13 @@ export class WebviewContentProvider {
 
             let audios = [];
             ` + audioScripts.Init;
+
+            audioScripts.Pause = `
+            audioContext.suspend();
+            `;
+            audioScripts.Resume = `
+            audioContext.resume();
+            `;
         }
 
         let frameTimeScript = "";
@@ -574,8 +589,6 @@ export class WebviewContentProvider {
             <script src="${this.getResourcePath('jquery.min.js')}"></script>
             <script src="${this.getResourcePath('three.min.js')}"></script>
             ${frameTimeScript}
-
-            ${audioScripts.Elements}
 
             <canvas id="canvas"></canvas>
 
@@ -949,8 +962,7 @@ export class WebviewContentProvider {
             let inputType = file.substring(0, colonPos);
 
             // Fix path to use '/' over '\\' and relative to the current working directory
-            file = file.substring(colonPos + 3, file.length);
-            const origFile = file;
+            let userPath = file.substring(colonPos + 3, file.length);
             file = ((file: string) => {
                 const relFile = vscode.workspace.asRelativePath(file);
                 const herePos = relFile.indexOf("./");
@@ -963,7 +975,7 @@ export class WebviewContentProvider {
                 else {
                     return file;
                 }
-            })(file);
+            })(userPath);
             file = file.replace(/\\/g, '/');
             file = file.replace(/\.\//g, "");
 
@@ -977,7 +989,7 @@ export class WebviewContentProvider {
                     // Read the whole file of the shader
                     const shaderFile = this.readShaderFile(file);
                     if(shaderFile.success === false){
-                        vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                        vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
                         return;
                     }
 
@@ -1011,7 +1023,7 @@ export class WebviewContentProvider {
                     // Read the whole file of the shader
                     const shaderFile = this.readShaderFile(file);
                     if(shaderFile.success === false){
-                        vscode.window.showErrorMessage(`Could not open file: ${origFile}`);
+                        vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
                         return;
                     }
 
@@ -1041,7 +1053,8 @@ export class WebviewContentProvider {
             else if (inputType === "audio") {
                 audios.push({
                     Channel: channel,
-                    LocalPath: file
+                    LocalPath: file,
+                    UserPath: userPath
                 });
             }
 

@@ -30,6 +30,7 @@ export type AudioDefinition = {
     Channel: number,
     LocalPath?: string,
     RemotePath?: string,
+    UserPath: string
 };
 export type BufferDependency = {
     Index: number,

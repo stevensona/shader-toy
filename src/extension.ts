@@ -137,6 +137,9 @@ export function activate(context: vscode.ExtensionContext) {
 
                     revealLine(file, line);
                     return;
+                case 'errorMessage':
+                    vscode.window.showErrorMessage(message.message);
+                    return;
                 }
             },
             undefined,
