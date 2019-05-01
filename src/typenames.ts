@@ -5,11 +5,11 @@ export class Mouse {
     y: number = -1;
     z: number = -1;
     w: number = -1;
-};
+}
 export class NormalizedMouse {
     x: number = 0;
     y: number = 0;
-};
+}
 export type Keys = number[];
 export class RenderStartingData {
     Time: number = 0;

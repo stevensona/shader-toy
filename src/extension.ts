@@ -1,16 +1,18 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { RenderStartingData } from'./typenames';
-import { WebviewContentProvider } from'./webviewcontentprovider';
+import { RenderStartingData } from './typenames';
+import { WebviewContentProvider } from './webviewcontentprovider';
+import { Context } from './context';
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(extensionContext: vscode.ExtensionContext) {
+    let context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
+
     let webviewPanel: vscode.WebviewPanel | undefined = undefined;
-    let config = vscode.workspace.getConfiguration('shader-toy');
-    let reloadDelay: number = config.get<number>('reloadOnEditTextDelay') || 1.0;
+    let reloadDelay: number = context.getConfig<number>('reloadOnEditTextDelay') || 1.0;
     let timeout: NodeJS.Timeout;
     let activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
+
 
     let changeTextEvent: vscode.Disposable | undefined;
     let changeEditorEvent: vscode.Disposable | undefined;
@@ -23,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
             changeEditorEvent.dispose();
         }
 
-        if (config.get<boolean>('reloadOnEditText')) {
+        if (context.getConfig<boolean>('reloadOnEditText')) {
             changeTextEvent = vscode.workspace.onDidChangeTextDocument((changingEditor: vscode.TextDocumentChangeEvent) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => { 
@@ -33,10 +35,10 @@ export function activate(context: vscode.ExtensionContext) {
                 }, reloadDelay * 1000);
             });
         }
-        if (config.get<boolean>('reloadOnChangeEditor')) {
+        if (context.getConfig<boolean>('reloadOnChangeEditor')) {
             changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
                 if (swappedEditor !== undefined && swappedEditor.document.getText() !== "" && swappedEditor !== activeEditor) {
-                    if (config.get<boolean>('resetStateOnChangeEditor')) {
+                    if (context.getConfig<boolean>('resetStateOnChangeEditor')) {
                         resetStartingData();
                     }
                     activeEditor = swappedEditor;
@@ -51,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
     let startingData = new RenderStartingData();
     const updateWebview = () => {
         if (webviewPanel !== undefined && activeEditor !== undefined) {
-            webviewPanel.webview.html = new WebviewContentProvider(context, config, activeEditor)
+            webviewPanel.webview.html = new WebviewContentProvider(context, activeEditor.document.getText(), activeEditor.document.fileName)
                 .generateWebviewConent(startingData.Time, startingData.Mouse, startingData.NormalizedMouse, startingData.Keys);
         }
         else if (webviewPanel !== undefined) {
@@ -64,7 +66,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
         if (e.affectsConfiguration("shader-toy")) {
-            config = vscode.workspace.getConfiguration('shader-toy');
+            context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
             registerCallbacks();
             updateWebview();
         }
@@ -85,10 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.ViewColumn.Two,
             options
         );
-        webviewPanel.iconPath = vscode.Uri.file(
-            path.join(context.extensionPath, 'resources', 'thumb.png')
-        );
-
+        webviewPanel.iconPath = context.getResourceUri('thumb.png');
         updateWebview();
         
         let revealLine = (file: string, line: number) => {
@@ -143,11 +142,11 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             },
             undefined,
-            context.subscriptions
+            extensionContext.subscriptions
         );
     });
     
-    context.subscriptions.push(previewCommand);
+    extensionContext.subscriptions.push(previewCommand);
 }
 export function deactivate() {
 }
