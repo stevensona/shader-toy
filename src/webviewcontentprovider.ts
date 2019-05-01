@@ -356,7 +356,8 @@ export class WebviewContentProvider {
                                     .then(function(buffer) {
                                         let audio = audioContext.createBufferSource();
                                         audio.buffer = buffer;
-                                        
+                                        audio.loop = true;
+
                                         let analyser = audioContext.createAnalyser();
                                         analyser.fftSize = 512;
 
@@ -371,7 +372,7 @@ export class WebviewContentProvider {
 
                                         audio.connect(analyser);
                                         analyser.connect(audioContext.destination);
-                                        audio.start(0);
+                                        audio.start(0, startingTime % buffer.duration);
             
                                         audios.push({
                                             Channel: ${channel},
