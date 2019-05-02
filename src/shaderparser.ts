@@ -1,6 +1,8 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import * as mime from 'mime';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as types from'./typenames';
 import { Context } from './context';
@@ -17,7 +19,6 @@ export class ShaderParser {
         let success = false;
         let bufferCode = "";
         let error = null;
-        const fs = require("fs");
         try {
             bufferCode = fs.readFileSync(file, "utf-8");
             success = true;
@@ -35,8 +36,9 @@ export class ShaderParser {
             return name.substring(lastSlash + 1);
         };
         const findByName = (bufferName: string) => {
+            let strippedName = stripPath(bufferName);
             return (value: any) => {
-                if (value.Name === stripPath(bufferName)) {
+                if (value.Name === strippedName) {
                     return true;
                 }
                 return false;
@@ -56,10 +58,16 @@ export class ShaderParser {
         const loadDependency = (file: string, channel: number, passType: string) => {
             // Get type and name of file
             let colonPos = file.indexOf('://', 0);
-            let inputType = file.substring(0, colonPos);
+            
+            let inputType = "file";
+            let userPath = file;
+
+            if (colonPos >= 0) {
+                inputType = file.substring(0, colonPos);
+                userPath = file.substring(colonPos + 3, file.length);
+            }
 
             // Fix path to use '/' over '\\' and relative to the current working directory
-            let userPath = file.substring(colonPos + 3, file.length);
             file = ((file: string) => {
                 const relFile = vscode.workspace.asRelativePath(file);
                 const herePos = relFile.indexOf("./");
@@ -74,14 +82,30 @@ export class ShaderParser {
                 }
             })(userPath);
             file = file.replace(/\\/g, '/');
-            file = file.replace(/\.\//g, "");
+            file = file.replace(/\.\//g, '');
+            userPath = userPath.replace(/\\/g, '/');
 
-            if (passType === "include" && inputType === "glsl") {
+            if (inputType !== "file" && inputType !== "https") {
+                if (passType === "include") {
+                    vscode.window.showWarningMessage("You are using deprecated input methods, no protocol is required for includes, simply use '#include \"./file.glsl\"'");
+                }
+                else {
+                    vscode.window.showWarningMessage("You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.");
+                }
+                inputType = "file";
+            }
+
+            let isLocalFile: boolean = inputType === "file";
+            let fileType = file.split('.').pop();
+            let fullMime = mime.getType(fileType || "txt") || "text/plain";
+            let mimeType = fullMime.split('/')[0] || "text";
+
+            if (passType === "include") {
                 const name = path.basename(file);
 
                 // Attempt to get the include if already exists
                 let include = commonIncludes.find(include => include.File === file);
-                if (!include) {
+                if (include === undefined) {
                     // Read the whole file of the shader
                     const shaderFile = this.readShaderFile(file);
                     if(shaderFile.success === false){
@@ -96,66 +120,81 @@ export class ShaderParser {
                         LineCount: shaderFile.bufferCode.split(/\r\n|\n/).length
                     };
 
-
                     commonIncludes.push(include);
                 }
 
                 // offset the include line count
-                // TODO: Why do we need to subtract one here?
                 line_offset += include.LineCount - 1;
 
                 // store the reference name for this include
                 includeName = name;
             }
-            else if (inputType === "buf") {
-                if (file === "self") {
-                    // Push self as feedback-buffer
-                    textures.push({
-                        Channel: channel,
-                        Self: true
-                    });
-                }
-                else {
-                    // Read the whole file of the shader
-                    const shaderFile = this.readShaderFile(file);
-                    if(shaderFile.success === false){
-                        vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
-                        return;
-                    }
-
-                    // Parse the shader
-                    this.parseShaderCode(file, shaderFile.bufferCode, buffers, commonIncludes);
+            else {
+                switch (mimeType) {
+                    case "text": {
+                        if (file === "self") {
+                            // Push self as feedback-buffer
+                            textures.push({
+                                Channel: channel,
+                                Self: true
+                            });
+                        }
+                        else {
+                            // Read the whole file of the shader
+                            const shaderFile = this.readShaderFile(file);
+                            if(shaderFile.success === false){
+                                vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
+                                return;
+                            }
         
-                    // Push buffers as textures
-                    textures.push({
-                        Channel: channel,
-                        Buffer: stripPath(file),
-                    });
+                            // Parse the shader
+                            this.parseShaderCode(file, shaderFile.bufferCode, buffers, commonIncludes);
+                
+                            // Push buffers as textures
+                            textures.push({
+                                Channel: channel,
+                                Buffer: stripPath(file),
+                            });
+                        }
+                        break;
+                    }
+                    case "image": {
+                        if (isLocalFile) {
+                            textures.push({
+                                Channel: channel,
+                                LocalTexture: file,
+                            });
+                        }
+                        else {
+                            textures.push({
+                                Channel: channel,
+                                RemoteTexture: file,
+                            });
+                        }
+                        break;
+                    }
+                    case "audio": {
+                        if (isLocalFile) {
+                            audios.push({
+                                Channel: channel,
+                                LocalPath: file,
+                                UserPath: userPath
+                            });
+                        }
+                        else {
+                            audios.push({
+                                Channel: channel,
+                                RemotePath: file,
+                                UserPath: userPath
+                            });
+                        }
+                        break;
+                    }
+                    default: {
+                        vscode.window.showWarningMessage(`You are trying to use an unsupported file ${file}`);
+                    }
                 }
             }
-            else if (inputType === "file") {
-                // Push texture
-                textures.push({
-                    Channel: channel,
-                    LocalTexture: file,
-                });
-            }
-            else if (inputType === "https") {
-                textures.push({
-                    Channel: channel,
-                    RemoteTexture: file,
-                });
-            }
-            else if (inputType === "audio") {
-                audios.push({
-                    Channel: channel,
-                    LocalPath: file,
-                    UserPath: userPath
-                });
-            }
-
-            // TODO: Distinguish between texture, buffer and audio by mime or extensions
-            // Then we can use file:// or https:// for everything, allowing remote buffers
         };
 
         let usesKeyboard = false;

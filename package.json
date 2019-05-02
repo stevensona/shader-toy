@@ -117,6 +117,10 @@
         "postinstall": "node ./node_modules/vscode/bin/install",
         "test": "npm run compile && node ./node_modules/vscode/bin/test"
     },
+    "dependencies": {
+        "@types/mime": "^2.0",
+        "mime": "^2.4.2"
+    },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^10.12.21",
