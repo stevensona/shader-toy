@@ -4,18 +4,18 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ![metaballs example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example.png)
 
- Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is ```void main()``` or if that is unavailable ```void mainImage(out vec4, in vec2)``` where the first parameter is the output color and the second parameter is the fragments screen position.
+ Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is `void main()` or if that is unavailable `void mainImage(out vec4, in vec2)` where the first parameter is the output color and the second parameter is the fragments screen position.
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, ```iResolution```, ```iGlobalTime``` (also as ```iTime```), ```iTimeDelta```, ```iFrame```, ```iMouse```, ```iMouseButton``` and ```iChannelN``` with ```N in [0, 9]``` are the only uniforms provided. The texture channels ```iChannelN``` may be defined by inserting code of the following form at the top of your shader
+Automatically update display with the results of your shader. At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton` and `iChannelN` with `N in [0, 9]` are the only uniforms provided. The texture channels `iChannelN` may be defined by inserting code of the following form at the top of your shader
 ```
 #iChannel0 file://./duck.png
 #iChannel1 https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg
 #iChannel2 buf://./other/shader.glsl
 ```
-This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)* or usign another shaders results as a texture. You may also use the last frame of the current shader itself as a texture by specifying simply ```self``` instead of a path.
-If the ```useInShaderTextures``` option is disable you can define the channels by modifying the workspace's settings.json file. For example:
+This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)* or using another shaders results as a texture. You may also use the last frame of the current shader itself as a texture by specifying simply `self` instead of a path.
+If the `useInShaderTextures` option is disable you can define the channels by modifying the workspace's settings.json file. For example:
 ```
 {
     "shader-toy.textures": {
@@ -56,22 +56,24 @@ void main() {
   gl_FragColor = vec4(r, g, b, 1.0);
 }
 ```
-Note that compared to *shadertoy.com* ```gl_FragCoord``` replaces ```fragCoord``` and ```gl_FragColor``` replaces ```fragColor``` in the original demo. There is however a rudimentary support for inserting a trivial ```void main()``` which will delegate to a ```void mainImage(out vec4, in vec2)``` function.
+Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function.
 
 The following is an example of using textures in shaders:
+
 ![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
 
 The extensions also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes:
+
 ![error example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example3.png)
 
-If you want to use keyboard input you can prepend ```#iKeyboard``` to your shader. This will expose to your shader the following functions:
+If you want to use keyboard input you can prepend `#iKeyboard` to your shader. This will expose to your shader the following functions:
 ```
 bool isKeyPressed(int);
 bool isKeyReleased(int);
 bool isKeyDown(int);
 bool isKeyToggled(int);
 ```
-Additionally it will expose variables such as ```Key_A``` to ```Key_Z```, ```Key_0``` to ```Key_9```, ```Key_UpArrow```, ```Key_LeftArrow```, ```Key_Shift```, etc. Use these constants together with the functions mentioned above to querry the state of a key. 
+Additionally it will expose variables such as `Key_A` to `Key_Z`, `Key_0` to `Key_9`, `Key_UpArrow`, `Key_LeftArrow`, `Key_Shift`, etc. Use these constants together with the functions mentioned above to query the state of a key. 
 
 ## Requirements
 
@@ -90,7 +92,7 @@ Additionally it will expose variables such as ```Key_A``` to ```Key_Z```, ```Key
 
 Contributions of any kind are welcome and encouraged.
 
-[Github Project Page](https://github.com/stevensona/shader-toy)
+[GitHub Project Page](https://github.com/stevensona/shader-toy)
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
