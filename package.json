@@ -125,11 +125,13 @@
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^10.12.21",
+        "@types/compare-versions": "^3.0.0",
+        "@types/mime": "^2.0.0",
         "tslint": "^5.12.1",
         "typescript": "^3.3.1",
         "vscode": "^1.1.33",
-        "@types/mime": "^2.0",
-        "mime": "^2.4.2"
+        "mime": "^2.4.2",
+        "compare-versions": "^3.4.0"
     },
     "icon": "resources/thumb.png"
 }

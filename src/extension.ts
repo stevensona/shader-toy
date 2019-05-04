@@ -1,11 +1,22 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import * as compare_versions from 'compare-versions';
 import { RenderStartingData } from './typenames';
 import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 
 export function activate(extensionContext: vscode.ExtensionContext) {
+    let shadertoyExtension = vscode.extensions.getExtension("stevensona.shader-toy");
+    if (shadertoyExtension) {
+        let lastVersion = extensionContext.globalState.get<string>("version") || '0.0.0';
+        let currentVersion = <string | undefined>shadertoyExtension.packageJSON.version || '9.9.9';
+        if (compare_versions(currentVersion, lastVersion) > 0) {
+            vscode.window.showInformationMessage("Your ShaderToy version just got updated, check out the readme to see what's new.");
+            extensionContext.globalState.update("version", currentVersion)
+        }
+    }
+
     let context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
 
     if (context.getConfig<boolean>("omitDeprecationWarnings") === true) {
