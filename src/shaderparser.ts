@@ -220,30 +220,47 @@ export class ShaderParser {
             };
             let nextMatch = findNextMatch();
             while (nextMatch) {
-                // Get channel number
                 let channelPos = nextMatch.TexturePos + nextMatch.MatchLength;
                 let endline = code.substring(channelPos).match(/\r\n|\r|\n/);
                 if (endline !== null && endline.index !== undefined) {
                     endline.index += channelPos;
-                    let spacePos = Math.min(code.indexOf(" ", channelPos), endline.index);
 
                     if (nextMatch.PassType === "iKeyboard") {
                         usesKeyboard = true;
                     }
                     else {
-                        let channel = parseInt(code.substring(channelPos, spacePos));
+                        let line = code.substring(channelPos, endline.index);
 
-                        let afterSpacePos = code.indexOf(" ", spacePos + 1);
-                        let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
-                        let textureEndPos = Math.min(endline.index,
-                            afterSpacePos > 0 ? afterSpacePos : code.length,
-                            afterCommentPos > 0 ? afterCommentPos : code.length);
+                        let leftQuotePos = line.search(/"|'/);
+                        let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
 
-                        // Get dependencies' name
-                        let texture = code.substring(spacePos + 1, textureEndPos);
+                        let channel: number;
+                        let input: string;
+
+                        if (leftQuotePos < 0 || rightQuotePos < 0) {
+                            vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated behaviour.");
+
+                            let spacePos = Math.min(code.indexOf(" ", channelPos), endline.index);
+    
+                            // Get channel number
+                            channel = parseInt(code.substring(channelPos, spacePos));
+    
+                            let afterSpacePos = code.indexOf(" ", spacePos + 1);
+                            let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
+                            let textureEndPos = Math.min(endline.index,
+                                afterSpacePos > 0 ? afterSpacePos : code.length,
+                                afterCommentPos > 0 ? afterCommentPos : code.length);
+
+                            // Get dependencies' name
+                            input = code.substring(spacePos + 1, textureEndPos);
+                        }
+                        else {
+                            channel = parseInt(line.substring(0, leftQuotePos).trim());
+                            input = line.substring(leftQuotePos + 1, rightQuotePos).trim();
+                        }
                         
                         // Load the dependency
-                        loadDependency(texture, channel, nextMatch.PassType);
+                        loadDependency(input, channel, nextMatch.PassType);
                     }
 
                     // Remove #iChannel define
