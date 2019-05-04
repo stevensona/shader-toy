@@ -13,7 +13,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         let currentVersion = <string | undefined>shadertoyExtension.packageJSON.version || '9.9.9';
         if (compare_versions(currentVersion, lastVersion) > 0) {
             vscode.window.showInformationMessage("Your ShaderToy version just got updated, check out the readme to see what's new.");
-            extensionContext.globalState.update("version", currentVersion)
+            extensionContext.globalState.update("version", currentVersion);
         }
     }
 
@@ -107,12 +107,12 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         let revealLine = (file: string, line: number) => {
             let highlightLine = (document: vscode.TextDocument, line: number) => {
                 let range = document.lineAt(line - 1).range;
-                vscode.window.showTextDocument(document, vscode.ViewColumn.One, true);
-                if (activeEditor) {
-                    activeEditor.selection = new vscode.Selection(range.start, range.end);
-                    activeEditor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-                }
-            };
+                vscode.window.showTextDocument(document, vscode.ViewColumn.One, true)
+                    .then((editor: vscode.TextEditor) => {
+                        editor.selection = new vscode.Selection(range.start, range.end);
+                        editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                    });
+                };
     
             if (activeEditor) {
                 let currentFile = activeEditor.document.fileName;
