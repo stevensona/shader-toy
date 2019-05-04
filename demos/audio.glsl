@@ -1,4 +1,4 @@
-#iChannel0 file://./outfoxing.mp3
+#iChannel0 "file://./outfoxing.mp3"
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {

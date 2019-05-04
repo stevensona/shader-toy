@@ -1,4 +1,4 @@
-#iChannel0 file://self
+#iChannel0 "file://self"
 
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;

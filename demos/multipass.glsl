@@ -1,5 +1,5 @@
-#iChannel0 file://./horizon.jpg
-#iChannel1 file://./uv-warp.glsl
+#iChannel0 "file://./horizon.jpg"
+#iChannel1 "file://./uv-warp.glsl"
 
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
