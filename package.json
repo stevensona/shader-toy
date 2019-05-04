@@ -35,6 +35,11 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
+                "shader-toy.omitDeprecationWarnings": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Omit warnings when using a deprecated feature, replacing those with a single warning on activating the extension. Be careful with this setting, as shaders might break unpredictably in future updates."
+                },
                 "shader-toy.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,

@@ -8,11 +8,14 @@ import { Context } from './context';
 export function activate(extensionContext: vscode.ExtensionContext) {
     let context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
 
+    if (context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+        vscode.window.showWarningMessage("Deprecation warnings are omitted, stay safe otherwise!");
+    }
+
     let webviewPanel: vscode.WebviewPanel | undefined = undefined;
     let reloadDelay: number = context.getConfig<number>('reloadOnEditTextDelay') || 1.0;
     let timeout: NodeJS.Timeout;
     let activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
-
 
     let changeTextEvent: vscode.Disposable | undefined;
     let changeEditorEvent: vscode.Disposable | undefined;

@@ -86,11 +86,13 @@ export class ShaderParser {
             userPath = userPath.replace(/\\/g, '/');
 
             if (inputType !== "file" && inputType !== "https") {
-                if (passType === "include") {
-                    vscode.window.showWarningMessage("You are using deprecated input methods, no protocol is required for includes, simply use '#include \"./file.glsl\"'");
-                }
-                else {
-                    vscode.window.showWarningMessage("You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.");
+                if (this.context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+                    if (passType === "include") {
+                        vscode.window.showWarningMessage("You are using deprecated input methods, no protocol is required for includes, simply use '#include \"./file.glsl\"'");
+                    }
+                    else {
+                        vscode.window.showWarningMessage("You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.");
+                    }
                 }
                 inputType = "file";
             }
@@ -238,7 +240,9 @@ export class ShaderParser {
                         let input: string;
 
                         if (leftQuotePos < 0 || rightQuotePos < 0) {
-                            vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated behaviour.");
+                            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+                                vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated behaviour.");
+                            }
 
                             let spacePos = Math.min(code.indexOf(" ", channelPos), endline.index);
     
@@ -271,7 +275,9 @@ export class ShaderParser {
             }
         }
         else {
-            vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
+            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+                vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
+            }
             let textures: any[] | undefined = this.context.getConfig('textures');
             if (textures) {
                 for (let i in textures) {
