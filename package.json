@@ -117,16 +117,14 @@
         "postinstall": "node ./node_modules/vscode/bin/install",
         "test": "npm run compile && node ./node_modules/vscode/bin/test"
     },
-    "dependencies": {
-        "@types/mime": "^2.0",
-        "mime": "^2.4.2"
-    },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^10.12.21",
         "tslint": "^5.12.1",
         "typescript": "^3.3.1",
-        "vscode": "^1.1.33"
+        "vscode": "^1.1.33",
+        "@types/mime": "^2.0",
+        "mime": "^2.4.2"
     },
     "icon": "resources/thumb.png"
 }
