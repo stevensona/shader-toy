@@ -821,7 +821,6 @@ export class WebviewContentProvider {
                     updateDate();
 
                     ${audioScripts.Update}
-                    ${keyboardScripts.Update}
 
                     for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
@@ -839,6 +838,8 @@ export class WebviewContentProvider {
                         quad.material = buffer.Shader;
                         renderer.render(scene, camera, buffer.Target);
                     }
+
+                    ${keyboardScripts.Update}
 
                     for (let buffer of buffers) {
                         if (buffer.PingPongTarget) {
