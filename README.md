@@ -4,30 +4,28 @@ With this extension, view a live WebGL preview of GLSL shaders within VSCode, si
 
 ![metaballs example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example.png)
 
- Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is `void main()` or if that is unavailable `void mainImage(out vec4, in vec2)` where the first parameter is the output color and the second parameter is the fragments screen position.
+To run the command, either open the "Command Palette" and type "Shader Toy: Show GLSL Preview" or right-click inside a text editor and select "Shader Toy: Show GLSL Preview" from the context menu.
+
+Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is `void main()` or if that is unavailable `void mainImage(out vec4, in vec2)` where the first parameter is the output color and the second parameter is the fragments screen position.
 
 ## Features
 
 Automatically update display with the results of your shader. At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton` and `iChannelN` with `N in [0, 9]` are the only uniforms provided. The texture channels `iChannelN` may be defined by inserting code of the following form at the top of your shader
 ```
-#iChannel0 file://./duck.png
-#iChannel1 https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg
-#iChannel2 buf://./other/shader.glsl
+#iChannel0 "file://./duck.png"
+#iChannel1 "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg"
+#iChannel2 "file://./other/shader.glsl"
+#iChannel2 "self"
+#iChannel4 "file://./music/epic.mp3"
+#iChannel5 "https://website.com/less_epic.wav"
 ```
-This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)* or using another shaders results as a texture. You may also use the last frame of the current shader itself as a texture by specifying simply `self` instead of a path.
-If the `useInShaderTextures` option is disable you can define the channels by modifying the workspace's settings.json file. For example:
-```
-{
-    "shader-toy.textures": {
-        "0": "file://./duck.png",
-        "1": "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg",
-        "2": "buf://./other/shader.glsl"
-    }
-}
-```
-Note that for either option to be able to use relative paths you will have to open a folder in Visual Code.
+This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 
-The following is an example ported from shadertoy.com:
+When using audio, the channel will usually be a `512` pixels wide and `2` pixels high texture. The first row containing the audios frequency spectrum and the second row containing its waveform.
+
+![audio example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example4.png)
+
+The following is an example of a shader ported from *shadertoy.com*:
 ```glsl
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 // Created by S.Guillitte
@@ -62,7 +60,7 @@ The following is an example of using textures in shaders:
 
 ![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
 
-The extensions also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes:
+The extension also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes:
 
 ![error example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example3.png)
 
@@ -85,17 +83,37 @@ Additionally it will expose variables such as `Key_A` to `Key_Z`, `Key_0` to `Ke
 
 ## Todo
 
-* Improve compatibility with "shadertoy" shaders,
-* allow using audio channels like shadertoy.com does.
+* Receive more feedback,
+* get new screenshots of the extension that don't include deprecated features.
 
 ## Contributing
 
 Contributions of any kind are welcome and encouraged.
 
 [GitHub Project Page](https://github.com/stevensona/shader-toy)
+
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.8.4
+* The extension now reloads the GLSL Preview when the user changes the extension's settings,
+* iTime, iMouse and iKeyboard states now persist across compilations of the same shader,
+* added an option to persist state also when changing the shader that is previewed, disabled by default,
+* fixed bug that caused a reload of the preview when unfocusing and refocusing the previewed editor,
+* added icon to GLSL Preview,
+* deprecated input definitions inside settings.json in favour of inside the shader,
+* fixed a bug that broke line highlighting from GLSL compile errors,
+* added ability use audio as input to shaders,
+* added iSampleRate uniform, which holds the sample rate of the audio context,
+* deprecated input definitions using different "protocols", instead the type of input is inferred from the extension, 
+* deprecated requirement of using a "protocol" for includes,
+* added iDate uniform, which holds year, month, day and seconds in day in its components,
+* fixed a bug that caused shaders defining void mainImage(out vec4, in vec2) without in qualifier to not compile,
+* added ability to specify input in quotes, rather than freestanding, which removes some bugs with spaces in file paths,
+* deprecated omitting quotes when specifying input,
+* added option to omit deprecation warnings, disabled by default,
+* introduced a small update message.
 
 ### 0.8.3
 * Hotfix for texture loading bug introduced in the last version.
