@@ -347,7 +347,7 @@ export class WebviewContentProvider {
                                         audio.loop = true;
 
                                         let analyser = audioContext.createAnalyser();
-                                        analyser.fftSize = 512;
+                                        analyser.fftSize = ${this.context.getConfig<number>("audioDomainSize")};
 
                                         const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
                                         const dataArray = new Uint8Array(dataSize * 2);

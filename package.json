@@ -85,10 +85,15 @@
                     "default": true,
                     "description": "If enabled the user is warned when a channel is used in code but there is no definition for said channel, likely resulting in a bug in the shader."
                 },
+                "shader-toy.audioDomainSize": {
+                    "type": "number",
+                    "default": 512,
+                    "description": "Size of the domain used for four transformation when using audio as an input."
+                },
                 "shader-toy.useInShaderTextures": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
+                    "description": "This setting is deprecated. Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
                 },
                 "shader-toy.textures": {
                     "type": "object",
@@ -96,7 +101,7 @@
                         "0": "https://www.example.my/cool.png",
                         "1": "file://./relative.jpg"
                     },
-                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
+                    "description": "These settings are deprecated. The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
                 }
             }
         },

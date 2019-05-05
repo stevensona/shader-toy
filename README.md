@@ -21,7 +21,7 @@ Automatically update display with the results of your shader. At the moment, `iR
 ```
 This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 
-When using audio, the channel will usually be a `512` pixels wide and `2` pixels high texture. The first row containing the audios frequency spectrum and the second row containing its waveform.
+When using audio, the channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
 
 ![audio example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example4.png)
 
