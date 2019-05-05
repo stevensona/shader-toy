@@ -21,7 +21,6 @@ The texture channels `iChannelN` may be defined by inserting code of the followi
 #iChannel2 "file://./other/shader.glsl"
 #iChannel2 "self"
 #iChannel4 "file://./music/epic.mp3"
-#iChannel5 "https://website.com/less_epic.wav"
 ```
 This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 
@@ -86,7 +85,8 @@ The extension also supports highlighting of compilation errors in the text edito
 
 ## Known Issues
 
-* Performance at the moment is not great for certain shaders, and the cause is under investigation.
+* Performance at the moment is not great for certain shaders, and the cause is under investigation,
+* shaders and audio from remote sources are currently not working properly.
 
 ## Todo
 
