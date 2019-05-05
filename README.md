@@ -10,7 +10,11 @@ Running the command splits the view and displays a fullscreen quad with your sha
 
 ## Features
 
-Automatically update display with the results of your shader. At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton` and `iChannelN` with `N in [0, 9]` are the only uniforms provided. The texture channels `iChannelN` may be defined by inserting code of the following form at the top of your shader
+### Uniforms
+At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton`, `iDate`, `iSampleRate` and `iChannelN` with `N in [0, 9]` are available uniforms.
+
+### Texture Input
+The texture channels `iChannelN` may be defined by inserting code of the following form at the top of your shader
 ```
 #iChannel0 "file://./duck.png"
 #iChannel1 "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg"
@@ -21,10 +25,22 @@ Automatically update display with the results of your shader. At the moment, `iR
 ```
 This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 
-When using audio, the channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
+### Audio Input
+If your channel defines audio input, it will be inferred from the file extension. The channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
 
 ![audio example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example4.png)
 
+### Keyboard Input
+If you want to use keyboard input you can prepend `#iKeyboard` to your shader. This will expose to your shader the following functions:
+```
+bool isKeyPressed(int);
+bool isKeyReleased(int);
+bool isKeyDown(int);
+bool isKeyToggled(int);
+```
+Additionally it will expose variables such as `Key_A` to `Key_Z`, `Key_0` to `Key_9`, `Key_UpArrow`, `Key_LeftArrow`, `Key_Shift`, etc. Use these constants together with the functions mentioned above to query the state of a key.
+
+### Compatibility with Shadertoy.com
 The following is an example of a shader ported from *shadertoy.com*:
 ```glsl
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
@@ -56,22 +72,13 @@ void main() {
 ```
 Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function.
 
-The following is an example of using textures in shaders:
+### GLSL Preview Interaction
+The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
 
-![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
-
-The extension also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes:
+### Error Highlighting
+The extension also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes. It does so by presenting errors in a digestible format inside the GLSL Preview and allowing the user to interact with line numbers inside the GLSL Preview to highlight relevant lines:
 
 ![error example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example3.png)
-
-If you want to use keyboard input you can prepend `#iKeyboard` to your shader. This will expose to your shader the following functions:
-```
-bool isKeyPressed(int);
-bool isKeyReleased(int);
-bool isKeyDown(int);
-bool isKeyToggled(int);
-```
-Additionally it will expose variables such as `Key_A` to `Key_Z`, `Key_0` to `Key_9`, `Key_UpArrow`, `Key_LeftArrow`, `Key_Shift`, etc. Use these constants together with the functions mentioned above to query the state of a key. 
 
 ## Requirements
 
