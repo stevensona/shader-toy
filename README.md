@@ -85,13 +85,13 @@ The extension also supports highlighting of compilation errors in the text edito
 
 ## Known Issues
 
-* Performance at the moment is not great for certain shaders, and the cause is under investigation,
-* shaders and audio from remote sources are currently not working properly.
+* Performance at the moment is not great for certain shaders, and the cause is under investigation
+* Shaders with audio from remote sources are currently not working properly.
 
 ## Todo
 
-* Receive more feedback,
-* get new screenshots of the extension that don't include deprecated features.
+* Receive more feedback
+* Get new screenshots of the extension that don't include deprecated features.
 
 ## Contributing
 
