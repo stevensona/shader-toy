@@ -87,6 +87,10 @@ export function activate(extensionContext: vscode.ExtensionContext) {
     });
 
     let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
+        if (context.getConfig<boolean>('reloadOnChangeEditor') !== true) {
+            activeEditor = vscode.window.activeTextEditor;
+        }
+
         if (webviewPanel) {
             webviewPanel.dispose();
         }
