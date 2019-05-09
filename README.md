@@ -39,6 +39,14 @@ bool isKeyToggled(int);
 ```
 Additionally it will expose variables such as `Key_A` to `Key_Z`, `Key_0` to `Key_9`, `Key_UpArrow`, `Key_LeftArrow`, `Key_Shift`, etc. Use these constants together with the functions mentioned above to query the state of a key.
 
+### Shader Includes
+You may also include other files into your shader via a standard C-like syntax:
+```
+#include "./some/shared/code.glsl"
+#include "./other/local/shader_code.glsl"
+```
+These shaders may not define a `void main()` function and as such can be used only for utility functions, constant definitions etc.
+
 ### Compatibility with Shadertoy.com
 The following is an example of a shader ported from *shadertoy.com*:
 ```glsl
