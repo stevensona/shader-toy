@@ -71,7 +71,7 @@ export class ShaderParser {
             file = ((file: string) => {
                 const relFile = vscode.workspace.asRelativePath(file);
                 const herePos = relFile.indexOf("./");
-                if (vscode.workspace.rootPath === null && herePos === 0) {
+                if (vscode.workspace.rootPath === undefined && herePos === 0) {
                     vscode.window.showErrorMessage("To use relative paths please open a workspace!");
                 }
                 if (relFile !== file || herePos === 0) {
