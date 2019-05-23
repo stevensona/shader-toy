@@ -176,19 +176,24 @@ export class ShaderParser {
                         break;
                     }
                     case "audio": {
-                        if (isLocalFile) {
-                            audios.push({
-                                Channel: channel,
-                                LocalPath: file,
-                                UserPath: userPath
-                            });
+                        if (this.context.getConfig<boolean>("enabledAudioInput")) {
+                            if (isLocalFile) {
+                                audios.push({
+                                    Channel: channel,
+                                    LocalPath: file,
+                                    UserPath: userPath
+                                });
+                            }
+                            else {
+                                audios.push({
+                                    Channel: channel,
+                                    RemotePath: file,
+                                    UserPath: userPath
+                                });
+                            }
                         }
                         else {
-                            audios.push({
-                                Channel: channel,
-                                RemotePath: file,
-                                UserPath: userPath
-                            });
+                            vscode.window.showWarningMessage(`You are trying to use an audio file, which is currently disabled in the settings.`);
                         }
                         break;
                     }
