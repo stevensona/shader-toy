@@ -24,7 +24,8 @@ The texture channels `iChannelN` may be defined by inserting code of the followi
 ```
 This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 
-### Audio Input
+### Audio Input (experimental)
+_Note: By default audio input is disabled, change the setting "Enable Audio Input" to use it._\
 If your channel defines audio input, it will be inferred from the file extension. The channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
 
 ![audio example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example4.png)
@@ -95,6 +96,7 @@ The extension also supports highlighting of compilation errors in the text edito
 
 * Performance at the moment is not great for certain shaders, and the cause is under investigation
 * Shaders with audio from remote sources are currently not working properly.
+* There seems to be a very rare bug that causes audio inputs to sound corrupted.
 
 ## Todo
 
@@ -119,7 +121,7 @@ Contributions of any kind are welcome and encouraged.
 * added icon to GLSL Preview,
 * deprecated input definitions inside settings.json in favour of inside the shader,
 * fixed a bug that broke line highlighting from GLSL compile errors,
-* added ability use audio as input to shaders,
+* added experimental ability use audio as input to shaders,
 * added iSampleRate uniform, which holds the sample rate of the audio context,
 * deprecated input definitions using different "protocols", instead the type of input is inferred from the extension, 
 * deprecated requirement of using a "protocol" for includes,
