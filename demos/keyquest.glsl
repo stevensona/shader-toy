@@ -1,6 +1,6 @@
 #iKeyboard
-#iChannel0 http://i.imgur.com/lX8OAQV.jpg
-#iChannel1 http://farm5.static.flickr.com/4541/38604095012_ab7a81b807_b.jpg
+#iChannel0 "https://i.imgur.com/lX8OAQV.jpg"
+#iChannel1 "https://farm5.static.flickr.com/4541/38604095012_ab7a81b807_b.jpg"
 
 // Ben Quantock 2014
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.

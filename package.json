@@ -35,6 +35,11 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
+                "shader-toy.omitDeprecationWarnings": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Omit warnings when using a deprecated feature, replacing those with a single warning on activating the extension. Be careful with this setting, as shaders might break unpredictably in future updates."
+                },
                 "shader-toy.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,
@@ -49,6 +54,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Reload OpenGL viewport when editor changes."
+                },
+                "shader-toy.resetStateOnChangeEditor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Reset state of time, mouse and keyboard when reloading OpenGL viewport through an editor change."
                 },
                 "shader-toy.showScreenshotButton": {
                     "type": "boolean",
@@ -75,10 +85,20 @@
                     "default": true,
                     "description": "If enabled the user is warned when a channel is used in code but there is no definition for said channel, likely resulting in a bug in the shader."
                 },
+                "shader-toy.enabledAudioInput": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Allow using media files as inputs in shaders. Note that the feature is experimental and should be used with caution."
+                },
+                "shader-toy.audioDomainSize": {
+                    "type": "number",
+                    "default": 512,
+                    "description": "Size of the domain used for four transformation when using audio as an input."
+                },
                 "shader-toy.useInShaderTextures": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
+                    "description": "This setting is deprecated. Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
                 },
                 "shader-toy.textures": {
                     "type": "object",
@@ -86,7 +106,7 @@
                         "0": "https://www.example.my/cool.png",
                         "1": "file://./relative.jpg"
                     },
-                    "description": "The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
+                    "description": "These settings are deprecated. The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
                 }
             }
         },
@@ -113,11 +133,15 @@
         "test": "npm run compile && node ./node_modules/vscode/bin/test"
     },
     "devDependencies": {
-        "typescript": "^3.3.1",
-        "vscode": "^1.1.28",
-        "tslint": "^5.12.1",
+        "@types/mocha": "^2.2.42",
         "@types/node": "^10.12.21",
-        "@types/mocha": "^2.2.42"
+        "@types/compare-versions": "^3.0.0",
+        "@types/mime": "^2.0.0",
+        "tslint": "^5.12.1",
+        "typescript": "^3.3.1",
+        "vscode": "^1.1.33",
+        "mime": "^2.4.2",
+        "compare-versions": "^3.4.0"
     },
     "icon": "resources/thumb.png"
 }
