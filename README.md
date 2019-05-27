@@ -113,6 +113,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.8.5
+* Hotfix for missing dependencies.
+
 ### 0.8.4
 * The extension now reloads the GLSL Preview when the user changes the extension's settings,
 * iTime, iMouse and iKeyboard states now persist across compilations of the same shader,
