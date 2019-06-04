@@ -278,6 +278,12 @@ export class WebviewContentProvider {
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
         }`;
+        let makeTextureLoadErrorScript = (filename: string) => `function(err) {
+            vscode.postMessage({
+                command: 'errorMessage',
+                message: "Failed loading texture file ${filename}"
+            });
+        }`;
 
         let audioScripts = {
             Init: "",
@@ -302,10 +308,11 @@ export class WebviewContentProvider {
                 }
                 else if (localPath !== undefined) {
                     const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
-                    value = `texLoader.load('${resolvedPath.toString()}', ${textureLoadScript})`;
+                    const resolvedPathString = resolvedPath.toString();
+                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
                 else if (remotePath !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript})`;
+                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
                 }
 
                 if (value !== undefined) {
