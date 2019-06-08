@@ -217,7 +217,7 @@ export class ShaderParser {
             };
 
             const findNextMatch = (): Match | undefined => {
-                let channelMatch = code.match(/^\s*#(iChannel|include|iKeyboard)/m);
+                let channelMatch = code.match(/#(iChannel|include|iKeyboard)/m);
                 if (channelMatch && channelMatch.index !== undefined && channelMatch.index >= 0) {
                     return {
                         TexturePos: channelMatch.index,
@@ -275,7 +275,8 @@ export class ShaderParser {
                     }
 
                     // Remove #iChannel define
-                    code = code.replace(code.substring(nextMatch.TexturePos, endline.index + endline[0].length), "");
+                    let channelDefine = code.substring(nextMatch.TexturePos, endline.index + endline[0].length);
+                    code = code.replace(channelDefine, "");
                     nextMatch = findNextMatch();
                     line_offset--;
                 }
@@ -300,17 +301,18 @@ export class ShaderParser {
         }
 
         {
-            let versionPos = code.search(/#version\s+\d+(\s+\w+|\n)/g);
-            if (versionPos >= 0) {
+            let versionPos = code.search(/^#version/g);
+            if (versionPos === 0) {
                 let newLinePos = code.search('\n');
-                let versionDirective = code.substring(versionPos, newLinePos);
+                let versionDirective = code.substring(versionPos, newLinePos - 1);
                 code = code.replace(versionDirective, "");
+                line_offset--;
 
                 let diagnosticBatch: types.DiagnosticBatch = {
                     filename: name,
                     diagnostics: [{
                         line: 1,
-                        message: "Version directive ignored by shader-toy extension"
+                        message: `Version directive '${versionDirective}' ignored by shader-toy extension`
                     }]
                 };
                 this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
