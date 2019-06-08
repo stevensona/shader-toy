@@ -50,7 +50,7 @@ export class ShaderParser {
             return;
         }
 
-        let line_offset = 127;
+        let line_offset = 129;
         let textures: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
         let includeName: string | undefined;

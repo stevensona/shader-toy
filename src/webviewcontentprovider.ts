@@ -22,7 +22,6 @@ export class WebviewContentProvider {
 
         let shaderPreamble = `
         uniform vec3        iResolution;
-        uniform float       iGlobalTime;
         uniform float       iTime;
         uniform float       iTimeDelta;
         uniform int         iFrame;
@@ -43,6 +42,9 @@ export class WebviewContentProvider {
         uniform sampler2D   iChannel9;
         uniform sampler2D   iKeyboard;
         uniform float       iSampleRate;
+
+        #define iGloablTime iTime
+        #define iGloablFrame iFrame
 
         #define SHADER_TOY`;
 
@@ -237,7 +239,6 @@ export class WebviewContentProvider {
                     depthTest: false,
                     uniforms: {
                         iResolution: { type: "v3", value: resolution },
-                        iGlobalTime: { type: "f", value: 0.0 },
                         iTime: { type: "f", value: 0.0 },
                         iTimeDelta: { type: "f", value: 0.0 },
                         iFrame: { type: "i", value: 0 },
@@ -869,7 +870,6 @@ export class WebviewContentProvider {
                     for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
-                        buffer.Shader.uniforms['iGlobalTime'].value = time;
                         buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;
