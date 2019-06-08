@@ -113,6 +113,14 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.8.6
+* Document how main definition is found,
+* remove version directives from shaders,
+* fix an issue that would remove all newlines from beginning of shader and cause errors to be reported on the wrong lines,
+* reintroduce error when textures could not be loaded,
+* add iGlobalFrame,
+* add option that shows compile errors as diagnostics, enabled by default.
+
 ### 0.8.5
 * Hotfix for missing dependencies.
 
