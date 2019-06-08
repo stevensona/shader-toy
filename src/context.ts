@@ -7,7 +7,9 @@ import { DiagnosticBatch } from './typenames';
 export class Context {
     private context: vscode.ExtensionContext;
     private config: vscode.WorkspaceConfiguration;
+
     private diagnosticCollection: vscode.DiagnosticCollection;
+    private collectedDiagnostics: vscode.Diagnostic[] = [];
     
     public activeEditor: vscode.TextEditor | undefined;
     
@@ -36,6 +38,7 @@ export class Context {
     }
 
     public clearDiagnostics() {
+        this.collectedDiagnostics = [];
         this.diagnosticCollection.clear();
     }
     public showDiagnostics(diagnosticBatch: DiagnosticBatch, severity: vscode.DiagnosticSeverity) {
@@ -43,13 +46,12 @@ export class Context {
             let currentFile = this.activeEditor.document.fileName;
             currentFile = currentFile.replace(/\\/g, '/');
             if (currentFile === diagnosticBatch.filename) {
-                let collectedDiagnostics: vscode.Diagnostic[] = [];
                 for (let diagnostic of diagnosticBatch.diagnostics) {
                     let line = Math.max(1, diagnostic.line) - 1;
                     let range = this.activeEditor.document.lineAt(line).range;
-                    collectedDiagnostics.push(new vscode.Diagnostic(range, diagnostic.message, severity));
+                    this.collectedDiagnostics.push(new vscode.Diagnostic(range, diagnostic.message, severity));
                 }
-                this.diagnosticCollection.set(this.activeEditor.document.uri, collectedDiagnostics);
+                this.diagnosticCollection.set(this.activeEditor.document.uri, this.collectedDiagnostics);
                 return;
             }
         }
