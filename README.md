@@ -78,7 +78,7 @@ void main() {
   gl_FragColor = vec4(r, g, b, 1.0);
 }
 ```
-Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function.
+Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function. The definition of `void main()` is found by matching the regex `/void\s+main\s*\(\s*\)\s*\{/g`, thus if you require to define `void main()` in addition to the extension generating a definition you may define it as `void main(void)`. This might be necessary, for example, if your main definition would be processed away by the preprocessor and should thus not be picked up by the extension. 
 
 ### GLSL Preview Interaction
 The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
