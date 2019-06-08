@@ -9,9 +9,11 @@ import { Context } from './context';
 
 export class ShaderParser {
     private context: Context;
+    private lineOffset: number;
     
-    constructor(context: Context) {
+    constructor(context: Context, lineOffset: number) {
         this.context = context;
+        this.lineOffset = lineOffset;
     }
 
     private readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
@@ -50,7 +52,7 @@ export class ShaderParser {
             return;
         }
 
-        let line_offset = 129;
+        let line_offset = this.lineOffset;
         let textures: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
         let includeName: string | undefined;

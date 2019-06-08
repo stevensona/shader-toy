@@ -47,12 +47,14 @@ export class WebviewContentProvider {
         #define iGloablFrame iFrame
 
         #define SHADER_TOY`;
+        let shaderPreambleLineNumbers = shaderPreamble.split(/\r\n|\n/).length;
+        let webglLineNumbers = 102;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: types.BufferDefinition[] = [];
         let commonIncludes: types.IncludeDefinition[] = [];
 
-        new ShaderParser(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
+        new ShaderParser(this.context, shaderPreambleLineNumbers + webglLineNumbers).parseShaderCode(shaderName, shader, buffers, commonIncludes);
 
         // If final buffer uses feedback we need to add a last pass that renders it to the screen
         // because we can not ping-pong the screen
@@ -817,7 +819,7 @@ export class WebviewContentProvider {
                     currentShader = {
                         Name: include.Name,
                         File: include.File,
-                        LineOffset: ${shaderPreamble.split(/\r\n|\n/).length}  + 2 // add two for version and precision lines
+                        LineOffset: ${shaderPreambleLineNumbers} + 2 // add two for version and precision lines
                     };
                     // bail if there is an error found in the include script
                     if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) throw Error(\`Failed to compile \${include.Name}\`);
