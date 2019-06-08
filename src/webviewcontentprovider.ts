@@ -511,6 +511,56 @@ export class WebviewContentProvider {
             screenshotButtonScript = `<span id="screenshot"></span>`;
         }
 
+        let onErrorScript = "";
+        if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
+            onErrorScript = `
+            console.error = function (message) {
+                if('7' in arguments) {
+                    let diagnostics = [];
+                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
+                        let lineNumber = Number(line) - currentShader.LineOffset;
+                        diagnostics.push({
+                            line: lineNumber,
+                            message: error
+                        });
+                        let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
+                        return \`<li>\${lineHighlight}: \${error}</li>\`;
+                    });
+                    let diagnosticBatch = {
+                        filename: currentShader.File,
+                        diagnostics: diagnostics
+                    };
+                    vscode.postMessage({
+                        command: 'showGlslDiagnostic',
+                        type: 'error',
+                        diagnosticBatch: diagnosticBatch
+                    });
+
+                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
+                    $("#message").append('<ul>');
+                    $("#message").append(message);
+                    $("#message").append('</ul>');
+                }
+            };`;
+        }
+        else {
+            onErrorScript = `
+            console.error = function (message) {
+                if('7' in arguments) {
+                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
+                        let lineNumber = Number(line) - currentShader.LineOffset;
+                        let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
+                        return \`<li>\${lineHighlight}: \${error}</li>\`;
+                    });
+
+                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
+                    $("#message").append('<ul>');
+                    $("#message").append(message);
+                    $("#message").append('</ul>');
+                }
+            };`;
+        }
+
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const content = `
             <head>
@@ -663,25 +713,12 @@ export class WebviewContentProvider {
                 };
 
                 let currentShader = {};
-                (function(){
-                    console.error = function (message) {
-                        if('7' in arguments) {
-                            $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
-                            $("#message").append('<ul>');
-                            $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
-                                let lineNumber = Number(c) - currentShader.LineOffset;
-                                return \`${`<li><a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber} </a>`}\`;
-                            }));
-                            $("#message").append('</ul>');
-                        }
-                    };
-                })();
+                ${onErrorScript}
+
                 // Development feature: Output warnings from third-party libraries
-                // (function(){
-                //     console.warn = function (message) {
-                //         $("#message").append(message + '<br>');
-                //     };
-                // })();
+                // console.warn = function (message) {
+                //     $("#message").append(message + '<br>');
+                // };
 
                 let clock = new THREE.Clock();
                 let pausedTime = 0.0;

@@ -107,7 +107,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         );
         webviewPanel.iconPath = context.getResourceUri('thumb.png');
         updateWebview();
-        
+
         let revealLine = (file: string, line: number) => {
             let highlightLine = (document: vscode.TextDocument, line: number) => {
                 let range = document.lineAt(line - 1).range;
@@ -135,6 +135,31 @@ export function activate(extensionContext: vscode.ExtensionContext) {
             });
         };
 
+        let diagnosticCollection: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection('shader-toy.errors');
+        type Diagnostic = {
+            line: number,
+            message: string
+        };
+        type DiagnosticBatch = {
+            filename: string,
+            diagnostics: Diagnostic[]
+        };
+        let showDiagnostics = (diagnosticBatch: DiagnosticBatch, severity: vscode.DiagnosticSeverity) => {
+            if (activeEditor) {
+                let currentFile = activeEditor.document.fileName;
+                currentFile = currentFile.replace(/\\/g, '/');
+                if (currentFile === diagnosticBatch.filename) {
+                    let collectedDiagnostics: vscode.Diagnostic[] = [];
+                    for (let diagnostic of diagnosticBatch.diagnostics) {
+                        let range = activeEditor.document.lineAt(diagnostic.line - 1).range;
+                        collectedDiagnostics.push(new vscode.Diagnostic(range, diagnostic.message, severity));
+                    }
+                    diagnosticCollection.set(activeEditor.document.uri, collectedDiagnostics);
+                    return;
+                }
+            }
+        };
+
         webviewPanel.webview.onDidReceiveMessage(
             (message: any) => {
               switch (message.command) {
@@ -148,7 +173,28 @@ export function activate(extensionContext: vscode.ExtensionContext) {
                 case 'updateKeyboard':
                     startingData.Keys = message.keys;
                     return;
-                case 'showGlslsError':
+                case 'showGlslDiagnostic':
+                    let diagnosticBatch: DiagnosticBatch = message.diagnosticBatch;
+                    let severity: vscode.DiagnosticSeverity;
+
+                    switch (message.type) {
+                        case 'error':
+                            severity = vscode.DiagnosticSeverity.Error;
+                            break;
+                        case 'warning':
+                            severity = vscode.DiagnosticSeverity.Warning;
+                        case 'hint':
+                            severity = vscode.DiagnosticSeverity.Hint;
+                            break;
+                        case 'information':
+                        default:
+                            severity = vscode.DiagnosticSeverity.Information;
+                            break;
+                    }
+
+                    showDiagnostics(diagnosticBatch, severity);
+                    return;
+                case 'showGlslsError': 
                     let file: string = message.file;
                     let line: number = message.line;
 
