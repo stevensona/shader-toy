@@ -45,7 +45,8 @@ export class Context {
             if (currentFile === diagnosticBatch.filename) {
                 let collectedDiagnostics: vscode.Diagnostic[] = [];
                 for (let diagnostic of diagnosticBatch.diagnostics) {
-                    let range = this.activeEditor.document.lineAt(diagnostic.line - 1).range;
+                    let line = Math.max(1, diagnostic.line) - 1;
+                    let range = this.activeEditor.document.lineAt(line).range;
                     collectedDiagnostics.push(new vscode.Diagnostic(range, diagnostic.message, severity));
                 }
                 this.diagnosticCollection.set(this.activeEditor.document.uri, collectedDiagnostics);

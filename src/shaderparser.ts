@@ -299,6 +299,24 @@ export class ShaderParser {
             }
         }
 
+        {
+            let versionPos = code.search(/#version\s+\d+(\s+\w+|\n)/g);
+            if (versionPos >= 0) {
+                let newLinePos = code.search('\n');
+                let versionDirective = code.substring(versionPos, newLinePos);
+                code = code.replace(versionDirective, "");
+
+                let diagnosticBatch: types.DiagnosticBatch = {
+                    filename: name,
+                    diagnostics: [{
+                        line: 1,
+                        message: "Version directive ignored by shader-toy extension"
+                    }]
+                };
+                this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
+            }
+        }
+
         // If there is no void main() in the shader we assume it is a shader-toy style shader
         let mainPos = code.search(/void\s+main\s*\(\s*\)\s*\{/g);
         let mainImagePos = code.search(/void\s+mainImage\s*\(\s*out\s+vec4\s+\w+,\s*(in\s)?\s*vec2\s+\w+\s*\)\s*\{/g);
