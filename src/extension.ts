@@ -183,6 +183,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
                             break;
                         case 'warning':
                             severity = vscode.DiagnosticSeverity.Warning;
+                            break;
                         case 'hint':
                             severity = vscode.DiagnosticSeverity.Hint;
                             break;
