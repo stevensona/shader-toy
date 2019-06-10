@@ -35,6 +35,11 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
+                "shader-toy.showCompileErrorsAsDiagnostics": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show all compile errors directly in the editor as diagnostics."
+                },
                 "shader-toy.omitDeprecationWarnings": {
                     "type": "boolean",
                     "default": false,

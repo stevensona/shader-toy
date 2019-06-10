@@ -78,7 +78,7 @@ void main() {
   gl_FragColor = vec4(r, g, b, 1.0);
 }
 ```
-Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function.
+Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function. The definition of `void main()` is found by matching the regex `/void\s+main\s*\(\s*\)\s*\{/g`, thus if you require to define `void main()` in addition to the extension generating a definition you may define it as `void main(void)`. This might be necessary, for example, if your main definition would be processed away by the preprocessor and should thus not be picked up by the extension. 
 
 ### GLSL Preview Interaction
 The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
@@ -112,6 +112,14 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.8.6
+* Document how main definition is found,
+* remove version directives from shaders,
+* fix an issue that would remove all newlines from beginning of shader and cause errors to be reported on the wrong lines,
+* reintroduce error when textures could not be loaded,
+* add iGlobalFrame,
+* add option that shows compile errors as diagnostics, enabled by default.
 
 ### 0.8.5
 * Hotfix for missing dependencies.
