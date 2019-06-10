@@ -22,7 +22,6 @@ export class WebviewContentProvider {
 
         let shaderPreamble = `
         uniform vec3        iResolution;
-        uniform float       iGlobalTime;
         uniform float       iTime;
         uniform float       iTimeDelta;
         uniform int         iFrame;
@@ -44,13 +43,18 @@ export class WebviewContentProvider {
         uniform sampler2D   iKeyboard;
         uniform float       iSampleRate;
 
+        #define iGloablTime iTime
+        #define iGloablFrame iFrame
+
         #define SHADER_TOY`;
+        let shaderPreambleLineNumbers = shaderPreamble.split(/\r\n|\n/).length;
+        let webglLineNumbers = 102;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: types.BufferDefinition[] = [];
         let commonIncludes: types.IncludeDefinition[] = [];
 
-        new ShaderParser(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
+        new ShaderParser(this.context, shaderPreambleLineNumbers + webglLineNumbers).parseShaderCode(shaderName, shader, buffers, commonIncludes);
 
         // If final buffer uses feedback we need to add a last pass that renders it to the screen
         // because we can not ping-pong the screen
@@ -237,7 +241,6 @@ export class WebviewContentProvider {
                     depthTest: false,
                     uniforms: {
                         iResolution: { type: "v3", value: resolution },
-                        iGlobalTime: { type: "f", value: 0.0 },
                         iTime: { type: "f", value: 0.0 },
                         iTimeDelta: { type: "f", value: 0.0 },
                         iFrame: { type: "i", value: 0 },
@@ -278,6 +281,12 @@ export class WebviewContentProvider {
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
         }`;
+        let makeTextureLoadErrorScript = (filename: string) => `function(err) {
+            vscode.postMessage({
+                command: 'errorMessage',
+                message: "Failed loading texture file ${filename}"
+            });
+        }`;
 
         let audioScripts = {
             Init: "",
@@ -302,10 +311,11 @@ export class WebviewContentProvider {
                 }
                 else if (localPath !== undefined) {
                     const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
-                    value = `texLoader.load('${resolvedPath.toString()}', ${textureLoadScript})`;
+                    const resolvedPathString = resolvedPath.toString();
+                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
                 else if (remotePath !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript})`;
+                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
                 }
 
                 if (value !== undefined) {
@@ -504,6 +514,56 @@ export class WebviewContentProvider {
             screenshotButtonScript = `<span id="screenshot"></span>`;
         }
 
+        let onErrorScript = "";
+        if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
+            onErrorScript = `
+            console.error = function (message) {
+                if('7' in arguments) {
+                    let diagnostics = [];
+                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
+                        let lineNumber = Number(line) - currentShader.LineOffset;
+                        diagnostics.push({
+                            line: lineNumber,
+                            message: error
+                        });
+                        let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
+                        return \`<li>\${lineHighlight}: \${error}</li>\`;
+                    });
+                    let diagnosticBatch = {
+                        filename: currentShader.File,
+                        diagnostics: diagnostics
+                    };
+                    vscode.postMessage({
+                        command: 'showGlslDiagnostic',
+                        type: 'error',
+                        diagnosticBatch: diagnosticBatch
+                    });
+
+                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
+                    $("#message").append('<ul>');
+                    $("#message").append(message);
+                    $("#message").append('</ul>');
+                }
+            };`;
+        }
+        else {
+            onErrorScript = `
+            console.error = function (message) {
+                if('7' in arguments) {
+                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
+                        let lineNumber = Number(line) - currentShader.LineOffset;
+                        let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
+                        return \`<li>\${lineHighlight}: \${error}</li>\`;
+                    });
+
+                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
+                    $("#message").append('<ul>');
+                    $("#message").append(message);
+                    $("#message").append('</ul>');
+                }
+            };`;
+        }
+
         // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
         const content = `
             <head>
@@ -656,25 +716,12 @@ export class WebviewContentProvider {
                 };
 
                 let currentShader = {};
-                (function(){
-                    console.error = function (message) {
-                        if('7' in arguments) {
-                            $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
-                            $("#message").append('<ul>');
-                            $("#message").append(arguments[7].replace(/ERROR: \\d+:(\\d+)/g, function(m, c) {
-                                let lineNumber = Number(c) - currentShader.LineOffset;
-                                return \`${`<li><a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber} </a>`}\`;
-                            }));
-                            $("#message").append('</ul>');
-                        }
-                    };
-                })();
+                ${onErrorScript}
+
                 // Development feature: Output warnings from third-party libraries
-                // (function(){
-                //     console.warn = function (message) {
-                //         $("#message").append(message + '<br>');
-                //     };
-                // })();
+                // console.warn = function (message) {
+                //     $("#message").append(message + '<br>');
+                // };
 
                 let clock = new THREE.Clock();
                 let pausedTime = 0.0;
@@ -772,7 +819,7 @@ export class WebviewContentProvider {
                     currentShader = {
                         Name: include.Name,
                         File: include.File,
-                        LineOffset: ${shaderPreamble.split(/\r\n|\n/).length}  + 2 // add two for version and precision lines
+                        LineOffset: ${shaderPreambleLineNumbers} + 2 // add two for version and precision lines
                     };
                     // bail if there is an error found in the include script
                     if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) throw Error(\`Failed to compile \${include.Name}\`);
@@ -825,7 +872,6 @@ export class WebviewContentProvider {
                     for (let buffer of buffers) {
                         buffer.Shader.uniforms['iResolution'].value = resolution;
                         buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
-                        buffer.Shader.uniforms['iGlobalTime'].value = time;
                         buffer.Shader.uniforms['iTime'].value = time;
                         buffer.Shader.uniforms['iFrame'].value = frameCounter;
                         buffer.Shader.uniforms['iMouse'].value = mouse;

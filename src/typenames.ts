@@ -56,3 +56,12 @@ export type IncludeDefinition = {
     Code: string,
     LineCount: number
 };
+
+export type Diagnostic = {
+    line: number,
+    message: string
+};
+export type DiagnosticBatch = {
+    filename: string,
+    diagnostics: Diagnostic[]
+};
