@@ -43,8 +43,8 @@ export class WebviewContentProvider {
         uniform sampler2D   iKeyboard;
         uniform float       iSampleRate;
 
-        #define iGloablTime iTime
-        #define iGloablFrame iFrame
+        #define iGlobalTime iTime
+        #define iGlobalFrame iFrame
 
         #define SHADER_TOY`;
         let shaderPreambleLineNumbers = shaderPreamble.split(/\r\n|\n/).length;
