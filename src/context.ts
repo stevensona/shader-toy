@@ -9,7 +9,7 @@ export class Context {
     private config: vscode.WorkspaceConfiguration;
 
     private diagnosticCollection: vscode.DiagnosticCollection;
-    private collectedDiagnostics: vscode.Diagnostic[] = [];
+    private collectedDiagnostics: { [id: string] : vscode.Diagnostic[]; } = {};
     
     public activeEditor: vscode.TextEditor | undefined;
     
@@ -38,23 +38,26 @@ export class Context {
     }
 
     public clearDiagnostics() {
-        this.collectedDiagnostics = [];
+        this.collectedDiagnostics = {};
         this.diagnosticCollection.clear();
     }
     public showDiagnostics(diagnosticBatch: DiagnosticBatch, severity: vscode.DiagnosticSeverity) {
-        if (this.activeEditor) {
-            let currentFile = this.activeEditor.document.fileName;
-            currentFile = currentFile.replace(/\\/g, '/');
-            if (currentFile === diagnosticBatch.filename) {
-                for (let diagnostic of diagnosticBatch.diagnostics) {
-                    let line = Math.max(1, diagnostic.line) - 1;
-                    let range = this.activeEditor.document.lineAt(line).range;
-                    this.collectedDiagnostics.push(new vscode.Diagnostic(range, diagnostic.message, severity));
-                }
-                this.diagnosticCollection.set(this.activeEditor.document.uri, this.collectedDiagnostics);
-                return;
+        let file = diagnosticBatch.filename;
+        let newDocument = vscode.workspace.openTextDocument(file);
+        newDocument.then((document: vscode.TextDocument) => {
+            if (this.collectedDiagnostics[file] === undefined) {
+                this.collectedDiagnostics[file] = [];
             }
-        }
+            
+            for (let diagnostic of diagnosticBatch.diagnostics) {
+                let line = Math.max(1, diagnostic.line) - 1;
+                let range = document.lineAt(line).range;
+                this.collectedDiagnostics[file].push(new vscode.Diagnostic(range, diagnostic.message, severity));
+            }
+            this.diagnosticCollection.set(document.uri, this.collectedDiagnostics[file]);
+        }, (reason) => {
+            vscode.window.showErrorMessage(`Could not open ${file} because ${reason}`);
+        });
     }
 
     public revealLine(file: string, line: number) {

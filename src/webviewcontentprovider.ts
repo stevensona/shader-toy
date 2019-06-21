@@ -250,6 +250,17 @@ export class WebviewContentProvider {
                         iDate: { type: "v4", value: date },
                         iSampleRate: { type: "f", value: audioContext.sampleRate },
 
+                        iChannel0: { type: "t" },
+                        iChannel1: { type: "t" },
+                        iChannel2: { type: "t" },
+                        iChannel3: { type: "t" },
+                        iChannel4: { type: "t" },
+                        iChannel5: { type: "t" },
+                        iChannel6: { type: "t" },
+                        iChannel7: { type: "t" },
+                        iChannel8: { type: "t" },
+                        iChannel9: { type: "t" },
+
                         resolution: { type: "v2", value: resolution },
                         time: { type: "f", value: 0.0 },
                         mouse: { type: "v2", value: normalizedMouse },
@@ -470,6 +481,7 @@ export class WebviewContentProvider {
             frameTimeScript = `
             <script src="${this.context.getWebviewResourcePath('stats.min.js')}" onload="
                 let stats = new Stats();
+                compileTimePanel = stats.addPanel(new Stats.Panel('CT MS', '#ff8', '#221'));
                 stats.showPanel(1);
                 document.body.appendChild(stats.dom);
                 requestAnimationFrame(function loop() {
@@ -706,6 +718,7 @@ export class WebviewContentProvider {
 
             <script type="text/javascript">
                 const vscode = acquireVsCodeApi();
+                var compileTimePanel;
 
                 let revealError = function(line, file) {
                     vscode.postMessage({
@@ -814,6 +827,7 @@ export class WebviewContentProvider {
                 camera.position.set(0, 0, 10);
 
                 // Run every shader once to check for compile errors
+                let compileTimeStart = performance.now();
                 let failed=0;
                 for (let include of commonIncludes) {
                     currentShader = {
@@ -835,6 +849,13 @@ export class WebviewContentProvider {
                     renderer.render(scene, camera, buffer.Target);
                 }
                 currentShader = {};
+                let compileTimeEnd = performance.now();
+                let compileTime = compileTimeEnd - compileTimeStart;
+                if (compileTimePanel !== undefined) {
+                    for (let i = 0; i < 200; i++) {
+                        compileTimePanel.update(compileTime, 200);
+                    }
+                }
 
                 computeSize();
                 render();
@@ -863,7 +884,6 @@ export class WebviewContentProvider {
                     requestAnimationFrame(render);
                     ${pauseWholeScript}
                     
-                    frameCounter++;
                     ${advanceTimeScript}
                     updateDate();
 
@@ -897,6 +917,8 @@ export class WebviewContentProvider {
                             }
                         }
                     }
+
+                    frameCounter++;
                 }
                 function computeSize() {
                     let forceAspectRatio = (width, height) => {
