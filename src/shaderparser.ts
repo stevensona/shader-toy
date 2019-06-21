@@ -10,10 +10,63 @@ import { Context } from './context';
 export class ShaderParser {
     private context: Context;
     private lineOffset: number;
-    
+    private visitedFiles: string[];
     constructor(context: Context, lineOffset: number) {
         this.context = context;
         this.lineOffset = lineOffset;
+        this.visitedFiles = [];
+    }
+
+    public parseShaderCode(name: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
+        this.parseShaderCodeInternal(name, code, buffers, commonIncludes);
+
+        const findByName = (bufferName: string) => {
+            let strippedName = this.stripPath(bufferName);
+            return (value: any) => {
+                if (value.Name === strippedName) {
+                    return true;
+                }
+                return false;
+            };
+        };
+
+        // Translate buffer names to indices including self reads
+        for (let i = 0; i < buffers.length; i++) {
+            let buffer = buffers[i];
+            let usesSelf = false;
+            let selfChannel = 0;
+            for (let j = 0; j < buffer.TextureInputs.length; j++) {
+                let texture = buffer.TextureInputs[j];
+                if (texture.Buffer) {
+                    texture.BufferIndex = buffers.findIndex(findByName(texture.Buffer));
+                }
+                else if (texture.Self) {
+                    texture.Buffer = buffer.Name;
+                    texture.BufferIndex = i;
+                    usesSelf = true;
+                    selfChannel = j;
+                }
+            }
+
+            buffer.UsesSelf = usesSelf;
+            buffer.SelfChannel = selfChannel;
+        }
+
+        // Resolve dependencies between passes
+        for (let i = 0; i < buffers.length; i++) {
+            let buffer = buffers[i];
+            for (let texture of buffer.TextureInputs) {
+                if (!texture.Self && texture.Buffer !== undefined && texture.BufferIndex !== undefined) {
+                    let dependencyBuffer = buffers[texture.BufferIndex];
+                    if (dependencyBuffer.UsesSelf) {
+                        dependencyBuffer.Dependents.push({
+                            Index: i,
+                            Channel: texture.Channel
+                        });
+                    }
+                }
+            }
+        }
     }
 
     private readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
@@ -31,26 +84,17 @@ export class ShaderParser {
 
         return { success, error, bufferCode };
     }
+    private stripPath(name: string): string{
+        let lastSlash = name.lastIndexOf('/');
+        return name.substring(lastSlash + 1);
+    }
 
-    public parseShaderCode(name: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
-        const stripPath = (name: string) => {
-            let lastSlash = name.lastIndexOf('/');
-            return name.substring(lastSlash + 1);
-        };
-        const findByName = (bufferName: string) => {
-            let strippedName = stripPath(bufferName);
-            return (value: any) => {
-                if (value.Name === strippedName) {
-                    return true;
-                }
-                return false;
-            };
-        };
-
-        const found = buffers.find(findByName(name));
+    private parseShaderCodeInternal(name: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
+        const found = this.visitedFiles.find((file: string) => name === file);
         if (found) {
             return;
         }
+        this.visitedFiles.push(name);
 
         let line_offset = this.lineOffset;
         let textures: types.TextureDefinition[] = [];
@@ -152,12 +196,12 @@ export class ShaderParser {
                             }
         
                             // Parse the shader
-                            this.parseShaderCode(file, shaderFile.bufferCode, buffers, commonIncludes);
+                            this.parseShaderCodeInternal(file, shaderFile.bufferCode, buffers, commonIncludes);
                 
                             // Push buffers as textures
                             textures.push({
                                 Channel: channel,
-                                Buffer: stripPath(file),
+                                Buffer: this.stripPath(file),
                             });
                         }
                         break;
@@ -292,7 +336,7 @@ export class ShaderParser {
                     const texture: any = textures[i];
                     if (texture.length > 0) {
                         // Check for buffer to load to avoid circular loading
-                        if (stripPath(texture) !== stripPath(name)) {
+                        if (this.stripPath(texture) !== this.stripPath(name)) {
                             loadDependency(texture, parseInt(i), "iChannel");
                         }
                     }
@@ -354,39 +398,16 @@ export class ShaderParser {
             }
         }
 
-        // Translate buffer names to indices
-        let usesSelf = false;
-        let selfChannel = 0;
-        for (let i = 0; i < textures.length; i++) {
-            let texture = textures[i];
-            if (texture.Buffer) {
-                texture.BufferIndex = buffers.findIndex(findByName(texture.Buffer));
-                let dependencyBuffer = buffers[texture.BufferIndex];
-                if (dependencyBuffer.UsesSelf) {
-                    dependencyBuffer.Dependents.push({
-                        Index: buffers.length,
-                        Channel: texture.Channel
-                    });
-                }
-            }
-            else if (texture.Self) {
-                texture.Buffer = stripPath(name);
-                texture.BufferIndex = buffers.length;
-                usesSelf = true;
-                selfChannel = i;
-            }
-        }
-
         // Push yourself after all your dependencies
         buffers.push({
-            Name: stripPath(name),
+            Name: this.stripPath(name),
             File: name,
             Code: code,
             IncludeName: includeName,
             TextureInputs: textures,
             AudioInputs: audios,
-            UsesSelf: usesSelf,
-            SelfChannel: selfChannel,
+            UsesSelf: false,
+            SelfChannel: -1,
             Dependents: [],
             UsesKeyboard: usesKeyboard,
             LineOffset: line_offset
