@@ -306,7 +306,6 @@ export class ShaderParser {
                 let newLinePos = code.search('\n');
                 let versionDirective = code.substring(versionPos, newLinePos - 1);
                 code = code.replace(versionDirective, "");
-                line_offset--;
 
                 let diagnosticBatch: types.DiagnosticBatch = {
                     filename: name,
