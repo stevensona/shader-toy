@@ -88,7 +88,7 @@ export class ShaderParser {
             userPath = userPath.replace(/\\/g, '/');
 
             if (inputType !== "file" && inputType !== "https") {
-                if (this.context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+                if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
                     if (passType === "include") {
                         vscode.window.showWarningMessage("You are using deprecated input methods, no protocol is required for includes, simply use '#include \"./file.glsl\"'");
                     }
@@ -247,7 +247,7 @@ export class ShaderParser {
                         let input: string;
 
                         if (leftQuotePos < 0 || rightQuotePos < 0) {
-                            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+                            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
                                 vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated behaviour.");
                             }
 
@@ -283,7 +283,7 @@ export class ShaderParser {
             }
         }
         else {
-            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === true) {
+            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
                 vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
             }
             let textures: any[] | undefined = this.context.getConfig('textures');
