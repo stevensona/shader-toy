@@ -5,7 +5,7 @@ void main() {
 
     vec2 halfResolution = iResolution.xy / 2.0;
 
-    if (iFrame <= 60) {
+    if (iFrame == 0) {
         gl_FragColor.a = 1.0;
         float distFromCenter = length(gl_FragCoord.xy / iResolution.xy - 0.5);
         if (distFromCenter < 0.1) {
