@@ -113,6 +113,18 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.8.8
+* Update iFrame after a frame is rendered instead of before, so that the first frames value is zero,
+* fixed a bug that caused deprecation warnings to be shown only if the user meant to disable them,
+* fixed a bug with wrong line numbers being displayed if the shader contains a version directive,
+* enabled diagnostics correctly when using multiple passes,
+* allow specifying a path for a shader as input even if the path refers to the very same shader, thus removing the need for the self keyword despite being a shorthand,
+* added shader compile-time panel to stats,
+* fixed bug that caused circular dependencies between passes not to work.
+
+### 0.8.7
+* Hotfix for typo.
+
 ### 0.8.6
 * Document how main definition is found,
 * remove version directives from shaders,
