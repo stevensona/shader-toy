@@ -136,7 +136,7 @@ export class ShaderParser {
             else {
                 switch (mimeType) {
                     case "text": {
-                        if (file === "self") {
+                        if (file === "self" || file === name) {
                             // Push self as feedback-buffer
                             textures.push({
                                 Channel: channel,
