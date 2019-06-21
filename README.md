@@ -23,6 +23,7 @@ The texture channels `iChannelN` may be defined by inserting code of the followi
 #iChannel4 "file://./music/epic.mp3"
 ```
 This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
+![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
 
 ### Audio Input (experimental)
 _Note: By default audio input is disabled, change the setting "Enable Audio Input" to use it._\
@@ -84,7 +85,7 @@ Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `g
 The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
 
 ### Error Highlighting
-The extension also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes. It does so by presenting errors in a digestible format inside the GLSL Preview and allowing the user to interact with line numbers inside the GLSL Preview to highlight relevant lines:
+The extension also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes. It does so by showing errors as diagnostics directly in the text editor as well as presenting them in a digestible format inside the GLSL Preview and allowing the user to interact with the error messages to jump to the relevant lines, and open the relevant files if necessary:
 
 ![error example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example3.png)
 
@@ -101,7 +102,6 @@ The extension also supports highlighting of compilation errors in the text edito
 ## Todo
 
 * Receive more feedback
-* Get new screenshots of the extension that don't include deprecated features.
 
 ## Contributing
 
