@@ -250,6 +250,17 @@ export class WebviewContentProvider {
                         iDate: { type: "v4", value: date },
                         iSampleRate: { type: "f", value: audioContext.sampleRate },
 
+                        iChannel0: { type: "t" },
+                        iChannel1: { type: "t" },
+                        iChannel2: { type: "t" },
+                        iChannel3: { type: "t" },
+                        iChannel4: { type: "t" },
+                        iChannel5: { type: "t" },
+                        iChannel6: { type: "t" },
+                        iChannel7: { type: "t" },
+                        iChannel8: { type: "t" },
+                        iChannel9: { type: "t" },
+
                         resolution: { type: "v2", value: resolution },
                         time: { type: "f", value: 0.0 },
                         mouse: { type: "v2", value: normalizedMouse },
