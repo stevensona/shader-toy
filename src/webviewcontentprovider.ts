@@ -470,6 +470,7 @@ export class WebviewContentProvider {
             frameTimeScript = `
             <script src="${this.context.getWebviewResourcePath('stats.min.js')}" onload="
                 let stats = new Stats();
+                compileTimePanel = stats.addPanel(new Stats.Panel('CT MS', '#ff8', '#221'));
                 stats.showPanel(1);
                 document.body.appendChild(stats.dom);
                 requestAnimationFrame(function loop() {
@@ -706,6 +707,7 @@ export class WebviewContentProvider {
 
             <script type="text/javascript">
                 const vscode = acquireVsCodeApi();
+                var compileTimePanel;
 
                 let revealError = function(line, file) {
                     vscode.postMessage({
@@ -814,6 +816,7 @@ export class WebviewContentProvider {
                 camera.position.set(0, 0, 10);
 
                 // Run every shader once to check for compile errors
+                let compileTimeStart = performance.now();
                 let failed=0;
                 for (let include of commonIncludes) {
                     currentShader = {
@@ -835,6 +838,13 @@ export class WebviewContentProvider {
                     renderer.render(scene, camera, buffer.Target);
                 }
                 currentShader = {};
+                let compileTimeEnd = performance.now();
+                let compileTime = compileTimeEnd - compileTimeStart;
+                if (compileTimePanel !== undefined) {
+                    for (let i = 0; i < 200; i++) {
+                        compileTimePanel.update(compileTime, 200);
+                    }
+                }
 
                 computeSize();
                 render();
@@ -896,7 +906,7 @@ export class WebviewContentProvider {
                             }
                         }
                     }
-                    
+
                     frameCounter++;
                 }
                 function computeSize() {
