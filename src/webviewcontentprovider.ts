@@ -863,7 +863,6 @@ export class WebviewContentProvider {
                     requestAnimationFrame(render);
                     ${pauseWholeScript}
                     
-                    frameCounter++;
                     ${advanceTimeScript}
                     updateDate();
 
@@ -897,6 +896,8 @@ export class WebviewContentProvider {
                             }
                         }
                     }
+                    
+                    frameCounter++;
                 }
                 function computeSize() {
                     let forceAspectRatio = (width, height) => {
