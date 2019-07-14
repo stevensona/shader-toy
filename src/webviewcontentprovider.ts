@@ -527,7 +527,23 @@ export class WebviewContentProvider {
         }
 
         let onErrorScript = "";
-        if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
+        if (this.context.getConfig<boolean>('enableGlslifySupport')) {
+            onErrorScript = `
+            console.error = function (message) {
+                if('7' in arguments) {
+                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
+                        return \`<li>\${error}</li>\`;
+                    });
+
+                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name}</h3>\`);
+                    $("#message").append(\`<h3>Line numbers are not available because the glslify option is enabled</h3>\`);
+                    $("#message").append('<ul>');
+                    $("#message").append(message);
+                    $("#message").append('</ul>');
+                }
+            };`;
+        }
+        else if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
             onErrorScript = `
             console.error = function (message) {
                 if('7' in arguments) {
