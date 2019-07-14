@@ -398,6 +398,17 @@ export class ShaderParser {
             }
         }
 
+        if (this.context.getConfig<boolean>("enableGlslifySupport")) {
+            // glslify the code
+            var glsl = require('glslify');
+            try {
+                code = glsl(code);
+            }
+            catch(e) {
+                vscode.window.showErrorMessage(e.message);
+            }
+        }
+
         // Push yourself after all your dependencies
         buffers.push({
             Name: this.stripPath(name),
