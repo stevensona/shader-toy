@@ -287,11 +287,54 @@ export class WebviewContentProvider {
         }
         
         let textureScripts = "\n";
-        let textureLoadScript = `function(texture) {
-            texture.minFilter = THREE.LinearFilter;
-            texture.wrapS = THREE.RepeatWrapping;
-            texture.wrapT = THREE.RepeatWrapping;
-        }`;
+        let textureLoadScript = (mag: types.TextureMagFilter, min: types.TextureMinFilter, wrap: types.TextureWrapMode) => {
+            let magFilter: string = (() => {
+                switch(mag) {
+                case types.TextureMagFilter.Nearest:
+                    return "THREE.NearestFilter";
+                case types.TextureMagFilter.Linear:
+                default:
+                    return "THREE.LinearFilter";
+                }
+            })();
+
+            let minFilter: string = (() => {
+                switch(min) {
+                    case types.TextureMinFilter.Nearest:
+                        return"THREE.NearestFilter";
+                    case types.TextureMinFilter.NearestMipMapNearest:
+                        return"THREE.NearestMipMapNearestFilter";
+                    case types.TextureMinFilter.NearestMipMapLinear:
+                        return"THREE.NearestMipMapLinearFilter";
+                    case types.TextureMinFilter.Linear:
+                    default:
+                        return"THREE.LinearFilter";
+                    case types.TextureMinFilter.LinearMipMapNearest:
+                        return"THREE.LinearMipMapNearestFilter";
+                    case types.TextureMinFilter.LinearMipMapLinear:
+                        return"THREE.LinearMipMapLinearFilter";
+                }
+            })();
+
+            let wrapMode: string = (() => {
+                switch(wrap) {
+                case types.TextureWrapMode.Clamp:
+                    return "THREE.ClampToEdgeWrapping";
+                case types.TextureWrapMode.Repeat:
+                default:
+                    return "THREE.RepeatWrapping";
+                case types.TextureWrapMode.Mirror:
+                    return "THREE.MirroredRepeatWrapping";
+                }
+            })();
+
+            return `function(texture) {
+                texture.magFilter = ${magFilter};
+                texture.minFilter = ${minFilter};
+                texture.wrapS = ${wrapMode};
+                texture.wrapT = ${wrapMode};
+            }`;
+        };
         let makeTextureLoadErrorScript = (filename: string) => `function(err) {
             vscode.postMessage({
                 command: 'errorMessage',
@@ -320,13 +363,13 @@ export class WebviewContentProvider {
                 if (bufferIndex !== undefined) {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
-                else if (localPath !== undefined) {
+                else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
                     const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
                     const resolvedPathString = resolvedPath.toString();
-                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
+                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript(texture.Mag, texture.Min, texture.Wrap)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
-                else if (remotePath !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
+                else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
+                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript(texture.Mag, texture.Min, texture.Wrap)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
                 }
 
                 if (value !== undefined) {

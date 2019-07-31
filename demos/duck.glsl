@@ -1,4 +1,5 @@
 #iChannel0 "https://cdn-images-1.medium.com/max/1200/1*eFjpoz8lhNKyd8XcSWv2OA.jpeg"
+#iChannel0::WrapMode "Mirror"
 
 void main() {
     vec2 uv = (gl_FragCoord.xy / iResolution.xy);

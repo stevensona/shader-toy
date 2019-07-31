@@ -98,6 +98,7 @@ export class ShaderParser {
 
         let line_offset = this.lineOffset;
         let textures: types.TextureDefinition[] = [];
+        let pendingTextureSettings: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
         let includeName: string | undefined;
 
@@ -211,12 +212,18 @@ export class ShaderParser {
                             textures.push({
                                 Channel: channel,
                                 LocalTexture: file,
+                                Mag: types.TextureMagFilter.Linear,
+                                Min: types.TextureMinFilter.Linear,
+                                Wrap: types.TextureWrapMode.Clamp
                             });
                         }
                         else {
                             textures.push({
                                 Channel: channel,
                                 RemoteTexture: file,
+                                Mag: types.TextureMagFilter.Linear,
+                                Min: types.TextureMinFilter.Linear,
+                                Wrap: types.TextureWrapMode.Clamp
                             });
                         }
                         break;
@@ -287,8 +294,8 @@ export class ShaderParser {
                         let leftQuotePos = line.search(/"|'/);
                         let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
 
-                        let channel: number;
-                        let input: string;
+                        let channel: number | undefined;
+                        let input: string | undefined;
 
                         if (leftQuotePos < 0 || rightQuotePos < 0) {
                             if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
@@ -310,12 +317,108 @@ export class ShaderParser {
                             input = code.substring(spacePos + 1, textureEndPos);
                         }
                         else {
-                            channel = parseInt(line.substring(0, leftQuotePos).trim());
-                            input = line.substring(leftQuotePos + 1, rightQuotePos).trim();
+                            let leftPart = line.substring(0, leftQuotePos).trim();
+                            let quotedPart = line.substring(leftQuotePos + 1, rightQuotePos).trim();
+                            
+                            let scopePos = leftPart.search(/^\d+::/);
+                            if (scopePos < 0) {
+                                channel = parseInt(leftPart);
+                                input = quotedPart;
+                            }
+                            else {
+                                scopePos = leftPart.search("::");
+
+                                let magFilter: types.TextureMagFilter | undefined;
+                                let minFilter: types.TextureMinFilter | undefined;
+                                let wrapMode: types.TextureWrapMode | undefined;
+
+                                let channelPart = leftPart.substring(0, scopePos);
+                                channel = parseInt(channelPart);
+
+                                let settingName = leftPart.substring(scopePos + 2);
+                                switch (settingName) {
+                                    case "MagFilter":
+                                        magFilter = (() => {
+                                            switch(quotedPart) {
+                                                case "Nearest":
+                                                    return types.TextureMagFilter.Nearest;
+                                                case "Linear":
+                                                    return types.TextureMagFilter.Linear;
+                                                default:
+                                                    vscode.window.showWarningMessage(`Unknown mag filter setting "${quotedPart}", choose either "Nearest" or "Linear"`);
+                                            }
+                                        })();
+
+                                        break;
+                                    case "MinFilter":
+                                        minFilter = (() => {
+                                            switch(quotedPart) {
+                                                case "Nearest":
+                                                    return types.TextureMinFilter.Nearest;
+                                                case "NearestMipMapNearest":
+                                                    return types.TextureMinFilter.NearestMipMapNearest;
+                                                case "NearestMipMapLinear":
+                                                    return types.TextureMinFilter.NearestMipMapLinear;
+                                                case "Linear":
+                                                    return types.TextureMinFilter.Linear;
+                                                case "LinearMipMapNearest":
+                                                    return types.TextureMinFilter.LinearMipMapNearest;
+                                                case "LinearMipMapLinear":
+                                                    return types.TextureMinFilter.LinearMipMapLinear;
+                                                default:
+                                                    vscode.window.showWarningMessage(`Unknown min filter setting "${quotedPart}", choose either "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear"`);
+                                            }
+                                        })();
+
+                                        break;
+                                    case "WrapMode":
+                                        wrapMode = (() => {
+                                            switch(quotedPart) {
+                                                case "Repeat":
+                                                    return types.TextureWrapMode.Repeat;
+                                                case "Clamp":
+                                                    return types.TextureWrapMode.Clamp;
+                                                case "Mirror":
+                                                    return types.TextureWrapMode.Mirror;
+                                                default:
+                                                    vscode.window.showWarningMessage(`Unknown wrap mode setting "${quotedPart}", choose either "Clamp", "Repeat" or "Mirror"`);
+                                            }
+                                        })();
+                                        
+                                        break;
+                                    default:
+                                        vscode.window.showWarningMessage(`Unkown texture setting "${settingName}", choose either "MinFilter", "MagFilter" or "WrapMode"`);
+                                }
+
+                                let texture = textures.find((texture: types.TextureDefinition) => {
+                                    return texture.Channel === channel;
+                                });
+                                if (texture === undefined) {
+                                    texture = pendingTextureSettings.find((texture: types.TextureDefinition) => {
+                                        return texture.Channel === channel;
+                                    });
+                                }
+
+                                if (texture !== undefined) {
+                                    texture.Mag = magFilter || texture.Mag;
+                                    texture.Min = minFilter || texture.Min;
+                                    texture.Wrap = wrapMode || texture.Wrap;
+                                }
+                                else {
+                                    pendingTextureSettings.push({
+                                        Channel: channel,
+                                        Mag: magFilter || types.TextureMagFilter.Linear,
+                                        Min: minFilter || types.TextureMinFilter.Linear,
+                                        Wrap: wrapMode || types.TextureWrapMode.Clamp
+                                    });
+                                }
+                            }
                         }
                         
-                        // Load the dependency
-                        loadDependency(input, channel, nextMatch.PassType);
+                        if (input !== undefined && channel !== undefined) {
+                            // Load the dependency
+                            loadDependency(input, channel, nextMatch.PassType);
+                        }
                     }
 
                     // Remove #iChannel define
@@ -373,6 +476,19 @@ export class ShaderParser {
             `;
         }
 
+        // Assign pending texture settings
+        for (let texture of textures) {
+            let pendingSettings = pendingTextureSettings.find((pendingSettings: types.TextureDefinition) => {
+                return pendingSettings.Channel === texture.Channel;
+            });
+            if (pendingSettings !== undefined) {
+                texture.Mag = pendingSettings.Mag || texture.Mag;
+                texture.Min = pendingSettings.Min || texture.Min;
+                texture.Wrap = pendingSettings.Wrap || texture.Wrap;
+            }
+        }
+
+        // Check if defined textures are used in shader
         let definedTextures: any = {};
         for (let texture of textures) {
             definedTextures[texture.Channel] = true;
@@ -380,7 +496,7 @@ export class ShaderParser {
         if (this.context.getConfig<boolean>('warnOnUndefinedTextures')) {
             for (let i = 0; i < 9; i++) {
                 if (code.search("iChannel" + i) > 0) {
-                    if (definedTextures[i] === null) {
+                    if (definedTextures[i] === undefined) {
                         if (useTextureDefinitionInShaders) {
                             vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, "Details")
                                 .then(() => {
