@@ -493,6 +493,9 @@ export class ShaderParser {
         for (let texture of textures) {
             definedTextures[texture.Channel] = true;
         }
+        for (let audio of audios) {
+            definedTextures[audio.Channel] = true;
+        }
         if (this.context.getConfig<boolean>('warnOnUndefinedTextures')) {
             for (let i = 0; i < 9; i++) {
                 if (code.search("iChannel" + i) > 0) {
