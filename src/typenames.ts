@@ -68,7 +68,7 @@ export type BufferDefinition = {
     SelfChannel: number,
     Dependents: BufferDependency[],
     LineOffset: number
-    IncludeName?: string,
+    Includes: string[],
     UsesKeyboard?: boolean,
 };
 

@@ -17,8 +17,8 @@ export class ShaderParser {
         this.visitedFiles = [];
     }
 
-    public parseShaderCode(name: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
-        this.parseShaderCodeInternal(name, code, buffers, commonIncludes);
+    public parseShaderCode(file: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
+        this.parseShaderCodeInternal(file, code, buffers, commonIncludes);
 
         const findByName = (bufferName: string) => {
             let strippedName = this.stripPath(bufferName);
@@ -89,20 +89,97 @@ export class ShaderParser {
         return name.substring(lastSlash + 1);
     }
 
-    private parseShaderCodeInternal(name: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
-        const found = this.visitedFiles.find((file: string) => name === file);
+    private mapUserPathToWorkspacePath(userPath: string): { file: string, userPath: string } {
+        // Fix path to use '/' over '\\' and relative to the current working directory
+        let file = ((file: string) => {
+            const relFile = vscode.workspace.asRelativePath(file);
+            const herePos = relFile.indexOf("./");
+            if (vscode.workspace.rootPath === undefined && herePos === 0) {
+                vscode.window.showErrorMessage("To use relative paths please open a workspace!");
+            }
+            if (relFile !== file || herePos === 0) {
+                return vscode.workspace.rootPath + '/' + relFile;
+            }
+            else {
+                return file;
+            }
+        })(userPath);
+        file = file.replace(/\\/g, '/');
+        file = file.replace(/\.\//g, '');
+        userPath = file.replace(/\\/g, '/');
+        return { file, userPath };
+    }
+
+    private parseIncludeCodeInternal(file: string, commonIncludes: types.IncludeDefinition[]): types.IncludeDefinition {
+        let userPath = file;
+        ({ file, userPath } = this.mapUserPathToWorkspacePath(userPath));
+
+        const name = path.basename(file);
+        
+        // Read the whole file of the shader
+        const shaderFile = this.readShaderFile(file);
+        if(shaderFile.success === false){
+            vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
+            return {
+                Name: name,
+                File: file,
+                Code: "",
+                LineCount: 0
+            };
+        }
+        let code = shaderFile.bufferCode;
+
+        let includeMatch = code.match(/#include/m);
+        while (includeMatch && includeMatch.index !== undefined && includeMatch.index >= 0) {
+            let includePos = includeMatch.index;
+            let endlineMatch = code.substring(includePos).match(/\r\n|\r|\n/);
+            if (endlineMatch !== null && endlineMatch.index !== undefined) {
+                endlineMatch.index += includePos;
+                let endlinePos = endlineMatch.index + endlineMatch[0].length;
+                let line = code.substring(includePos, endlineMatch.index);
+
+                let leftQuotePos = line.search(/"|'/);
+                let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
+
+                if (leftQuotePos < 0 || rightQuotePos < 0) {
+                    if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
+                        vscode.window.showErrorMessage("Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme. .");
+                    }
+                }
+                else {
+                    let quotedPart = line.substring(leftQuotePos + 1, rightQuotePos).trim();
+                    let nestedInclude = this.parseIncludeCodeInternal(quotedPart, commonIncludes);
+                    code = code.replace(line, nestedInclude.Code);
+                }
+            }
+            includeMatch = code.match(/#include/m);
+        }
+
+        let include = {
+            Name: name,
+            File: file,
+            Code: code,
+            LineCount: code.split(/\r\n|\n/).length
+        };
+
+        commonIncludes.push(include);
+        return include;
+    }
+
+    private parseShaderCodeInternal(file: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
+        const found = this.visitedFiles.find((file: string) => file === file);
         if (found) {
             return;
         }
-        this.visitedFiles.push(name);
+        this.visitedFiles.push(file);
 
         let line_offset = this.lineOffset;
         let textures: types.TextureDefinition[] = [];
         let pendingTextureSettings: types.TextureDefinition[] = [];
         let audios: types.AudioDefinition[] = [];
-        let includeName: string | undefined;
+        let includes: string[] = [];
 
-        const loadDependency = (file: string, channel: number, passType: string) => {
+        const loadDependency = (file: string, channel: number, passType: string, codePosition: number) => {
             // Get type and name of file
             let colonPos = file.indexOf('://', 0);
             
@@ -114,23 +191,7 @@ export class ShaderParser {
                 userPath = file.substring(colonPos + 3, file.length);
             }
 
-            // Fix path to use '/' over '\\' and relative to the current working directory
-            file = ((file: string) => {
-                const relFile = vscode.workspace.asRelativePath(file);
-                const herePos = relFile.indexOf("./");
-                if (vscode.workspace.rootPath === undefined && herePos === 0) {
-                    vscode.window.showErrorMessage("To use relative paths please open a workspace!");
-                }
-                if (relFile !== file || herePos === 0) {
-                    return vscode.workspace.rootPath + '/' + relFile;
-                }
-                else {
-                    return file;
-                }
-            })(userPath);
-            file = file.replace(/\\/g, '/');
-            file = file.replace(/\.\//g, '');
-            userPath = userPath.replace(/\\/g, '/');
+            ({ file, userPath } = this.mapUserPathToWorkspacePath(userPath));
 
             if (inputType !== "file" && inputType !== "https") {
                 if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
@@ -155,33 +216,22 @@ export class ShaderParser {
                 // Attempt to get the include if already exists
                 let include = commonIncludes.find(include => include.File === file);
                 if (include === undefined) {
-                    // Read the whole file of the shader
-                    const shaderFile = this.readShaderFile(file);
-                    if(shaderFile.success === false){
-                        vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
-                        return;
-                    }
-
-                    include = {
-                        Name: name,
-                        File: file,
-                        Code: shaderFile.bufferCode,
-                        LineCount: shaderFile.bufferCode.split(/\r\n|\n/).length
-                    };
-
-                    commonIncludes.push(include);
+                    include = this.parseIncludeCodeInternal(userPath, commonIncludes);
                 }
 
                 // offset the include line count
                 line_offset += include.LineCount - 1;
 
+                // Directly insert include into code
+                code = code.substring(0, codePosition) + include.Code + code.substring(codePosition);
+
                 // store the reference name for this include
-                includeName = name;
+                includes.push(name);
             }
             else {
                 switch (mimeType) {
                     case "text": {
-                        if (file === "self" || file === name) {
+                        if (file === "self" || file === file) {
                             // Push self as feedback-buffer
                             textures.push({
                                 Channel: channel,
@@ -281,15 +331,16 @@ export class ShaderParser {
             let nextMatch = findNextMatch();
             while (nextMatch) {
                 let channelPos = nextMatch.TexturePos + nextMatch.MatchLength;
-                let endline = code.substring(channelPos).match(/\r\n|\r|\n/);
-                if (endline !== null && endline.index !== undefined) {
-                    endline.index += channelPos;
+                let endlineMatch = code.substring(channelPos).match(/\r\n|\r|\n/);
+                if (endlineMatch !== null && endlineMatch.index !== undefined) {
+                    endlineMatch.index += channelPos;
+                    let endlinePos = endlineMatch.index + endlineMatch[0].length;
 
                     if (nextMatch.PassType === "iKeyboard") {
                         usesKeyboard = true;
                     }
                     else {
-                        let line = code.substring(channelPos, endline.index);
+                        let line = code.substring(channelPos, endlineMatch.index);
 
                         let leftQuotePos = line.search(/"|'/);
                         let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
@@ -299,17 +350,17 @@ export class ShaderParser {
 
                         if (leftQuotePos < 0 || rightQuotePos < 0) {
                             if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                                vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated behaviour.");
+                                vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated syntax.");
                             }
 
-                            let spacePos = Math.min(code.indexOf(" ", channelPos), endline.index);
+                            let spacePos = Math.min(code.indexOf(" ", channelPos), endlineMatch.index);
     
                             // Get channel number
                             channel = parseInt(code.substring(channelPos, spacePos));
     
                             let afterSpacePos = code.indexOf(" ", spacePos + 1);
                             let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
-                            let textureEndPos = Math.min(endline.index,
+                            let textureEndPos = Math.min(endlineMatch.index,
                                 afterSpacePos > 0 ? afterSpacePos : code.length,
                                 afterCommentPos > 0 ? afterCommentPos : code.length);
 
@@ -417,15 +468,14 @@ export class ShaderParser {
                         
                         if (input !== undefined && channel !== undefined) {
                             // Load the dependency
-                            loadDependency(input, channel, nextMatch.PassType);
+                            loadDependency(input, channel, nextMatch.PassType, endlinePos);
                         }
                     }
 
                     // Remove #iChannel define
-                    let channelDefine = code.substring(nextMatch.TexturePos, endline.index + endline[0].length);
+                    let channelDefine = code.substring(nextMatch.TexturePos, endlinePos - 1);
                     code = code.replace(channelDefine, "");
                     nextMatch = findNextMatch();
-                    line_offset--;
                 }
             }
         }
@@ -439,8 +489,8 @@ export class ShaderParser {
                     const texture: any = textures[i];
                     if (texture.length > 0) {
                         // Check for buffer to load to avoid circular loading
-                        if (this.stripPath(texture) !== this.stripPath(name)) {
-                            loadDependency(texture, parseInt(i), "iChannel");
+                        if (this.stripPath(texture) !== this.stripPath(file)) {
+                            loadDependency(texture, parseInt(i), "iChannel", 0);
                         }
                     }
                 }
@@ -455,7 +505,7 @@ export class ShaderParser {
                 code = code.replace(versionDirective, "");
 
                 let diagnosticBatch: types.DiagnosticBatch = {
-                    filename: name,
+                    filename: file,
                     diagnostics: [{
                         line: 1,
                         message: `Version directive '${versionDirective}' ignored by shader-toy extension`
@@ -530,10 +580,10 @@ export class ShaderParser {
 
         // Push yourself after all your dependencies
         buffers.push({
-            Name: this.stripPath(name),
-            File: name,
+            Name: this.stripPath(file),
+            File: file,
             Code: code,
-            IncludeName: includeName,
+            Includes: includes,
             TextureInputs: textures,
             AudioInputs: audios,
             UsesSelf: false,

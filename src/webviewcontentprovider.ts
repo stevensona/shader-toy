@@ -48,7 +48,7 @@ export class WebviewContentProvider {
 
         #define SHADER_TOY`;
         let shaderPreambleLineNumbers = shaderPreamble.split(/\r\n|\n/).length;
-        let webglLineNumbers = 102;
+        let webglLineNumbers = 101;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: types.BufferDefinition[] = [];
@@ -76,6 +76,7 @@ export class WebviewContentProvider {
                         BufferIndex: finalBufferIndex,
                     }],
                     AudioInputs: [],
+                    Includes: [],
                     UsesSelf: false,
                     SelfChannel: -1,
                     Dependents: [],
@@ -203,12 +204,10 @@ export class WebviewContentProvider {
         let shaderScripts = "";
         let buffersScripts = "";
         for (let buffer of buffers) {
-            const include = buffer.IncludeName ? commonIncludes.find(include => include.Name === buffer.IncludeName) : '';
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
                 ${shaderPreamble}
                 ${keyboardScripts.Shader}
-                ${include ? include.Code : ''}
                 ${buffer.Code}
             </script>`;
 

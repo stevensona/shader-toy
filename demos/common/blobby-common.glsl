@@ -1,4 +1,4 @@
-const float PI = 3.14159;
+#include "./common/math-common.glsl"
 
 #define saturate01(x) (clamp(x, 0., 1.))
 
