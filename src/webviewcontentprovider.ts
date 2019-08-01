@@ -399,50 +399,47 @@ export class WebviewContentProvider {
                     audioScripts.Init += `
                     fetch('${path}')
                         .then(function(response) {
-                            return response.blob();
+                            return response.arrayBuffer();
                         })
-                        .then(function(blob) {
-                            let reader = new FileReader();
-                            reader.onload = function() {
-                                audioContext.decodeAudioData(reader.result)
-                                    .then(function(buffer) {
-                                        let audio = audioContext.createBufferSource();
-                                        audio.buffer = buffer;
-                                        audio.loop = true;
+                        .then(function(arrayBuffer) {
+                            audioContext.decodeAudioData(arrayBuffer)
+                                .then(function(audioBuffer) {
+                                    let audio = audioContext.createBufferSource();
+                                    audio.buffer = audioBuffer;
+                                    audio.loop = true;
 
-                                        let analyser = audioContext.createAnalyser();
-                                        analyser.fftSize = ${this.context.getConfig<number>("audioDomainSize")};
+                                    let analyser = audioContext.createAnalyser();
+                                    analyser.fftSize = ${this.context.getConfig<number>("audioDomainSize")};
 
-                                        const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
-                                        const dataArray = new Uint8Array(dataSize * 2);
+                                    const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
+                                    const dataArray = new Uint8Array(dataSize * 2);
 
-                                        let texture = new THREE.DataTexture(dataArray, dataSize, 2, THREE.LuminanceFormat, THREE.UnsignedByteType);
-                                        texture.magFilter = THREE.LinearFilter;
-                                        texture.needsUpdate = true;
+                                    let texture = new THREE.DataTexture(dataArray, dataSize, 2, THREE.LuminanceFormat, THREE.UnsignedByteType);
+                                    texture.magFilter = THREE.LinearFilter;
+                                    texture.needsUpdate = true;
 
-                                        buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: texture };
+                                    buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: texture };
 
-                                        audio.connect(analyser);
-                                        analyser.connect(audioContext.destination);
-                                        audio.start(0, startingTime % buffer.duration);
-            
-                                        audios.push({
-                                            Channel: ${channel},
-                                            Media: audio,
-                                            Analyser: analyser,
-                                            AmplitudeSamples: analyser.fftSize,
-                                            FrequencySamples: analyser.frequencyBinCount,
-                                            Data: dataArray,
-                                            Texture: texture
-                                        })
+                                    audio.connect(analyser);
+                                    analyser.connect(audioContext.destination);
+                                    audio.start(0, startingTime % audioBuffer.duration);
+        
+                                    audios.push({
+                                        Channel: ${channel},
+                                        Media: audio,
+                                        Analyser: analyser,
+                                        AmplitudeSamples: analyser.fftSize,
+                                        FrequencySamples: analyser.frequencyBinCount,
+                                        Data: dataArray,
+                                        Texture: texture
                                     })
-                                    .catch(function(e){
-                                        console.warn("Error: " + e.message);
+                                })
+                                .catch(function(){
+                                    vscode.postMessage({
+                                        command: 'errorMessage',
+                                        message: "Failed decoding audio file: ${audio.UserPath}"
                                     });
-                            };
-
-                            let file = new File([ blob ], "${path}");
-                            reader.readAsArrayBuffer(file);
+                                });
                         }).
                         catch(function(){
                             vscode.postMessage({
@@ -470,8 +467,6 @@ export class WebviewContentProvider {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const audioContext = new AudioContext();
             
-            const fileReader = new FileReader();
-
             let audios = [];
             ` + audioScripts.Init;
 
