@@ -173,6 +173,12 @@ export class ShaderParser {
         }
         this.visitedFiles.push(file);
 
+        const getLineNumber = (position: number) => {
+            let substr = code.substring(0, position);
+            var count = (substr.match(/(\r\n|\r|\n)/g) || []).length;
+            return count;
+        };
+
         let line_offset = this.lineOffset;
         let textures: types.TextureDefinition[] = [];
         let pendingTextureSettings: types.TextureDefinition[] = [];
@@ -396,7 +402,14 @@ export class ShaderParser {
                                                 case "Linear":
                                                     return types.TextureMagFilter.Linear;
                                                 default:
-                                                    vscode.window.showWarningMessage(`Unknown mag filter setting "${quotedPart}", choose either "Nearest" or "Linear"`);
+                                                    let diagnosticBatch: types.DiagnosticBatch = {
+                                                        filename: file,
+                                                        diagnostics: [{
+                                                            line: getLineNumber(endlinePos),
+                                                            message: `Valid MagFilter options are: "Nearest" or "Linear"`
+                                                        }]
+                                                    };
+                                                    this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
                                             }
                                         })();
 
@@ -417,7 +430,14 @@ export class ShaderParser {
                                                 case "LinearMipMapLinear":
                                                     return types.TextureMinFilter.LinearMipMapLinear;
                                                 default:
-                                                    vscode.window.showWarningMessage(`Unknown min filter setting "${quotedPart}", choose either "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear"`);
+                                                    let diagnosticBatch: types.DiagnosticBatch = {
+                                                        filename: file,
+                                                        diagnostics: [{
+                                                            line: getLineNumber(endlinePos),
+                                                            message: `Valid MinFilter options are: "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear"`
+                                                        }]
+                                                    };
+                                                    this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
                                             }
                                         })();
 
@@ -432,7 +452,14 @@ export class ShaderParser {
                                                 case "Mirror":
                                                     return types.TextureWrapMode.Mirror;
                                                 default:
-                                                    vscode.window.showWarningMessage(`Unknown wrap mode setting "${quotedPart}", choose either "Clamp", "Repeat" or "Mirror"`);
+                                                    let diagnosticBatch: types.DiagnosticBatch = {
+                                                        filename: file,
+                                                        diagnostics: [{
+                                                            line: getLineNumber(endlinePos),
+                                                            message: `Valid WrapMode options are: "Clamp", "Repeat" or "Mirror"`
+                                                        }]
+                                                    };
+                                                    this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
                                             }
                                         })();
                                         
