@@ -45,8 +45,11 @@ export type TextureDefinition = {
     RemoteTexture?: string,
     Self?: boolean,
     Mag?: TextureMagFilter,
+    MagLine?: { File: String, Line: Number },
     Min?: TextureMinFilter,
+    MinLine?: { File: String, Line: Number },
     Wrap?: TextureWrapMode
+    WrapLine?: { File: String, Line: Number },
 };
 export type AudioDefinition = {
     Channel: number,

@@ -143,7 +143,7 @@ export class ShaderParser {
 
                 if (leftQuotePos < 0 || rightQuotePos < 0) {
                     if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                        vscode.window.showErrorMessage("Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme. .");
+                        vscode.window.showErrorMessage("Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme.");
                     }
                 }
                 else {
@@ -477,17 +477,25 @@ export class ShaderParser {
                                     });
                                 }
 
+                                let lineInformation = { File: file, Line: getLineNumber(endlinePos) };
+
                                 if (texture !== undefined) {
                                     texture.Mag = magFilter || texture.Mag;
+                                    texture.MagLine = magFilter ? lineInformation : undefined;
                                     texture.Min = minFilter || texture.Min;
+                                    texture.MinLine = minFilter ? lineInformation : undefined;
                                     texture.Wrap = wrapMode || texture.Wrap;
+                                    texture.WrapLine = wrapMode ? lineInformation : undefined;
                                 }
                                 else {
                                     pendingTextureSettings.push({
                                         Channel: channel,
                                         Mag: magFilter || types.TextureMagFilter.Linear,
+                                        MagLine: magFilter ? lineInformation : undefined,
                                         Min: minFilter || types.TextureMinFilter.Linear,
-                                        Wrap: wrapMode || types.TextureWrapMode.Clamp
+                                        MinLine: minFilter ? lineInformation : undefined,
+                                        Wrap: wrapMode || types.TextureWrapMode.Clamp,
+                                        WrapLine: wrapMode ? lineInformation : undefined
                                     });
                                 }
                             }
@@ -560,8 +568,11 @@ export class ShaderParser {
             });
             if (pendingSettings !== undefined) {
                 texture.Mag = pendingSettings.Mag || texture.Mag;
+                texture.MagLine = pendingSettings.MagLine || texture.MagLine;
                 texture.Min = pendingSettings.Min || texture.Min;
+                texture.MinLine = pendingSettings.MinLine || texture.MinLine;
                 texture.Wrap = pendingSettings.Wrap || texture.Wrap;
+                texture.WrapLine = pendingSettings.WrapLine || texture.WrapLine;
             }
         }
 

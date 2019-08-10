@@ -286,9 +286,9 @@ export class WebviewContentProvider {
         }
         
         let textureScripts = "\n";
-        let textureLoadScript = (mag: types.TextureMagFilter, min: types.TextureMinFilter, wrap: types.TextureWrapMode) => {
+        let textureLoadScript = (texture: types.TextureDefinition) => {
             let magFilter: string = (() => {
-                switch(mag) {
+                switch(texture.Mag) {
                 case types.TextureMagFilter.Nearest:
                     return "THREE.NearestFilter";
                 case types.TextureMagFilter.Linear:
@@ -298,7 +298,7 @@ export class WebviewContentProvider {
             })();
 
             let minFilter: string = (() => {
-                switch(min) {
+                switch(texture.Min) {
                     case types.TextureMinFilter.Nearest:
                         return"THREE.NearestFilter";
                     case types.TextureMinFilter.NearestMipMapNearest:
@@ -316,7 +316,7 @@ export class WebviewContentProvider {
             })();
 
             let wrapMode: string = (() => {
-                switch(wrap) {
+                switch(texture.Wrap) {
                 case types.TextureWrapMode.Clamp:
                     return "THREE.ClampToEdgeWrapping";
                 case types.TextureWrapMode.Repeat:
@@ -327,7 +327,45 @@ export class WebviewContentProvider {
                 }
             })();
 
+            let textureFileOrigin = (texture.MagLine ? texture.MagLine.File : undefined)
+                || (texture.MinLine ? texture.MinLine.File : undefined)
+                || (texture.WrapLine ? texture.WrapLine.File : undefined);
+            let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
+            let powerOfTwoWarning = `
+            function isPowerOfTwo(n) {
+                return n && (n & (n - 1)) === 0;
+            };
+            if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
+                let diagnostics = [];
+                ${texture.MagLine !== undefined ? `diagnostics.push({
+                        line: ${texture.MagLine.Line},
+                        message: "Texture is not power of two, custom texture settings may not work."
+                    });` : ''
+                }
+                ${texture.MinLine !== undefined ? `diagnostics.push({
+                        line: ${texture.MinLine.Line},
+                        message: "Texture is not power of two, custom texture settings may not work."
+                    });` : ''
+                }
+                ${texture.WrapLine !== undefined ? `diagnostics.push({
+                        line: ${texture.WrapLine.Line},
+                        message: "Texture is not power of two, custom texture settings may not work."
+                    });` : ''
+                }
+                let diagnosticBatch = {
+                    filename: "${textureFileOrigin}",
+                    diagnostics: diagnostics
+                };
+                vscode.postMessage({
+                    command: 'showGlslDiagnostic',
+                    type: 'warning',
+                    diagnosticBatch: diagnosticBatch
+                });
+            };
+            `;
+
             return `function(texture) {
+                ${hasCustomSettings ? powerOfTwoWarning : ''}
                 texture.magFilter = ${magFilter};
                 texture.minFilter = ${minFilter};
                 texture.wrapS = ${wrapMode};
@@ -365,10 +403,10 @@ export class WebviewContentProvider {
                 else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
                     const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
                     const resolvedPathString = resolvedPath.toString();
-                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript(texture.Mag, texture.Min, texture.Wrap)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
+                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
                 else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript(texture.Mag, texture.Min, texture.Wrap)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
+                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
                 }
 
                 if (value !== undefined) {
