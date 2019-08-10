@@ -22,8 +22,15 @@ The texture channels `iChannelN` may be defined by inserting code of the followi
 #iChannel2 "self"
 #iChannel4 "file://./music/epic.mp3"
 ```
-This demonstrates using local and remote images as textures *(Remember that "power of 2" texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
+This demonstrates using local and remote images as textures *(Remember that power of 2 texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 ![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
+To influence the sampling behaviour of a texture, use the following syntax:
+```
+#iChannel0::MinFilter "NearestMipMapNearest"
+#iChannel0::MaxFilter "Nearest"
+#iChannel0::WrapMode "Repeat"
+```
+Though keep in mind that, because of the WebGL standard, many options will only work with textures of width and height that are power of 2.
 
 ### Audio Input (experimental)
 _Note: By default audio input is disabled, change the setting "Enable Audio Input" to use it._\
@@ -81,6 +88,24 @@ void main() {
 ```
 Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function. The definition of `void main()` is found by matching the regex `/void\s+main\s*\(\s*\)\s*\{/g`, thus if you require to define `void main()` in addition to the extension generating a definition you may define it as `void main(void)`. This might be necessary, for example, if your main definition would be processed away by the preprocessor and should thus not be picked up by the extension. 
 
+### Integration of _glslify_
+You can enable support for _glslify_ in the settings, but because _glslify_ does not support line mappings pre and post its transform, line numbers on errors will unfortunately be disabled as long as you have the setting enabled. Using _glslify_ allows using a node.js-style module system for your shaders:
+```glsl
+#pragma glslify: snoise = require('glsl-noise/simplex/2d')
+
+float noise(in vec2 pt) {
+    return snoise(pt) * 0.5 + 0.5;
+}
+
+void main () {
+    float r = noise(gl_FragCoord.xy * 0.01);
+    float g = noise(gl_FragCoord.xy * 0.01 + 100.0);
+    float b = noise(gl_FragCoord.xy * 0.01 + 300.0);
+    gl_FragColor = vec4(r, g, b, 1);
+}
+```
+
+
 ### GLSL Preview Interaction
 The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
 
@@ -112,6 +137,11 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.8.9
+* Added rudimentary support for glslify,
+* added support for texture sampling and wrapping options,
+* fix includes to allow going into depth rather than only one level deep.
 
 ### 0.8.8
 * Update iFrame after a frame is rendered instead of before, so that the first frames value is zero,
