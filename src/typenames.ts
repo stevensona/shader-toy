@@ -18,13 +18,38 @@ export class RenderStartingData {
     Keys: Keys = [];
 }
 
+// Texture setting enums start at 1 so valid settings never implicitly convert to false
+export enum TextureMagFilter {
+    Linear  = 1,
+    Nearest = 2,
+}
+export enum TextureMinFilter {
+    Nearest                 = 1,
+    NearestMipMapNearest    = 2,
+    NearestMipMapLinear     = 3,
+    Linear                  = 4,
+    LinearMipMapNearest     = 5,
+    LinearMipMapLinear      = 6,
+}
+export enum TextureWrapMode {
+    Repeat  = 1,
+    Clamp   = 2,
+    Mirror  = 3,
+}
+
 export type TextureDefinition = {
     Channel: number,
     Buffer?: string,
     BufferIndex?: number,
     LocalTexture?: string,
     RemoteTexture?: string,
-    Self?: boolean
+    Self?: boolean,
+    Mag?: TextureMagFilter,
+    MagLine?: { File: String, Line: Number },
+    Min?: TextureMinFilter,
+    MinLine?: { File: String, Line: Number },
+    Wrap?: TextureWrapMode
+    WrapLine?: { File: String, Line: Number },
 };
 export type AudioDefinition = {
     Channel: number,
@@ -46,7 +71,7 @@ export type BufferDefinition = {
     SelfChannel: number,
     Dependents: BufferDependency[],
     LineOffset: number
-    IncludeName?: string,
+    Includes: string[],
     UsesKeyboard?: boolean,
 };
 

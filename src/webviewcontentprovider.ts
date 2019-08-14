@@ -48,7 +48,7 @@ export class WebviewContentProvider {
 
         #define SHADER_TOY`;
         let shaderPreambleLineNumbers = shaderPreamble.split(/\r\n|\n/).length;
-        let webglLineNumbers = 102;
+        let webglLineNumbers = 101;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: types.BufferDefinition[] = [];
@@ -76,6 +76,7 @@ export class WebviewContentProvider {
                         BufferIndex: finalBufferIndex,
                     }],
                     AudioInputs: [],
+                    Includes: [],
                     UsesSelf: false,
                     SelfChannel: -1,
                     Dependents: [],
@@ -203,12 +204,10 @@ export class WebviewContentProvider {
         let shaderScripts = "";
         let buffersScripts = "";
         for (let buffer of buffers) {
-            const include = buffer.IncludeName ? commonIncludes.find(include => include.Name === buffer.IncludeName) : '';
             shaderScripts += `
             <script id="${buffer.Name}" type="x-shader/x-fragment">
                 ${shaderPreamble}
                 ${keyboardScripts.Shader}
-                ${include ? include.Code : ''}
                 ${buffer.Code}
             </script>`;
 
@@ -287,11 +286,92 @@ export class WebviewContentProvider {
         }
         
         let textureScripts = "\n";
-        let textureLoadScript = `function(texture) {
-            texture.minFilter = THREE.LinearFilter;
-            texture.wrapS = THREE.RepeatWrapping;
-            texture.wrapT = THREE.RepeatWrapping;
-        }`;
+        let textureLoadScript = (texture: types.TextureDefinition) => {
+            let magFilter: string = (() => {
+                switch(texture.Mag) {
+                case types.TextureMagFilter.Nearest:
+                    return "THREE.NearestFilter";
+                case types.TextureMagFilter.Linear:
+                default:
+                    return "THREE.LinearFilter";
+                }
+            })();
+
+            let minFilter: string = (() => {
+                switch(texture.Min) {
+                    case types.TextureMinFilter.Nearest:
+                        return"THREE.NearestFilter";
+                    case types.TextureMinFilter.NearestMipMapNearest:
+                        return"THREE.NearestMipMapNearestFilter";
+                    case types.TextureMinFilter.NearestMipMapLinear:
+                        return"THREE.NearestMipMapLinearFilter";
+                    case types.TextureMinFilter.Linear:
+                    default:
+                        return"THREE.LinearFilter";
+                    case types.TextureMinFilter.LinearMipMapNearest:
+                        return"THREE.LinearMipMapNearestFilter";
+                    case types.TextureMinFilter.LinearMipMapLinear:
+                        return"THREE.LinearMipMapLinearFilter";
+                }
+            })();
+
+            let wrapMode: string = (() => {
+                switch(texture.Wrap) {
+                case types.TextureWrapMode.Clamp:
+                    return "THREE.ClampToEdgeWrapping";
+                case types.TextureWrapMode.Repeat:
+                default:
+                    return "THREE.RepeatWrapping";
+                case types.TextureWrapMode.Mirror:
+                    return "THREE.MirroredRepeatWrapping";
+                }
+            })();
+
+            let textureFileOrigin = (texture.MagLine ? texture.MagLine.File : undefined)
+                || (texture.MinLine ? texture.MinLine.File : undefined)
+                || (texture.WrapLine ? texture.WrapLine.File : undefined);
+            let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
+            let powerOfTwoWarning = `
+            function isPowerOfTwo(n) {
+                return n && (n & (n - 1)) === 0;
+            };
+            if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
+                let diagnostics = [];
+                ${texture.MagLine !== undefined ? `diagnostics.push({
+                        line: ${texture.MagLine.Line},
+                        message: "Texture is not power of two, custom texture settings may not work."
+                    });` : ''
+                }
+                ${texture.MinLine !== undefined ? `diagnostics.push({
+                        line: ${texture.MinLine.Line},
+                        message: "Texture is not power of two, custom texture settings may not work."
+                    });` : ''
+                }
+                ${texture.WrapLine !== undefined ? `diagnostics.push({
+                        line: ${texture.WrapLine.Line},
+                        message: "Texture is not power of two, custom texture settings may not work."
+                    });` : ''
+                }
+                let diagnosticBatch = {
+                    filename: "${textureFileOrigin}",
+                    diagnostics: diagnostics
+                };
+                vscode.postMessage({
+                    command: 'showGlslDiagnostic',
+                    type: 'warning',
+                    diagnosticBatch: diagnosticBatch
+                });
+            };
+            `;
+
+            return `function(texture) {
+                ${hasCustomSettings ? powerOfTwoWarning : ''}
+                texture.magFilter = ${magFilter};
+                texture.minFilter = ${minFilter};
+                texture.wrapS = ${wrapMode};
+                texture.wrapT = ${wrapMode};
+            }`;
+        };
         let makeTextureLoadErrorScript = (filename: string) => `function(err) {
             vscode.postMessage({
                 command: 'errorMessage',
@@ -320,13 +400,13 @@ export class WebviewContentProvider {
                 if (bufferIndex !== undefined) {
                     value = `buffers[${bufferIndex}].Target.texture`;
                 }
-                else if (localPath !== undefined) {
+                else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
                     const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
                     const resolvedPathString = resolvedPath.toString();
-                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
+                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
-                else if (remotePath !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
+                else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
+                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
                 }
 
                 if (value !== undefined) {
@@ -356,50 +436,47 @@ export class WebviewContentProvider {
                     audioScripts.Init += `
                     fetch('${path}')
                         .then(function(response) {
-                            return response.blob();
+                            return response.arrayBuffer();
                         })
-                        .then(function(blob) {
-                            let reader = new FileReader();
-                            reader.onload = function() {
-                                audioContext.decodeAudioData(reader.result)
-                                    .then(function(buffer) {
-                                        let audio = audioContext.createBufferSource();
-                                        audio.buffer = buffer;
-                                        audio.loop = true;
+                        .then(function(arrayBuffer) {
+                            audioContext.decodeAudioData(arrayBuffer)
+                                .then(function(audioBuffer) {
+                                    let audio = audioContext.createBufferSource();
+                                    audio.buffer = audioBuffer;
+                                    audio.loop = true;
 
-                                        let analyser = audioContext.createAnalyser();
-                                        analyser.fftSize = ${this.context.getConfig<number>("audioDomainSize")};
+                                    let analyser = audioContext.createAnalyser();
+                                    analyser.fftSize = ${this.context.getConfig<number>("audioDomainSize")};
 
-                                        const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
-                                        const dataArray = new Uint8Array(dataSize * 2);
+                                    const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
+                                    const dataArray = new Uint8Array(dataSize * 2);
 
-                                        let texture = new THREE.DataTexture(dataArray, dataSize, 2, THREE.LuminanceFormat, THREE.UnsignedByteType);
-                                        texture.magFilter = THREE.LinearFilter;
-                                        texture.needsUpdate = true;
+                                    let texture = new THREE.DataTexture(dataArray, dataSize, 2, THREE.LuminanceFormat, THREE.UnsignedByteType);
+                                    texture.magFilter = THREE.LinearFilter;
+                                    texture.needsUpdate = true;
 
-                                        buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: texture };
+                                    buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: texture };
 
-                                        audio.connect(analyser);
-                                        analyser.connect(audioContext.destination);
-                                        audio.start(0, startingTime % buffer.duration);
-            
-                                        audios.push({
-                                            Channel: ${channel},
-                                            Media: audio,
-                                            Analyser: analyser,
-                                            AmplitudeSamples: analyser.fftSize,
-                                            FrequencySamples: analyser.frequencyBinCount,
-                                            Data: dataArray,
-                                            Texture: texture
-                                        })
+                                    audio.connect(analyser);
+                                    analyser.connect(audioContext.destination);
+                                    audio.start(0, startingTime % audioBuffer.duration);
+        
+                                    audios.push({
+                                        Channel: ${channel},
+                                        Media: audio,
+                                        Analyser: analyser,
+                                        AmplitudeSamples: analyser.fftSize,
+                                        FrequencySamples: analyser.frequencyBinCount,
+                                        Data: dataArray,
+                                        Texture: texture
                                     })
-                                    .catch(function(e){
-                                        console.warn("Error: " + e.message);
+                                })
+                                .catch(function(){
+                                    vscode.postMessage({
+                                        command: 'errorMessage',
+                                        message: "Failed decoding audio file: ${audio.UserPath}"
                                     });
-                            };
-
-                            let file = new File([ blob ], "${path}");
-                            reader.readAsArrayBuffer(file);
+                                });
                         }).
                         catch(function(){
                             vscode.postMessage({
@@ -427,8 +504,6 @@ export class WebviewContentProvider {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const audioContext = new AudioContext();
             
-            const fileReader = new FileReader();
-
             let audios = [];
             ` + audioScripts.Init;
 
@@ -527,7 +602,23 @@ export class WebviewContentProvider {
         }
 
         let onErrorScript = "";
-        if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
+        if (this.context.getConfig<boolean>('enableGlslifySupport')) {
+            onErrorScript = `
+            console.error = function (message) {
+                if('7' in arguments) {
+                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
+                        return \`<li>\${error}</li>\`;
+                    });
+
+                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name}</h3>\`);
+                    $("#message").append(\`<h3>Line numbers are not available because the glslify option is enabled</h3>\`);
+                    $("#message").append('<ul>');
+                    $("#message").append(message);
+                    $("#message").append('</ul>');
+                }
+            };`;
+        }
+        else if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
             onErrorScript = `
             console.error = function (message) {
                 if('7' in arguments) {
