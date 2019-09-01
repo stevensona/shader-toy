@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.8.9",
+    "version": "0.8.10",
     "publisher": "stevensona",
     "license": "MIT",
     "repository": {
