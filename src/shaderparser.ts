@@ -106,7 +106,7 @@ export class ShaderParser {
         })(userPath);
         file = file.replace(/\\/g, '/');
         file = file.replace(/\.\//g, '');
-        userPath = file.replace(/\\/g, '/');
+        userPath = userPath.replace(/\\/g, '/');
         return { file, userPath };
     }
 
@@ -167,7 +167,7 @@ export class ShaderParser {
     }
 
     private parseShaderCodeInternal(file: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
-        const found = this.visitedFiles.find((file: string) => file === file);
+        const found = this.visitedFiles.find((visitedFile: string) => visitedFile === file);
         if (found) {
             return;
         }
@@ -185,19 +185,19 @@ export class ShaderParser {
         let audios: types.AudioDefinition[] = [];
         let includes: string[] = [];
 
-        const loadDependency = (file: string, channel: number, passType: string, codePosition: number) => {
+        const loadDependency = (depFile: string, channel: number, passType: string, codePosition: number) => {
             // Get type and name of file
-            let colonPos = file.indexOf('://', 0);
+            let colonPos = depFile.indexOf('://', 0);
             
             let inputType = "file";
-            let userPath = file;
+            let userPath = depFile;
 
             if (colonPos >= 0) {
-                inputType = file.substring(0, colonPos);
-                userPath = file.substring(colonPos + 3, file.length);
+                inputType = depFile.substring(0, colonPos);
+                userPath = depFile.substring(colonPos + 3, depFile.length);
             }
 
-            ({ file, userPath } = this.mapUserPathToWorkspacePath(userPath));
+            ({ file: depFile, userPath } = this.mapUserPathToWorkspacePath(userPath));
 
             if (inputType !== "file" && inputType !== "https") {
                 if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
@@ -212,15 +212,15 @@ export class ShaderParser {
             }
 
             let isLocalFile: boolean = inputType === "file";
-            let fileType = file.split('.').pop();
+            let fileType = depFile.split('.').pop();
             let fullMime = mime.getType(fileType || "txt") || "text/plain";
             let mimeType = fullMime.split('/')[0] || "text";
 
             if (passType === "include") {
-                const name = path.basename(file);
+                const name = path.basename(depFile);
 
                 // Attempt to get the include if already exists
-                let include = commonIncludes.find(include => include.File === file);
+                let include = commonIncludes.find(include => include.File === depFile);
                 if (include === undefined) {
                     include = this.parseIncludeCodeInternal(userPath, commonIncludes);
                 }
@@ -237,7 +237,7 @@ export class ShaderParser {
             else {
                 switch (mimeType) {
                     case "text": {
-                        if (file === "self" || file === file) {
+                        if (depFile === "self" || depFile === file) {
                             // Push self as feedback-buffer
                             textures.push({
                                 Channel: channel,
@@ -246,19 +246,19 @@ export class ShaderParser {
                         }
                         else {
                             // Read the whole file of the shader
-                            const shaderFile = this.readShaderFile(file);
+                            const shaderFile = this.readShaderFile(depFile);
                             if(shaderFile.success === false){
                                 vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
                                 return;
                             }
         
                             // Parse the shader
-                            this.parseShaderCodeInternal(file, shaderFile.bufferCode, buffers, commonIncludes);
+                            this.parseShaderCodeInternal(depFile, shaderFile.bufferCode, buffers, commonIncludes);
                 
                             // Push buffers as textures
                             textures.push({
                                 Channel: channel,
-                                Buffer: this.stripPath(file),
+                                Buffer: this.stripPath(depFile),
                             });
                         }
                         break;
@@ -267,7 +267,7 @@ export class ShaderParser {
                         if (isLocalFile) {
                             textures.push({
                                 Channel: channel,
-                                LocalTexture: file,
+                                LocalTexture: depFile,
                                 Mag: types.TextureMagFilter.Linear,
                                 Min: types.TextureMinFilter.Linear,
                                 Wrap: types.TextureWrapMode.Clamp
@@ -276,7 +276,7 @@ export class ShaderParser {
                         else {
                             textures.push({
                                 Channel: channel,
-                                RemoteTexture: file,
+                                RemoteTexture: depFile,
                                 Mag: types.TextureMagFilter.Linear,
                                 Min: types.TextureMinFilter.Linear,
                                 Wrap: types.TextureWrapMode.Clamp
@@ -289,14 +289,14 @@ export class ShaderParser {
                             if (isLocalFile) {
                                 audios.push({
                                     Channel: channel,
-                                    LocalPath: file,
+                                    LocalPath: depFile,
                                     UserPath: userPath
                                 });
                             }
                             else {
                                 audios.push({
                                     Channel: channel,
-                                    RemotePath: file,
+                                    RemotePath: depFile,
                                     UserPath: userPath
                                 });
                             }
@@ -307,7 +307,7 @@ export class ShaderParser {
                         break;
                     }
                     default: {
-                        vscode.window.showWarningMessage(`You are trying to use an unsupported file ${file}`);
+                        vscode.window.showWarningMessage(`You are trying to use an unsupported file ${depFile}`);
                     }
                 }
             }
