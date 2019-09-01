@@ -138,6 +138,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.8.10
+* Fix bugs that allowed only one shader to be parsed.
+
 ### 0.8.9
 * Added rudimentary support for glslify,
 * added support for texture sampling and wrapping options,
