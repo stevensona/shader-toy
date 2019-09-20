@@ -26,8 +26,7 @@ export class WebviewContentProvider {
         uniform float       iTimeDelta;
         uniform int         iFrame;
         uniform vec4        iDate;
-        uniform float       iChannelTime[4];
-        uniform vec3        iChannelResolution[4];
+        uniform vec3        iChannelResolution[10];
         uniform vec4        iMouse;
         uniform vec4        iMouseButton;
         uniform sampler2D   iChannel0;
@@ -231,6 +230,7 @@ export class WebviewContentProvider {
                 File: "${buffer.File}",
                 LineOffset: ${buffer.LineOffset},
                 Target: ${target},
+                ChannelResolution: Array(10).fill(new THREE.Vector3(0,0,0)),
                 PingPongTarget: ${pingPongTarget},
                 PingPongChannel: ${buffer.SelfChannel},
                 Dependents: ${JSON.stringify(buffer.Dependents)},
@@ -245,6 +245,8 @@ export class WebviewContentProvider {
                         iFrame: { type: "i", value: 0 },
                         iMouse: { type: "v4", value: mouse },
                         iMouseButton: { type: "v2", value: mouseButton },
+
+                        iChannelResolution: { type: "v3v", value: Array(10).fill(new THREE.Vector3(0,0,0)) },
 
                         iDate: { type: "v4", value: date },
                         iSampleRate: { type: "f", value: audioContext.sampleRate },
@@ -286,7 +288,7 @@ export class WebviewContentProvider {
         }
         
         let textureScripts = "\n";
-        let textureLoadScript = (texture: types.TextureDefinition) => {
+        let textureOnLoadScript = (texture: types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
             let magFilter: string = (() => {
                 switch(texture.Mag) {
                 case types.TextureMagFilter.Nearest:
@@ -362,6 +364,8 @@ export class WebviewContentProvider {
                     diagnosticBatch: diagnosticBatch
                 });
             };
+            buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
+            buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
             `;
 
             return `function(texture) {
@@ -392,25 +396,30 @@ export class WebviewContentProvider {
             for (let texture of textures) {
                 const channel = texture.Channel;
 
-                const bufferIndex = texture.BufferIndex;
+                const textureBufferIndex = texture.BufferIndex;
                 const localPath = texture.LocalTexture;
                 const remotePath = texture.RemoteTexture;
 
-                let value: string | undefined;
-                if (bufferIndex !== undefined) {
-                    value = `buffers[${bufferIndex}].Target.texture`;
+                let textureLoadScript: string | undefined;
+                let textureSizeScript: string = "null";
+                if (textureBufferIndex !== undefined) {
+                    textureLoadScript = `buffers[${textureBufferIndex}].Target.texture`;
+                    textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;
                 }
                 else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
                     const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
                     const resolvedPathString = resolvedPath.toString();
-                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
+                    textureLoadScript = `texLoader.load('${resolvedPathString}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
                 else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
+                    textureLoadScript = `texLoader.load('https://${remotePath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
                 }
 
-                if (value !== undefined) {
-                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
+                if (textureLoadScript !== undefined) {
+                    textureScripts += `
+                        buffers[${i}].ChannelResolution[${channel}] = ${textureSizeScript};
+                        buffers[${i}].Shader.uniforms.iChannelResolution.value = buffers[${i}].ChannelResolution;
+                        buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${textureLoadScript} };`;
                 }
             }
 
@@ -886,8 +895,6 @@ export class WebviewContentProvider {
                 let normalizedMouse = new THREE.Vector2(${startingNormalizedMouse.x}, ${startingNormalizedMouse.y});
                 let frameCounter = 0;
 
-                let channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
-                
                 ${audioScripts.Init}
                 ${audioScripts.Resume}
 
