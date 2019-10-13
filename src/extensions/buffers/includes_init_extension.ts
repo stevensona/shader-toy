@@ -1,0 +1,27 @@
+'use strict';
+
+import * as Types from '../../typenames';
+import { WebviewExtension } from '../webview_extension';
+
+export class IncludesInitExtension implements WebviewExtension {
+    private content: string;
+
+    constructor(includes: Types.IncludeDefinition[]) {
+        this.content = '';
+        this.processBuffers(includes);
+    }
+
+    private processBuffers(includes: Types.IncludeDefinition[]) {
+        for (let include of includes) {
+            this.content += `\
+commonIncludes.push({
+    Name: "${include.Name}",
+    File: "${include.File}"
+});`;
+        }
+    }
+
+    public generateContent(): string {
+        return this.content;
+    }
+}

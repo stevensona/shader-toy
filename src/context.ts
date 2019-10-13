@@ -9,7 +9,7 @@ export class Context {
     private config: vscode.WorkspaceConfiguration;
 
     private diagnosticCollection: vscode.DiagnosticCollection;
-    private collectedDiagnostics: { [id: string] : vscode.Diagnostic[]; } = {};
+    private collectedDiagnostics: { [id: string]: vscode.Diagnostic[]; } = {};
     
     public activeEditor: vscode.TextEditor | undefined;
     
@@ -35,6 +35,10 @@ export class Context {
         const resourceUri = this.getResourceUri(file);
         const webviewResourceUri = this.makeWebviewResource(resourceUri);
         return webviewResourceUri.toString();
+    }
+
+    public showErrorMessage(message: string) {
+        vscode.window.showErrorMessage(message);
     }
 
     public clearDiagnostics() {

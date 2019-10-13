@@ -67,8 +67,8 @@ export function activate(extensionContext: vscode.ExtensionContext) {
     const updateWebview = () => {
         context.clearDiagnostics();
         if (webviewPanel !== undefined && context.activeEditor !== undefined) {
-            webviewPanel.webview.html = new WebviewContentProvider(context, context.activeEditor.document.getText(), context.activeEditor.document.fileName)
-                .generateWebviewConent(startingData.Time, startingData.Mouse, startingData.NormalizedMouse, startingData.Keys);
+            let webviewContentProvider = new WebviewContentProvider(context, context.activeEditor.document.getText(), context.activeEditor.document.fileName);
+            webviewPanel.webview.html = webviewContentProvider.generateWebviewConent(startingData);
         }
         else if (webviewPanel !== undefined) {
             vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
