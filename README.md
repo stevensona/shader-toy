@@ -11,7 +11,7 @@ Running the command splits the view and displays a fullscreen quad with your sha
 ## Features
 
 ### Uniforms
-At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton`, `iDate`, `iSampleRate` and `iChannelN` with `N in [0, 9]` are available uniforms.
+At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton`, `iDate`, `iSampleRate`, `iChannelN` with `N in [0, 9]` and `iChannelResolution[]` are available uniforms.
 
 ### Texture Input
 The texture channels `iChannelN` may be defined by inserting code of the following form at the top of your shader
@@ -121,7 +121,7 @@ The extension also supports highlighting of compilation errors in the text edito
 ## Known Issues
 
 * Performance at the moment is not great for certain shaders, and the cause is under investigation
-* Shaders with audio from remote sources are currently not working properly.
+* Shaders with audio from remote sources are currently not working properly, this is however an issue on VSCode side and will be fixed when releasing with Electron 6.
 * There seems to be a very rare bug that causes audio inputs to sound corrupted.
 
 ## Todo
@@ -137,6 +137,10 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.9.0
+* Major refactoring,
+* added support for iChannelResolution.
 
 ### 0.8.10
 * Fix bugs that allowed only one shader to be parsed.
