@@ -4,20 +4,18 @@ import * as vscode from 'vscode';
 import * as mime from 'mime';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as types from'./typenames';
+import * as Types from'./typenames';
 import { Context } from './context';
 
 export class ShaderParser {
     private context: Context;
-    private lineOffset: number;
     private visitedFiles: string[];
-    constructor(context: Context, lineOffset: number) {
+    constructor(context: Context) {
         this.context = context;
-        this.lineOffset = lineOffset;
         this.visitedFiles = [];
     }
 
-    public parseShaderCode(file: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
+    public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[]) {
         this.parseShaderCodeInternal(file, code, buffers, commonIncludes);
 
         const findByName = (bufferName: string) => {
@@ -110,7 +108,7 @@ export class ShaderParser {
         return { file, userPath };
     }
 
-    private parseIncludeCodeInternal(file: string, commonIncludes: types.IncludeDefinition[]): types.IncludeDefinition {
+    private parseIncludeCodeInternal(file: string, commonIncludes: Types.IncludeDefinition[]): Types.IncludeDefinition {
         let userPath = file;
         ({ file, userPath } = this.mapUserPathToWorkspacePath(userPath));
 
@@ -166,7 +164,7 @@ export class ShaderParser {
         return include;
     }
 
-    private parseShaderCodeInternal(file: string, code: string, buffers: types.BufferDefinition[], commonIncludes: types.IncludeDefinition[]) {
+    private parseShaderCodeInternal(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[]) {
         const found = this.visitedFiles.find((visitedFile: string) => visitedFile === file);
         if (found) {
             return;
@@ -179,10 +177,10 @@ export class ShaderParser {
             return count;
         };
 
-        let line_offset = this.lineOffset;
-        let textures: types.TextureDefinition[] = [];
-        let pendingTextureSettings: types.TextureDefinition[] = [];
-        let audios: types.AudioDefinition[] = [];
+        let line_offset = 0;
+        let textures: Types.TextureDefinition[] = [];
+        let pendingTextureSettings: Types.TextureDefinition[] = [];
+        let audios: Types.AudioDefinition[] = [];
         let includes: string[] = [];
 
         const loadDependency = (depFile: string, channel: number, passType: string, codePosition: number) => {
@@ -268,18 +266,18 @@ export class ShaderParser {
                             textures.push({
                                 Channel: channel,
                                 LocalTexture: depFile,
-                                Mag: types.TextureMagFilter.Linear,
-                                Min: types.TextureMinFilter.Linear,
-                                Wrap: types.TextureWrapMode.Clamp
+                                Mag: Types.TextureMagFilter.Linear,
+                                Min: Types.TextureMinFilter.Linear,
+                                Wrap: Types.TextureWrapMode.Clamp
                             });
                         }
                         else {
                             textures.push({
                                 Channel: channel,
                                 RemoteTexture: depFile,
-                                Mag: types.TextureMagFilter.Linear,
-                                Min: types.TextureMinFilter.Linear,
-                                Wrap: types.TextureWrapMode.Clamp
+                                Mag: Types.TextureMagFilter.Linear,
+                                Min: Types.TextureMinFilter.Linear,
+                                Wrap: Types.TextureWrapMode.Clamp
                             });
                         }
                         break;
@@ -319,7 +317,7 @@ export class ShaderParser {
             // Find all #iChannel defines, which define textures and other shaders
             type Match = {
                 TexturePos: number;
-                MatchLength : number;
+                MatchLength: number;
                 PassType: string;
             };
 
@@ -385,9 +383,9 @@ export class ShaderParser {
                             else {
                                 scopePos = leftPart.search("::");
 
-                                let magFilter: types.TextureMagFilter | undefined;
-                                let minFilter: types.TextureMinFilter | undefined;
-                                let wrapMode: types.TextureWrapMode | undefined;
+                                let magFilter: Types.TextureMagFilter | undefined;
+                                let minFilter: Types.TextureMinFilter | undefined;
+                                let wrapMode: Types.TextureWrapMode | undefined;
 
                                 let channelPart = leftPart.substring(0, scopePos);
                                 channel = parseInt(channelPart);
@@ -398,11 +396,11 @@ export class ShaderParser {
                                         magFilter = (() => {
                                             switch(quotedPart) {
                                                 case "Nearest":
-                                                    return types.TextureMagFilter.Nearest;
+                                                    return Types.TextureMagFilter.Nearest;
                                                 case "Linear":
-                                                    return types.TextureMagFilter.Linear;
+                                                    return Types.TextureMagFilter.Linear;
                                                 default:
-                                                    let diagnosticBatch: types.DiagnosticBatch = {
+                                                    let diagnosticBatch: Types.DiagnosticBatch = {
                                                         filename: file,
                                                         diagnostics: [{
                                                             line: getLineNumber(endlinePos),
@@ -418,19 +416,19 @@ export class ShaderParser {
                                         minFilter = (() => {
                                             switch(quotedPart) {
                                                 case "Nearest":
-                                                    return types.TextureMinFilter.Nearest;
+                                                    return Types.TextureMinFilter.Nearest;
                                                 case "NearestMipMapNearest":
-                                                    return types.TextureMinFilter.NearestMipMapNearest;
+                                                    return Types.TextureMinFilter.NearestMipMapNearest;
                                                 case "NearestMipMapLinear":
-                                                    return types.TextureMinFilter.NearestMipMapLinear;
+                                                    return Types.TextureMinFilter.NearestMipMapLinear;
                                                 case "Linear":
-                                                    return types.TextureMinFilter.Linear;
+                                                    return Types.TextureMinFilter.Linear;
                                                 case "LinearMipMapNearest":
-                                                    return types.TextureMinFilter.LinearMipMapNearest;
+                                                    return Types.TextureMinFilter.LinearMipMapNearest;
                                                 case "LinearMipMapLinear":
-                                                    return types.TextureMinFilter.LinearMipMapLinear;
+                                                    return Types.TextureMinFilter.LinearMipMapLinear;
                                                 default:
-                                                    let diagnosticBatch: types.DiagnosticBatch = {
+                                                    let diagnosticBatch: Types.DiagnosticBatch = {
                                                         filename: file,
                                                         diagnostics: [{
                                                             line: getLineNumber(endlinePos),
@@ -446,13 +444,13 @@ export class ShaderParser {
                                         wrapMode = (() => {
                                             switch(quotedPart) {
                                                 case "Repeat":
-                                                    return types.TextureWrapMode.Repeat;
+                                                    return Types.TextureWrapMode.Repeat;
                                                 case "Clamp":
-                                                    return types.TextureWrapMode.Clamp;
+                                                    return Types.TextureWrapMode.Clamp;
                                                 case "Mirror":
-                                                    return types.TextureWrapMode.Mirror;
+                                                    return Types.TextureWrapMode.Mirror;
                                                 default:
-                                                    let diagnosticBatch: types.DiagnosticBatch = {
+                                                    let diagnosticBatch: Types.DiagnosticBatch = {
                                                         filename: file,
                                                         diagnostics: [{
                                                             line: getLineNumber(endlinePos),
@@ -468,11 +466,11 @@ export class ShaderParser {
                                         vscode.window.showWarningMessage(`Unkown texture setting "${settingName}", choose either "MinFilter", "MagFilter" or "WrapMode"`);
                                 }
 
-                                let texture = textures.find((texture: types.TextureDefinition) => {
+                                let texture = textures.find((texture: Types.TextureDefinition) => {
                                     return texture.Channel === channel;
                                 });
                                 if (texture === undefined) {
-                                    texture = pendingTextureSettings.find((texture: types.TextureDefinition) => {
+                                    texture = pendingTextureSettings.find((texture: Types.TextureDefinition) => {
                                         return texture.Channel === channel;
                                     });
                                 }
@@ -490,11 +488,11 @@ export class ShaderParser {
                                 else {
                                     pendingTextureSettings.push({
                                         Channel: channel,
-                                        Mag: magFilter || types.TextureMagFilter.Linear,
+                                        Mag: magFilter || Types.TextureMagFilter.Linear,
                                         MagLine: magFilter ? lineInformation : undefined,
-                                        Min: minFilter || types.TextureMinFilter.Linear,
+                                        Min: minFilter || Types.TextureMinFilter.Linear,
                                         MinLine: minFilter ? lineInformation : undefined,
-                                        Wrap: wrapMode || types.TextureWrapMode.Clamp,
+                                        Wrap: wrapMode || Types.TextureWrapMode.Clamp,
                                         WrapLine: wrapMode ? lineInformation : undefined
                                     });
                                 }
@@ -539,7 +537,7 @@ export class ShaderParser {
                 let versionDirective = code.substring(versionPos, newLinePos - 1);
                 code = code.replace(versionDirective, "");
 
-                let diagnosticBatch: types.DiagnosticBatch = {
+                let diagnosticBatch: Types.DiagnosticBatch = {
                     filename: file,
                     diagnostics: [{
                         line: 1,
@@ -563,7 +561,7 @@ export class ShaderParser {
 
         // Assign pending texture settings
         for (let texture of textures) {
-            let pendingSettings = pendingTextureSettings.find((pendingSettings: types.TextureDefinition) => {
+            let pendingSettings = pendingTextureSettings.find((pendingSettings: Types.TextureDefinition) => {
                 return pendingSettings.Channel === texture.Channel;
             });
             if (pendingSettings !== undefined) {

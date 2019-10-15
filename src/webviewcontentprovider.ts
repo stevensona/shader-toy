@@ -1,1143 +1,287 @@
 'use strict';
 
-import * as types from'./typenames';
+import * as Types from './typenames';
 import { ShaderParser } from './shaderparser';
 import { Context } from './context';
+import { WebviewContentAssembler } from './webviewcontentassembler';
+import { WebviewExtension } from './extensions/webview_extension';
+
+import { InitialTimeExtension } from './extensions/initial_time_extension';
+import { InitialMouseExtension } from './extensions/initial_mouse_extension';
+import { InitialNormalizedMouseExtension } from './extensions/initial_normalized_mouse_extension';
+
+import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
+
+import { ShaderPreambleExtension } from './extensions/preamble_extension';
+
+import { KeyboardInitExtension } from './extensions/keyboard/keyboard_init_extension';
+import { KeyboardUpdateExtension } from './extensions/keyboard/keyboard_update_extension';
+import { KeyboardCallbacksExtension } from './extensions/keyboard/keyboard_callbacks_extension';
+import { KeyboardShaderExtension } from './extensions/keyboard/keyboard_shader_extension';
+
+import { JQueryExtension } from './extensions/packages/jquery_extension';
+import { ThreeExtension } from './extensions/packages/three_extension';
+import { StatsExtension } from './extensions/packages/stats_extension';
+
+import { PauseButtonStyleExtension } from './extensions/user_interface/pause_button_style_extension';
+import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
+import { ScreenshotButtonStyleExtension } from './extensions/user_interface/screenshot_button_style_extension';
+import { ScreenshotButtonExtension } from './extensions/user_interface/screenshot_button_extension';
+
+import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
+import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
+import { GlslifyErrorsExtension } from './extensions/user_interface/error_display/glslify_errors_extension';
+
+import { PauseWholeRenderExtension } from './extensions/pause_whole_render_extension';
+import { AdvanceTimeExtension } from './extensions/advance_time_extension';
+import { AdvanceTimeIfNotPausedExtension } from './extensions/advance_time_if_not_paused_extension';
+
+import { BuffersInitExtension } from './extensions/buffers/buffers_init_extension';
+import { ShadersExtension } from './extensions/buffers/shaders_extension';
+import { IncludesExtension } from './extensions/buffers/includes_extension';
+import { IncludesInitExtension } from './extensions/buffers/includes_init_extension';
+
+import { TexturesInitExtension } from './extensions/textures/textures_init_extension';
+
+import { NoAudioExtension } from './extensions/audio/no_audio_extension';
+import { AudioInitExtension } from './extensions/audio/audio_init_extension';
+import { AudioUpdateExtension } from './extensions/audio/audio_update_extension';
+import { AudioPauseExtension } from './extensions/audio/audio_pause_extension';
+import { AudioResumeExtension } from './extensions/audio/audio_resume_extension';
 
 export class WebviewContentProvider {
     private context: Context;
+    private webviewAssembler: WebviewContentAssembler;
     private documentContent: string;
     private documentName: string;
     
     constructor(context: Context, documentContent: string, documentName: string) {
         this.context = context;
+        this.webviewAssembler = new WebviewContentAssembler(context);
         this.documentContent = documentContent;
         this.documentName = documentName;
     }
 
-    public generateWebviewConent(startingTime: number, startingMouse: types.Mouse, startingNormalizedMouse: types.NormalizedMouse, startingKeys: types.Keys): string {
-
+    public generateWebviewConent(startingState: Types.RenderStartingData): string {
         let shader = this.documentContent;
         let shaderName = this.documentName;
 
-        let shaderPreamble = `
-        uniform vec3        iResolution;
-        uniform float       iTime;
-        uniform float       iTimeDelta;
-        uniform int         iFrame;
-        uniform vec4        iDate;
-        uniform float       iChannelTime[4];
-        uniform vec3        iChannelResolution[4];
-        uniform vec4        iMouse;
-        uniform vec4        iMouseButton;
-        uniform sampler2D   iChannel0;
-        uniform sampler2D   iChannel1;
-        uniform sampler2D   iChannel2;
-        uniform sampler2D   iChannel3;
-        uniform sampler2D   iChannel4;
-        uniform sampler2D   iChannel5;
-        uniform sampler2D   iChannel6;
-        uniform sampler2D   iChannel7;
-        uniform sampler2D   iChannel8;
-        uniform sampler2D   iChannel9;
-        uniform sampler2D   iKeyboard;
-        uniform float       iSampleRate;
+        let preambleExtension = new ShaderPreambleExtension();
+        this.webviewAssembler.addReplaceModule(preambleExtension, 184, '<!-- Preamble Line Numbers -->');
 
-        #define iGlobalTime iTime
-        #define iGlobalFrame iFrame
-
-        #define SHADER_TOY`;
-        let shaderPreambleLineNumbers = shaderPreamble.split(/\r\n|\n/).length;
         let webglLineNumbers = 101;
 
         shaderName = shaderName.replace(/\\/g, '/');
-        let buffers: types.BufferDefinition[] = [];
-        let commonIncludes: types.IncludeDefinition[] = [];
+        let buffers: Types.BufferDefinition[] = [];
+        let commonIncludes: Types.IncludeDefinition[] = [];
 
-        new ShaderParser(this.context, shaderPreambleLineNumbers + webglLineNumbers).parseShaderCode(shaderName, shader, buffers, commonIncludes);
-
-        // If final buffer uses feedback we need to add a last pass that renders it to the screen
-        // because we can not ping-pong the screen
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Parse Shaders
         {
-            let finalBuffer = buffers[buffers.length - 1];
-            if (finalBuffer.UsesSelf) {
-                let finalBufferIndex = buffers.length - 1;
-                finalBuffer.Dependents.push({
-                    Index: buffers.length,
-                    Channel: 0
-                });
-                buffers.push({
-                    Name: "final-blit",
-                    File: "final-blit",
-                    Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
-                    TextureInputs: [{
-                        Channel: 0,
-                        Buffer: finalBuffer.Name,
-                        BufferIndex: finalBufferIndex,
-                    }],
-                    AudioInputs: [],
-                    Includes: [],
-                    UsesSelf: false,
-                    SelfChannel: -1,
-                    Dependents: [],
-                    LineOffset: 0,
-                });
-            }
-        }
-        
+            new ShaderParser(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
 
-        let useKeyboard = false;
-        for (let buffer of buffers) {
-            if (buffer.UsesKeyboard) {
-                useKeyboard = true;
-            }
-        }
-
-        let keyboardScripts = {
-            Init: "",
-            Update: "",
-            Callbacks: "",
-            Shader: "",
-            LineOffset: 0
-        };
-        if (useKeyboard) {
-            keyboardScripts.Init = `
-            const numKeys = 256;
-            const numStates = 4;
-            let keyBoardData = new Uint8Array(numKeys * numStates);
-            let keyBoardTexture = new THREE.DataTexture(keyBoardData, numKeys, numStates, THREE.LuminanceFormat, THREE.UnsignedByteType);
-            keyBoardTexture.magFilter = THREE.NearestFilter;
-            keyBoardTexture.needsUpdate = true;
-            let pressedKeys = [];
-            let releasedKeys = [];
-            let toggledKeys = [${startingKeys}];
-            for (let key of toggledKeys) {
-                keyBoardData[key + 512] = 255; // Toggled
-            }
-            `;
-
-            keyboardScripts.Update = `
-            // Update keyboard data
-            if (pressedKeys.length > 0 || releasedKeys.length > 0) {
-                for (let key of pressedKeys) {
-                    keyBoardData[key + 256] = 0;
-                }
-                for (let key of releasedKeys) {
-                    keyBoardData[key + 768] = 0;
-                }
-
-                if (pressedKeys.length > 0) {
-                    vscode.postMessage({
-                        command: 'updateKeyboard',
-                        keys: toggledKeys
+            // If final buffer uses feedback we need to add a last pass that renders it to the screen
+            // because we can not ping-pong the screen
+            {
+                let finalBuffer = buffers[buffers.length - 1];
+                if (finalBuffer.UsesSelf) {
+                    let finalBufferIndex = buffers.length - 1;
+                    finalBuffer.Dependents.push({
+                        Index: buffers.length,
+                        Channel: 0
+                    });
+                    buffers.push({
+                        Name: "final-blit",
+                        File: "final-blit",
+                        Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
+                        TextureInputs: [{
+                            Channel: 0,
+                            Buffer: finalBuffer.Name,
+                            BufferIndex: finalBufferIndex,
+                        }],
+                        AudioInputs: [],
+                        Includes: [],
+                        UsesSelf: false,
+                        SelfChannel: -1,
+                        Dependents: [],
+                        LineOffset: 0,
                     });
                 }
-                
-                keyBoardTexture.needsUpdate = true;
-                pressedKeys = [];
-                releasedKeys = [];
-            }`;
-
-            keyboardScripts.Callbacks = `
-            document.addEventListener('keydown', function(evt) {
-                const i = evt.keyCode;
-                if (i >= 0 && i <= 255) {
-                    // Key is being held, don't register input
-                    if (keyBoardData[i] == 0) {
-                        keyBoardData[i] = 255; // Held
-                        keyBoardData[i + 256] = 255; // Pressed
-                        keyBoardData[i + 512] = (keyBoardData[i + 512] == 255 ? 0 : 255); // Toggled
-
-                        if (keyBoardData[i + 512] > 0) {
-                            toggledKeys.push(i);
-                        }
-                        else {
-                            toggledKeys = toggledKeys.filter(function(value, index, arr){
-                                return value != i;
-                            });
-                        }
-
-                        pressedKeys.push(i);
-                        keyBoardTexture.needsUpdate = true;
-                    }
-                }
-            });
-            document.addEventListener('keyup', function(evt) {
-                const i = evt.keyCode;
-                if (i >= 0 && i <= 255) {
-                    keyBoardData[i] = 0; // Not held
-                    keyBoardData[i + 768] = 255; // Released
-                    releasedKeys.push(i);
-                    keyBoardTexture.needsUpdate = true;
-                }
-            });`;
-            
-            keyboardScripts.Shader = `
-            const int Key_Backspace = 8, Key_Tab = 9, Key_Enter = 13, Key_Shift = 16, Key_Ctrl = 17, Key_Alt = 18, Key_Pause = 19, Key_Caps = 20, Key_Escape = 27, Key_PageUp = 33, Key_PageDown = 34, Key_End = 35,
-                Key_Home = 36, Key_LeftArrow = 37, Key_UpArrow = 38, Key_RightArrow = 39, Key_DownArrow = 40, Key_Insert = 45, Key_Delete = 46, Key_0 = 48, Key_1 = 49, Key_2 = 50, Key_3 = 51, Key_4 = 52,
-                Key_5 = 53, Key_6 = 54, Key_7 = 55, Key_8 = 56, Key_9 = 57, Key_A = 65, Key_B = 66, Key_C = 67, Key_D = 68, Key_E = 69, Key_F = 70, Key_G = 71, Key_H = 72,
-                Key_I = 73, Key_J = 74, Key_K = 75, Key_L = 76, Key_M = 77, Key_N = 78, Key_O = 79, Key_P = 80, Key_Q = 81, Key_R = 82, Key_S = 83, Key_T = 84, Key_U = 85,
-                Key_V = 86, Key_W = 87, Key_X = 88, Key_Y = 89, Key_Z = 90, Key_LeftWindow = 91, Key_RightWindows = 92, Key_Select = 93, Key_Numpad0 = 96, Key_Numpad1 = 97, Key_Numpad2 = 98, Key_Numpad3 = 99,
-                Key_Numpad4 = 100, Key_Numpad5 = 101, Key_Numpad6 = 102, Key_Numpad7 = 103, Key_Numpad8 = 104, Key_Numpad9 = 105, Key_NumpadMultiply = 106, Key_NumpadAdd = 107, Key_NumpadSubtract = 109, Key_NumpadPeriod = 110, Key_NumpadDivide = 111, Key_F1 = 112, Key_F2 = 113, Key_F3 = 114, Key_F4 = 115, Key_F5 = 116, Key_F6 = 117, Key_F7 = 118, Key_F8 = 119, Key_F9 = 120, Key_F10 = 121, Key_F11 = 122, Key_F12 = 123, Key_NumLock = 144, Key_ScrollLock = 145,
-                Key_SemiColon = 186, Key_Equal = 187, Key_Comma = 188, Key_Dash = 189, Key_Period = 190, Key_ForwardSlash = 191, Key_GraveAccent = 192, Key_OpenBracket = 219, Key_BackSlash = 220, Key_CloseBraket = 221, Key_SingleQuote = 222;
-
-            bool isKeyDown(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.125);
-                return texture2D(iKeyboard, uv).r > 0.0;
             }
-            bool isKeyPressed(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.375);
-                return texture2D(iKeyboard, uv).r > 0.0;
-            }
-            bool isKeyToggled(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.625);
-                return texture2D(iKeyboard, uv).r > 0.0;
-            }
-            bool isKeyReleased(int key) {
-                vec2 uv = vec2(float(key) / 255.0, 0.875);
-                return texture2D(iKeyboard, uv).r > 0.0;
-            }`;
-            keyboardScripts.LineOffset = keyboardScripts.Shader.split(/\r\n|\n/).length - 1;
         }
 
-        // Write all the shaders
-        let shaderScripts = "";
-        let buffersScripts = "";
-        for (let buffer of buffers) {
-            shaderScripts += `
-            <script id="${buffer.Name}" type="x-shader/x-fragment">
-                ${shaderPreamble}
-                ${keyboardScripts.Shader}
-                ${buffer.Code}
-            </script>`;
 
-            // Create a RenderTarget for all but the final buffer
-            let target = "null";
-            let pingPongTarget = "null";
-            if (buffer !== buffers[buffers.length - 1]) {
-                target = "new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
-            }
-            if (buffer.UsesSelf) {
-                pingPongTarget = "new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })";
-            }
-
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Feature Check
+        let useKeyboard = false;
+        let useAudio = false;
+        for (const buffer of buffers) {
             if (buffer.UsesKeyboard) {
-                buffer.LineOffset += keyboardScripts.LineOffset;
-            }
-
-            buffersScripts += `
-            buffers.push({
-                Name: "${buffer.Name}",
-                File: "${buffer.File}",
-                LineOffset: ${buffer.LineOffset},
-                Target: ${target},
-                PingPongTarget: ${pingPongTarget},
-                PingPongChannel: ${buffer.SelfChannel},
-                Dependents: ${JSON.stringify(buffer.Dependents)},
-                Shader: new THREE.ShaderMaterial({
-                    fragmentShader: document.getElementById('${buffer.Name}').textContent,
-                    depthWrite: false,
-                    depthTest: false,
-                    uniforms: {
-                        iResolution: { type: "v3", value: resolution },
-                        iTime: { type: "f", value: 0.0 },
-                        iTimeDelta: { type: "f", value: 0.0 },
-                        iFrame: { type: "i", value: 0 },
-                        iMouse: { type: "v4", value: mouse },
-                        iMouseButton: { type: "v2", value: mouseButton },
-
-                        iDate: { type: "v4", value: date },
-                        iSampleRate: { type: "f", value: audioContext.sampleRate },
-
-                        iChannel0: { type: "t" },
-                        iChannel1: { type: "t" },
-                        iChannel2: { type: "t" },
-                        iChannel3: { type: "t" },
-                        iChannel4: { type: "t" },
-                        iChannel5: { type: "t" },
-                        iChannel6: { type: "t" },
-                        iChannel7: { type: "t" },
-                        iChannel8: { type: "t" },
-                        iChannel9: { type: "t" },
-
-                        resolution: { type: "v2", value: resolution },
-                        time: { type: "f", value: 0.0 },
-                        mouse: { type: "v2", value: normalizedMouse },
-                    }
-                })
-            });`;
-        }
-
-        // add the common includes for compilation checking
-        for (let include of commonIncludes) {
-            shaderScripts += `
-                <script id="${include.Name}" type="x-shader/x-fragment">#version 300 es
-                    precision highp float;
-                    ${shaderPreamble}
-                    ${include.Code}
-                    void main() {}
-                </script>`;
-
-            buffersScripts += `
-                commonIncludes.push({
-                    Name: "${include.Name}",
-                    File: "${include.File}"
-                });`;
-        }
-        
-        let textureScripts = "\n";
-        let textureLoadScript = (texture: types.TextureDefinition) => {
-            let magFilter: string = (() => {
-                switch(texture.Mag) {
-                case types.TextureMagFilter.Nearest:
-                    return "THREE.NearestFilter";
-                case types.TextureMagFilter.Linear:
-                default:
-                    return "THREE.LinearFilter";
-                }
-            })();
-
-            let minFilter: string = (() => {
-                switch(texture.Min) {
-                    case types.TextureMinFilter.Nearest:
-                        return"THREE.NearestFilter";
-                    case types.TextureMinFilter.NearestMipMapNearest:
-                        return"THREE.NearestMipMapNearestFilter";
-                    case types.TextureMinFilter.NearestMipMapLinear:
-                        return"THREE.NearestMipMapLinearFilter";
-                    case types.TextureMinFilter.Linear:
-                    default:
-                        return"THREE.LinearFilter";
-                    case types.TextureMinFilter.LinearMipMapNearest:
-                        return"THREE.LinearMipMapNearestFilter";
-                    case types.TextureMinFilter.LinearMipMapLinear:
-                        return"THREE.LinearMipMapLinearFilter";
-                }
-            })();
-
-            let wrapMode: string = (() => {
-                switch(texture.Wrap) {
-                case types.TextureWrapMode.Clamp:
-                    return "THREE.ClampToEdgeWrapping";
-                case types.TextureWrapMode.Repeat:
-                default:
-                    return "THREE.RepeatWrapping";
-                case types.TextureWrapMode.Mirror:
-                    return "THREE.MirroredRepeatWrapping";
-                }
-            })();
-
-            let textureFileOrigin = (texture.MagLine ? texture.MagLine.File : undefined)
-                || (texture.MinLine ? texture.MinLine.File : undefined)
-                || (texture.WrapLine ? texture.WrapLine.File : undefined);
-            let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
-            let powerOfTwoWarning = `
-            function isPowerOfTwo(n) {
-                return n && (n & (n - 1)) === 0;
-            };
-            if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
-                let diagnostics = [];
-                ${texture.MagLine !== undefined ? `diagnostics.push({
-                        line: ${texture.MagLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
-                    });` : ''
-                }
-                ${texture.MinLine !== undefined ? `diagnostics.push({
-                        line: ${texture.MinLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
-                    });` : ''
-                }
-                ${texture.WrapLine !== undefined ? `diagnostics.push({
-                        line: ${texture.WrapLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
-                    });` : ''
-                }
-                let diagnosticBatch = {
-                    filename: "${textureFileOrigin}",
-                    diagnostics: diagnostics
-                };
-                vscode.postMessage({
-                    command: 'showGlslDiagnostic',
-                    type: 'warning',
-                    diagnosticBatch: diagnosticBatch
-                });
-            };
-            `;
-
-            return `function(texture) {
-                ${hasCustomSettings ? powerOfTwoWarning : ''}
-                texture.magFilter = ${magFilter};
-                texture.minFilter = ${minFilter};
-                texture.wrapS = ${wrapMode};
-                texture.wrapT = ${wrapMode};
-            }`;
-        };
-        let makeTextureLoadErrorScript = (filename: string) => `function(err) {
-            vscode.postMessage({
-                command: 'errorMessage',
-                message: "Failed loading texture file ${filename}"
-            });
-        }`;
-
-        let audioScripts = {
-            Init: "",
-            Update: "",
-            Pause: "",
-            Resume: ""
-        };
-
-        for (let i in buffers) {
-            const buffer = buffers[i];
-            const textures =  buffer.TextureInputs;
-            for (let texture of textures) {
-                const channel = texture.Channel;
-
-                const bufferIndex = texture.BufferIndex;
-                const localPath = texture.LocalTexture;
-                const remotePath = texture.RemoteTexture;
-
-                let value: string | undefined;
-                if (bufferIndex !== undefined) {
-                    value = `buffers[${bufferIndex}].Target.texture`;
-                }
-                else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    const resolvedPath = this.context.makeWebviewResource(this.context.makeUri(localPath));
-                    const resolvedPathString = resolvedPath.toString();
-                    value = `texLoader.load('${resolvedPathString}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
-                }
-                else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    value = `texLoader.load('https://${remotePath}', ${textureLoadScript(texture)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
-                }
-
-                if (value !== undefined) {
-                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${value} };\n`;
-                }
+                useKeyboard = true;
             }
 
             const audios =  buffer.AudioInputs;
-            for (let j in audios) {
-                const audio = audios[j];
-
-                const channel = audio.Channel;
-                
-                const localPath = audio.LocalPath;
-                const remotePath = audio.RemotePath;
-
-                let path: string | undefined;
-
-                if (localPath !== undefined) {
-                    path = this.context.makeWebviewResource(this.context.makeUri(localPath)).toString();
-                }
-                else if (remotePath !== undefined) {
-                    path = "https://" + remotePath;
-                }
-
-                if (path !== undefined) {
-                    audioScripts.Init += `
-                    fetch('${path}')
-                        .then(function(response) {
-                            return response.arrayBuffer();
-                        })
-                        .then(function(arrayBuffer) {
-                            audioContext.decodeAudioData(arrayBuffer)
-                                .then(function(audioBuffer) {
-                                    let audio = audioContext.createBufferSource();
-                                    audio.buffer = audioBuffer;
-                                    audio.loop = true;
-
-                                    let analyser = audioContext.createAnalyser();
-                                    analyser.fftSize = ${this.context.getConfig<number>("audioDomainSize")};
-
-                                    const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
-                                    const dataArray = new Uint8Array(dataSize * 2);
-
-                                    let texture = new THREE.DataTexture(dataArray, dataSize, 2, THREE.LuminanceFormat, THREE.UnsignedByteType);
-                                    texture.magFilter = THREE.LinearFilter;
-                                    texture.needsUpdate = true;
-
-                                    buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: texture };
-
-                                    audio.connect(analyser);
-                                    analyser.connect(audioContext.destination);
-                                    audio.start(0, startingTime % audioBuffer.duration);
-        
-                                    audios.push({
-                                        Channel: ${channel},
-                                        Media: audio,
-                                        Analyser: analyser,
-                                        AmplitudeSamples: analyser.fftSize,
-                                        FrequencySamples: analyser.frequencyBinCount,
-                                        Data: dataArray,
-                                        Texture: texture
-                                    })
-                                })
-                                .catch(function(){
-                                    vscode.postMessage({
-                                        command: 'errorMessage',
-                                        message: "Failed decoding audio file: ${audio.UserPath}"
-                                    });
-                                });
-                        }).
-                        catch(function(){
-                            vscode.postMessage({
-                                command: 'errorMessage',
-                                message: "Failed loading audio file: ${audio.UserPath}"
-                            });
-                        });
-                    `;
-                    textureScripts += `buffers[${i}].Shader.uniforms.iChannel0 = { type: 't', value: null };\n`;
-                }
-            }
-
-            if (buffer.UsesSelf) {
-                textureScripts += `buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
-            }
-
-            if (buffer.UsesKeyboard) {
-                useKeyboard = true;
-                textureScripts += `buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
+            if (audios.length > 0) {
+                useAudio = true;
+                break;
             }
         }
 
-        if (audioScripts.Init !== "") {
-            audioScripts.Init = `
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const audioContext = new AudioContext();
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Initial State
+        let initialTimeExtension = new InitialTimeExtension(startingState.Time);
+        this.webviewAssembler.addReplaceModule(initialTimeExtension, 91, '<!-- Start Time -->');
+        let initialMouseExtension = new InitialMouseExtension(startingState.Mouse);
+        this.webviewAssembler.addReplaceModule(initialMouseExtension, 142, '<!-- Start Mouse -->');
+        let initialNormalizedMouseExtension = new InitialNormalizedMouseExtension(startingState.NormalizedMouse);
+        this.webviewAssembler.addReplaceModule(initialNormalizedMouseExtension, 144, '<!-- Start Normalized Mouse -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Initial State
+        let forcedAspect = this.context.getConfig<[ number, number ]>('forceAspectRatio');
+        if (forcedAspect === undefined) {
+            forcedAspect = [ -1, -1 ];
+        }
+        let forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
+        this.webviewAssembler.addReplaceModule(forcedAspectExtension, 276, '<!-- Forced Aspect -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Keyboard
+        let keyboardShaderExtension: KeyboardShaderExtension | undefined;
+        if (useKeyboard) {
+            let keyboardInit = new KeyboardInitExtension(startingState.Keys);
+            this.webviewAssembler.addWebviewModule(keyboardInit, 162, "// Keyboard Init");
+
+            let keyboardUpdate = new KeyboardUpdateExtension();
+            this.webviewAssembler.addWebviewModule(keyboardUpdate, 258, "// Keyboard Update");
+
+            let keyboardCallbacks = new KeyboardCallbacksExtension();
+            this.webviewAssembler.addWebviewModule(keyboardCallbacks, 394, "// Keyboard Callbacks");
+
+            keyboardShaderExtension = new KeyboardShaderExtension();
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Fix up line offsets
+        for (let buffer of buffers) {
+            buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglLineNumbers;
+            if (buffer.UsesKeyboard && keyboardShaderExtension !== undefined) {
+                buffer.LineOffset += keyboardShaderExtension.getShaderPreambleLineNumbers();
+            }
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Buffer Logic
+        let buffersInitExtension = new BuffersInitExtension(buffers);
+        this.webviewAssembler.addWebviewModule(buffersInitExtension, 151, '// Buffers');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Shader Scripts
+        let shadersExtension = new ShadersExtension(buffers, preambleExtension, keyboardShaderExtension);
+        this.webviewAssembler.addWebviewModule(shadersExtension, 66, '<!-- Shaders -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Include Scripts
+        let includesExtension = new IncludesExtension(commonIncludes, preambleExtension);
+        this.webviewAssembler.addWebviewModule(includesExtension, 66, '<!-- Shaders -->');
+        let includesInitExtension = new IncludesInitExtension(commonIncludes);
+        this.webviewAssembler.addWebviewModule(includesInitExtension, 153, '// Includes');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Texture Loading
+        let textureInitExtension = new TexturesInitExtension(buffers, this.context);
+        this.webviewAssembler.addWebviewModule(textureInitExtension, 165, '// Texture Init');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Audio Logic
+        if (useAudio) {
+            let audioInitExtension = new AudioInitExtension(buffers, this.context);
+            this.webviewAssembler.addWebviewModule(audioInitExtension, 147, '// Audio Init');
+            textureInitExtension.addTextureContent(audioInitExtension);
+
+            let audioUpdateExtension = new AudioUpdateExtension();
+            this.webviewAssembler.addWebviewModule(audioUpdateExtension, 240, '// Audio Update');
             
-            let audios = [];
-            ` + audioScripts.Init;
+            let audioPauseExtension = new AudioPauseExtension();
+            this.webviewAssembler.addWebviewModule(audioPauseExtension, 118, '// Audio Pause');
 
-            audioScripts.Update = `
-            for (let audio of audios) {
-                // Get audio data
-                audio.Analyser.getByteFrequencyData(audio.Data.subarray(0, audio.Data.length / 2));
-                audio.Analyser.getByteTimeDomainData(audio.Data.subarray(audio.Data.length / 2, -1));
-
-                // Scale buffer to fill the whole range because
-                // frequency data and amplitude data are not necessarily the same length
-                audio.Data.subarray(0, audio.Data.length / 2).set(
-                    audio.Data.slice(0, audio.Data.length / 2)
-                        .map(function(value, index, array) {
-                            index = index / (audio.Data.length / 2);
-                            index = Math.floor(index * audio.FrequencySamples);
-                            return array[index];
-                        })
-                    );
-                audio.Data.subarray(audio.Data.length / 2, -1).set(
-                    audio.Data.slice(audio.Data.length / 2, -1)
-                        .map(function(value, index, array) {
-                            index = index / (audio.Data.length / 2);
-                            index = index * audio.AmplitudeSamples;
-                            return array[index];
-                        })
-                    );
-                
-                audio.Texture.needsUpdate = true;
-            }
-            `;
-
-            audioScripts.Pause = `
-            audioContext.suspend();
-            `;
-            audioScripts.Resume = `
-            audioContext.resume();
-            `;
+            let audioResumeExtension = new AudioResumeExtension();
+            this.webviewAssembler.addWebviewModule(audioResumeExtension, 114, '// Audio Resume');
+            this.webviewAssembler.addWebviewModule(audioResumeExtension, 148, '// Audio Resume');
         }
         else {
-            audioScripts.Init = `
-            const audioContext = {
-                sampleRate: 0
-            };
-            `;
+            let noAudioExtension = new NoAudioExtension();
+            this.webviewAssembler.addWebviewModule(noAudioExtension, 147, '// Audio Init');
         }
 
-        let frameTimeScript = "";
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Packages
+        {
+            let jqueryExtension = new JQueryExtension(this.context);
+            this.webviewAssembler.addReplaceModule(jqueryExtension, 60, '<!-- JQuery.js -->');
+
+            let threeExtension = new ThreeExtension(this.context);
+            this.webviewAssembler.addReplaceModule(threeExtension, 61, '<!-- Three.js -->');
+        }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
-            frameTimeScript = `
-            <script src="${this.context.getWebviewResourcePath('stats.min.js')}" onload="
-                let stats = new Stats();
-                compileTimePanel = stats.addPanel(new Stats.Panel('CT MS', '#ff8', '#221'));
-                stats.showPanel(1);
-                document.body.appendChild(stats.dom);
-                requestAnimationFrame(function loop() {
-                    stats.update();
-                    requestAnimationFrame(loop);
-                });
-            "></script>`;
+            let statsExtension = new StatsExtension(this.context);
+            this.webviewAssembler.addWebviewModule(statsExtension, 62, '<!-- Stats.js -->');
         }
 
-        let pauseButtonScript = "";
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Pause Logic
         if (this.context.getConfig<boolean>('showPauseButton')) {
-            pauseButtonScript = `
-                <label class="button-container">
-                <input id="pause-button" type="checkbox">
-                <span class="pause-play"></span>
-            `;
+            let pauseButtonStyleExtension = new PauseButtonStyleExtension(this.context);
+            this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, 48, '/* Pause Button Style */');
+
+            let pauseButtonExtension = new PauseButtonExtension();
+            this.webviewAssembler.addWebviewModule(pauseButtonExtension, 56, '<!-- Pause Element -->');
         }
 
-        let pauseWholeScript = "";
-        let advanceTimeScript = `
-        deltaTime = clock.getDelta();
-        time = startingTime + clock.getElapsedTime() - pausedTime;`;
         if (this.context.getConfig<boolean>('pauseWholeRender')) {
-            pauseWholeScript = `if (paused) return;`;
+            let pauseWholeRenderExtension = new PauseWholeRenderExtension();
+            this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, 235, '// Pause Whole Render');
+
+            let advanceTimeExtension = new AdvanceTimeExtension();
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, 237, '// Advance Time');
         }
         else {
-            advanceTimeScript = `
-            if (paused == false) {
-                deltaTime = clock.getDelta();
-                time = startingTime + clock.getElapsedTime() - pausedTime;
-                vscode.postMessage({
-                    command: 'updateTime',
-                    time: time
-                });
-            } else {
-                deltaTime = 0.0;
-            }`;
+            let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, 237, '// Advance Time');
         }
 
-        let screenshotButtonScript = "";
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Screenshot Logic
         if (this.context.getConfig<boolean>('showScreenshotButton')) {
-            screenshotButtonScript = `<span id="screenshot"></span>`;
+            let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(this.context);
+            this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, 50, '/* Screenshot Button Style */');
+
+            let screenshotButtonExtension = new ScreenshotButtonExtension();
+            this.webviewAssembler.addWebviewModule(screenshotButtonExtension, 58, '<!-- Screenshot Element -->');
         }
 
-        let onErrorScript = "";
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Error Handling
+        let errorsExtension: WebviewExtension;
         if (this.context.getConfig<boolean>('enableGlslifySupport')) {
-            onErrorScript = `
-            console.error = function (message) {
-                if('7' in arguments) {
-                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
-                        return \`<li>\${error}</li>\`;
-                    });
-
-                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name}</h3>\`);
-                    $("#message").append(\`<h3>Line numbers are not available because the glslify option is enabled</h3>\`);
-                    $("#message").append('<ul>');
-                    $("#message").append(message);
-                    $("#message").append('</ul>');
-                }
-            };`;
+            errorsExtension = new GlslifyErrorsExtension();
         }
         else if (this.context.getConfig<boolean>('showCompileErrorsAsDiagnostics')) {
-            onErrorScript = `
-            console.error = function (message) {
-                if('7' in arguments) {
-                    let diagnostics = [];
-                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
-                        let lineNumber = Number(line) - currentShader.LineOffset;
-                        diagnostics.push({
-                            line: lineNumber,
-                            message: error
-                        });
-                        let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
-                        return \`<li>\${lineHighlight}: \${error}</li>\`;
-                    });
-                    let diagnosticBatch = {
-                        filename: currentShader.File,
-                        diagnostics: diagnostics
-                    };
-                    vscode.postMessage({
-                        command: 'showGlslDiagnostic',
-                        type: 'error',
-                        diagnosticBatch: diagnosticBatch
-                    });
-
-                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
-                    $("#message").append('<ul>');
-                    $("#message").append(message);
-                    $("#message").append('</ul>');
-                }
-            };`;
+            errorsExtension = new DiagnosticsErrorsExtension();
         }
         else {
-            onErrorScript = `
-            console.error = function (message) {
-                if('7' in arguments) {
-                    let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
-                        let lineNumber = Number(line) - currentShader.LineOffset;
-                        let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
-                        return \`<li>\${lineHighlight}: \${error}</li>\`;
-                    });
-
-                    $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
-                    $("#message").append('<ul>');
-                    $("#message").append(message);
-                    $("#message").append('</ul>');
-                }
-            };`;
+            errorsExtension = new DefaultErrorsExtension();
         }
+        this.webviewAssembler.addWebviewModule(errorsExtension, 81, '// Error Callback');
 
-        // http://threejs.org/docs/api/renderers/webgl/WebGLProgram.html
-        const content = `
-            <head>
-                <style>
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        width: 100%;
-                        height: 100%;
-                        display: block;
-                    }
-                    #canvas {
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: center;
-                        align-items: center;
-                        text-align: center;
-                        position: fixed;
-                        position: relative;
-                    }
-                    
-                    .error {
-                        font-family: Consolas;
-                        font-size: 1.2em;
-                        color: black;
-                        box-sizing: border-box;
-                        background-color: lightcoral;
-                        border-radius: 2px;
-                        border-color: lightblue;
-                        border-width: thin;
-                        border-style: solid;
-                        line-height: 1.4em;
-                        cursor:pointer;
-                    }
-                    .error:hover {
-                        color: black;
-                        background-color: brown;
-                        border-color: blue;
-                    }
-                    #message {
-                        font-family: Consolas;
-                        font-size: 1.2em;
-                        color: #ccc;
-                        background-color: black;
-                        font-weight: bold;
-                        z-index: 2;
-                        position: absolute;
-                    }
-                    
-                    /* Container for pause button */
-                    .button-container, .container {
-                        text-align: center;
-                        position: absolute;
-                        bottom: 0;
-                        width: 100%;
-                        height: 80px;
-                        margin: auto;
-                        z-index: 1;
-                    }
-                    /* Hide the browser's default checkbox */
-                    .button-container input {
-                        position: absolute;
-                        opacity: 0;
-                        cursor: pointer;
-                    }
-            
-                    /* Custom checkmark style */
-                    .pause-play {
-                        position: absolute;
-                        border: none;
-                        padding: 30px;
-                        text-align: center;
-                        text-decoration: none;
-                        font-size: 16px;
-                        border-radius: 8px;
-                        margin: auto;
-                        transform: translateX(-50%);
-                        background: url("${this.context.getWebviewResourcePath('pause.png')}");
-                        background-size: 40px;
-                        background-repeat: no-repeat;
-                        background-position: center;
-                        background-color: rgba(128, 128, 128, 0.5);
-                        z-index: 1;
-                    }
-                    .button-container:hover input ~ .pause-play {
-                        background-color: lightgray;
-                        transition-duration: 0.2s;
-                    }
-                    .button-container:hover input:checked ~ .pause-play {
-                        background-color: lightgray;
-                        transition-duration: 0.2s;
-                    }
-                    .button-container input:checked ~ .pause-play {
-                        background: url("${this.context.getWebviewResourcePath('play.png')}");
-                        background-size: 40px;
-                        background-repeat: no-repeat;
-                        background-position: center;
-                        background-color: rgba(128, 128, 128, 0.5);
-                    }
-                    
-                    /* Custom screenshot button */
-                    #screenshot {
-                        position: absolute;
-                        border: none;
-                        right: 0px;
-                        padding: 26px;
-                        text-align: center;
-                        text-decoration: none;
-                        font-size: 26px;
-                        border-radius: 8px;
-                        margin: 8px;
-                        transform: translateX(0%);
-                        background: url("${this.context.getWebviewResourcePath('screen.png')}");
-                        background-size: 26px;
-                        background-repeat: no-repeat;
-                        background-position: center;
-                        background-color: rgba(128, 128, 128, 0.5);
-                        z-index: 1;
-                    }
-                    #screenshot:hover {
-                        background-color: lightgray;
-                        transition-duration: 0.1s;
-                    }
-                </style>
-            </head>
-            <body>
-                <div id="message"></div>
-                <div id="container">
-                    ${pauseButtonScript}
-                </div>
-                ${screenshotButtonScript}
-            </body>
-            <script src="${this.context.getWebviewResourcePath('jquery.min.js')}"></script>
-            <script src="${this.context.getWebviewResourcePath('three.min.js')}"></script>
-            ${frameTimeScript}
-
-            <canvas id="canvas"></canvas>
-
-            ${shaderScripts}
-
-            <script type="text/javascript">
-                const vscode = acquireVsCodeApi();
-                var compileTimePanel;
-
-                let revealError = function(line, file) {
-                    vscode.postMessage({
-                        command: 'showGlslsError',
-                        line: line,
-                        file: file
-                    });
-                };
-
-                let currentShader = {};
-                ${onErrorScript}
-
-                // Development feature: Output warnings from third-party libraries
-                // console.warn = function (message) {
-                //     $("#message").append(message + '<br>');
-                // };
-
-                let clock = new THREE.Clock();
-                let pausedTime = 0.0;
-                let deltaTime = 0.0;
-                let startingTime = ${startingTime};
-                let time = startingTime;
-
-                let date = new THREE.Vector4();
-
-                let updateDate = function() {
-                    let today = new Date();
-                    date.x = today.getFullYear();
-                    date.y = today.getMonth();
-                    date.z = today.getDate();
-                    date.w = today.getHours() * 60 * 60 
-                        + today.getMinutes() * 60
-                        + today.getSeconds()
-                        + today.getMilliseconds() * 0.001;
-                };
-                updateDate();
-
-                let paused = false;
-                let pauseButton = document.getElementById('pause-button');
-                if (pauseButton) {
-                    pauseButton.onclick = function(){
-                        paused = pauseButton.checked;
-                        if (!paused) {
-                            ${audioScripts.Resume}
-                            pausedTime += clock.getDelta();
-                        }
-                        else {
-                            ${audioScripts.Pause}
-                        }
-                    };
-                }
-                
-                {
-                    let screenshotButton = document.getElementById("screenshot");
-                    if (screenshotButton) {
-                        screenshotButton.addEventListener('click', saveScreenshot);
-                    }
-                }
-
-                let canvas = document.getElementById('canvas');
-                let gl = canvas.getContext('webgl2');
-                let isWebGL2 = gl != null;
-                if (gl == null) gl = canvas.getContext('webgl');
-                let supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
-                let supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
-                let framebufferType = THREE.UnsignedByteType;
-                if (supportsFloatFramebuffer) framebufferType = THREE.FloatType;
-                else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
-
-                let renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl, preserveDrawingBuffer: true });
-                let resolution = new THREE.Vector3();
-                let mouse = new THREE.Vector4(${startingMouse.x}, ${startingMouse.y}, ${startingMouse.z}, ${startingMouse.w});
-                let mouseButton = new THREE.Vector4(0, 0, 0, 0);
-                let normalizedMouse = new THREE.Vector2(${startingNormalizedMouse.x}, ${startingNormalizedMouse.y});
-                let frameCounter = 0;
-
-                let channelResolution = new THREE.Vector3(128.0, 128.0, 0.0);
-                
-                ${audioScripts.Init}
-                ${audioScripts.Resume}
-
-                let buffers = [];
-                let commonIncludes = [];
-                ${buffersScripts}
-
-                // WebGL2 inserts more lines into the shader
-                if (isWebGL2) {
-                    for (let buffer of buffers) {
-                        buffer.LineOffset += 16;
-                    }
-                }
-
-                ${keyboardScripts.Init}
-                
-                let texLoader = new THREE.TextureLoader();
-                ${textureScripts}
-                
-                let scene = new THREE.Scene();
-                let quad = new THREE.Mesh(
-                    new THREE.PlaneGeometry(resolution.x, resolution.y),
-                    null
-                );
-                scene.add(quad);
-                
-                let camera = new THREE.OrthographicCamera(-resolution.x / 2.0, resolution.x / 2.0, resolution.y / 2.0, -resolution.y / 2.0, 1, 1000);
-                camera.position.set(0, 0, 10);
-
-                // Run every shader once to check for compile errors
-                let compileTimeStart = performance.now();
-                let failed=0;
-                for (let include of commonIncludes) {
-                    currentShader = {
-                        Name: include.Name,
-                        File: include.File,
-                        LineOffset: ${shaderPreambleLineNumbers} + 2 // add two for version and precision lines
-                    };
-                    // bail if there is an error found in the include script
-                    if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) throw Error(\`Failed to compile \${include.Name}\`);
-                }
-
-                for (let buffer of buffers) {
-                    currentShader = {
-                        Name: buffer.Name,
-                        File: buffer.File,
-                        LineOffset: buffer.LineOffset
-                    };
-                    quad.material = buffer.Shader;
-                    renderer.render(scene, camera, buffer.Target);
-                }
-                currentShader = {};
-                let compileTimeEnd = performance.now();
-                let compileTime = compileTimeEnd - compileTimeStart;
-                if (compileTimePanel !== undefined) {
-                    for (let i = 0; i < 200; i++) {
-                        compileTimePanel.update(compileTime, 200);
-                    }
-                }
-
-                computeSize();
-                render();
-
-                function addLineNumbers( string ) {
-                    let lines = string.split( '\\n' );
-                    for ( let i = 0; i < lines.length; i ++ ) {
-                        lines[ i ] = ( i + 1 ) + ': ' + lines[ i ];
-                    }
-                    return lines.join( '\\n' );
-                }
-            
-                function compileFragShader(gl, fsSource) {
-                    const fs = gl.createShader(gl.FRAGMENT_SHADER);
-                    gl.shaderSource(fs, fsSource);
-                    gl.compileShader(fs);
-                    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-                        const fragmentLog = gl.getShaderInfoLog(fs);
-                        console.error( 'THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog );
-                        return false;
-                    }
-                    return true;
-                }
-
-                function render() {
-                    requestAnimationFrame(render);
-                    ${pauseWholeScript}
-                    
-                    ${advanceTimeScript}
-                    updateDate();
-
-                    ${audioScripts.Update}
-
-                    for (let buffer of buffers) {
-                        buffer.Shader.uniforms['iResolution'].value = resolution;
-                        buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
-                        buffer.Shader.uniforms['iTime'].value = time;
-                        buffer.Shader.uniforms['iFrame'].value = frameCounter;
-                        buffer.Shader.uniforms['iMouse'].value = mouse;
-                        buffer.Shader.uniforms['iMouseButton'].value = mouseButton;
-
-                        buffer.Shader.uniforms['resolution'].value = resolution;
-                        buffer.Shader.uniforms['time'].value = time;
-                        buffer.Shader.uniforms['mouse'].value = normalizedMouse;
-
-                        quad.material = buffer.Shader;
-                        renderer.render(scene, camera, buffer.Target);
-                    }
-
-                    ${keyboardScripts.Update}
-
-                    for (let buffer of buffers) {
-                        if (buffer.PingPongTarget) {
-                            [buffer.PingPongTarget, buffer.Target] = [buffer.Target, buffer.PingPongTarget];
-                            buffer.Shader.uniforms[\`iChannel\${buffer.PingPongChannel}\`].value = buffer.PingPongTarget.texture;
-                            for (let dependent of buffer.Dependents) {
-                                const dependentBuffer = buffers[dependent.Index];
-                                dependentBuffer.Shader.uniforms[\`iChannel\${dependent.Channel}\`].value = buffer.Target.texture;
-                            }
-                        }
-                    }
-
-                    frameCounter++;
-                }
-                function computeSize() {
-                    let forceAspectRatio = (width, height) => {
-                        // Forced aspect ratio
-                        let forcedAspects = [${this.context.getConfig<[ number, number ]>('forceAspectRatio')}];
-                        let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
-                        let aspectRatio = width / height;
-            
-                        if (forcedAspectRatio <= 0 || !isFinite(forcedAspectRatio)) {
-                            let resolution = new THREE.Vector3(width, height, 1.0);
-                            return resolution;
-                        }
-                        else if (aspectRatio < forcedAspectRatio) {
-                            let resolution = new THREE.Vector3(width, Math.floor(width / forcedAspectRatio), 1);
-                            return resolution;
-                        }
-                        else {
-                            let resolution = new THREE.Vector3(Math.floor(height * forcedAspectRatio), height, 1);
-                            return resolution;
-                        }
-                    };
-                    
-                    // Compute forced aspect ratio and align canvas
-                    resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
-                    canvas.style.left = \`\${(window.innerWidth - resolution.x) / 2}px\`;
-                    canvas.style.top = \`\${(window.innerHeight - resolution.y) / 2}px\`;
-
-                    for (let buffer of buffers) {
-                        if (buffer.Target) {
-                            buffer.Target.setSize(resolution.x, resolution.y);
-                        }
-                        if (buffer.PingPongTarget) {
-                            buffer.PingPongTarget.setSize(resolution.x, resolution.y);
-                        }
-                    }
-                    renderer.setSize(resolution.x, resolution.y, false);
-                    
-                    // Update Camera and Mesh
-                    quad.geometry = new THREE.PlaneGeometry(resolution.x, resolution.y);
-                    camera.left = -resolution.x / 2.0;
-                    camera.right = resolution.x / 2.0;
-                    camera.top = resolution.y / 2.0;
-                    camera.bottom = -resolution.y / 2.0;
-                    camera.updateProjectionMatrix();
-
-                    // Reset iFrame on resize for shaders that rely on first-frame setups
-                    frameCounter = 0;
-                }
-                function saveScreenshot() {
-                    renderer.render(scene, camera);
-                    renderer.domElement.toBlob(function(blob){
-                        let a = document.createElement('a');
-                        let url = URL.createObjectURL(blob);
-                        a.href = url;
-                        a.download = 'shadertoy.png';
-                        a.click();
-                    }, 'image/png', 1.0);
-                }
-                function updateMouse() {
-                    vscode.postMessage({
-                        command: 'updateMouse',
-                        mouse: {
-                            x: mouse.x,
-                            y: mouse.y,
-                            z: mouse.z,
-                            w: mouse.w
-                        },
-                        normalizedMouse: {
-                            x: normalizedMouse.x,
-                            y: normalizedMouse.y
-                        }
-                    });
-                }
-                let dragging = false;
-                function updateNormalizedMouseCoordinates(clientX, clientY) {
-                    let rect = canvas.getBoundingClientRect();
-                    let mouseX = clientX - rect.left;
-                    let mouseY = resolution.y - clientY - rect.top;
-
-                    if (mouseButton.x + mouseButton.y != 0) {
-                        mouse.x = mouseX;
-                        mouse.y = mouseY;
-                    }
-
-                    normalizedMouse.x = mouseX / resolution.x;
-                    normalizedMouse.y = mouseY / resolution.y;
-                }
-                canvas.addEventListener('mousemove', function(evt) {
-                    updateNormalizedMouseCoordinates(evt.clientX, evt.clientY);
-                    updateMouse();
-                }, false);
-                canvas.addEventListener('mousedown', function(evt) {
-                    if (evt.button == 0)
-                        mouseButton.x = 1;
-                    if (evt.button == 2)
-                        mouseButton.y = 1;
-
-                    if (!dragging) {
-                        updateNormalizedMouseCoordinates(evt.clientX, evt.clientY);
-                        mouse.z = mouse.x;
-                        mouse.w = mouse.y;
-                        dragging = true
-                    }
-
-                    updateMouse();
-                }, false);
-                canvas.addEventListener('mouseup', function(evt) {
-                    if (evt.button == 0)
-                        mouseButton.x = 0;
-                    if (evt.button == 2)
-                        mouseButton.y = 0;
-
-                    dragging = false;
-                    mouse.z = -mouse.z;
-                    mouse.w = -mouse.w;
-
-                    updateMouse();
-                }, false);
-                window.addEventListener('resize', function() {
-                    computeSize();
-                });
-
-                ${keyboardScripts.Callbacks}
-            </script>
-        `;
-        // console.log(content);
-        // require("fs").writeFileSync(__dirname + "/../../src/preview.html", content);
-
-        return content;
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Final Assembly
+        try {
+            return this.webviewAssembler.assembleWebviewConent();
+        }
+        catch (err) {
+            this.context.showErrorMessage('An internal error has occured, please contact the extension maintainers.');
+            return '';
+        }
     }
 }
