@@ -67,7 +67,7 @@ export class WebviewContentProvider {
         let shaderName = this.documentName;
 
         let preambleExtension = new ShaderPreambleExtension();
-        this.webviewAssembler.addReplaceModule(preambleExtension, 184, '<!-- Preamble Line Numbers -->');
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
 
         let webglLineNumbers = 101;
 
@@ -130,11 +130,11 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Initial State
         let initialTimeExtension = new InitialTimeExtension(startingState.Time);
-        this.webviewAssembler.addReplaceModule(initialTimeExtension, 91, '<!-- Start Time -->');
+        this.webviewAssembler.addReplaceModule(initialTimeExtension, 'let startingTime = <!-- Start Time -->;', '<!-- Start Time -->');
         let initialMouseExtension = new InitialMouseExtension(startingState.Mouse);
-        this.webviewAssembler.addReplaceModule(initialMouseExtension, 142, '<!-- Start Mouse -->');
+        this.webviewAssembler.addReplaceModule(initialMouseExtension, 'let mouse = new THREE.Vector4(<!-- Start Mouse -->);', '<!-- Start Mouse -->');
         let initialNormalizedMouseExtension = new InitialNormalizedMouseExtension(startingState.NormalizedMouse);
-        this.webviewAssembler.addReplaceModule(initialNormalizedMouseExtension, 144, '<!-- Start Normalized Mouse -->');
+        this.webviewAssembler.addReplaceModule(initialNormalizedMouseExtension, 'let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);', '<!-- Start Normalized Mouse -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Initial State
@@ -143,20 +143,20 @@ export class WebviewContentProvider {
             forcedAspect = [ -1, -1 ];
         }
         let forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
-        this.webviewAssembler.addReplaceModule(forcedAspectExtension, 276, '<!-- Forced Aspect -->');
+        this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard
         let keyboardShaderExtension: KeyboardShaderExtension | undefined;
         if (useKeyboard) {
             let keyboardInit = new KeyboardInitExtension(startingState.Keys);
-            this.webviewAssembler.addWebviewModule(keyboardInit, 162, "// Keyboard Init");
+            this.webviewAssembler.addWebviewModule(keyboardInit, "// Keyboard Init");
 
             let keyboardUpdate = new KeyboardUpdateExtension();
-            this.webviewAssembler.addWebviewModule(keyboardUpdate, 258, "// Keyboard Update");
+            this.webviewAssembler.addWebviewModule(keyboardUpdate, "// Keyboard Update");
 
             let keyboardCallbacks = new KeyboardCallbacksExtension();
-            this.webviewAssembler.addWebviewModule(keyboardCallbacks, 394, "// Keyboard Callbacks");
+            this.webviewAssembler.addWebviewModule(keyboardCallbacks, "// Keyboard Callbacks");
 
             keyboardShaderExtension = new KeyboardShaderExtension();
         }
@@ -173,91 +173,90 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Buffer Logic
         let buffersInitExtension = new BuffersInitExtension(buffers);
-        this.webviewAssembler.addWebviewModule(buffersInitExtension, 151, '// Buffers');
+        this.webviewAssembler.addWebviewModule(buffersInitExtension, '// Buffers');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Shader Scripts
         let shadersExtension = new ShadersExtension(buffers, preambleExtension, keyboardShaderExtension);
-        this.webviewAssembler.addWebviewModule(shadersExtension, 66, '<!-- Shaders -->');
+        this.webviewAssembler.addWebviewModule(shadersExtension, '<!-- Shaders -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Include Scripts
         let includesExtension = new IncludesExtension(commonIncludes, preambleExtension);
-        this.webviewAssembler.addWebviewModule(includesExtension, 66, '<!-- Shaders -->');
+        this.webviewAssembler.addWebviewModule(includesExtension, '<!-- Shaders -->');
         let includesInitExtension = new IncludesInitExtension(commonIncludes);
-        this.webviewAssembler.addWebviewModule(includesInitExtension, 153, '// Includes');
+        this.webviewAssembler.addWebviewModule(includesInitExtension, '// Includes');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Texture Loading
         let textureInitExtension = new TexturesInitExtension(buffers, this.context);
-        this.webviewAssembler.addWebviewModule(textureInitExtension, 165, '// Texture Init');
+        this.webviewAssembler.addWebviewModule(textureInitExtension, '// Texture Init');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Audio Logic
         if (useAudio) {
             let audioInitExtension = new AudioInitExtension(buffers, this.context);
-            this.webviewAssembler.addWebviewModule(audioInitExtension, 147, '// Audio Init');
+            this.webviewAssembler.addWebviewModule(audioInitExtension, '// Audio Init');
             textureInitExtension.addTextureContent(audioInitExtension);
 
             let audioUpdateExtension = new AudioUpdateExtension();
-            this.webviewAssembler.addWebviewModule(audioUpdateExtension, 240, '// Audio Update');
+            this.webviewAssembler.addWebviewModule(audioUpdateExtension, '// Audio Update');
             
             let audioPauseExtension = new AudioPauseExtension();
-            this.webviewAssembler.addWebviewModule(audioPauseExtension, 118, '// Audio Pause');
+            this.webviewAssembler.addWebviewModule(audioPauseExtension, '// Audio Pause');
 
             let audioResumeExtension = new AudioResumeExtension();
-            this.webviewAssembler.addWebviewModule(audioResumeExtension, 114, '// Audio Resume');
-            this.webviewAssembler.addWebviewModule(audioResumeExtension, 148, '// Audio Resume');
+            this.webviewAssembler.addWebviewModule(audioResumeExtension, '// Audio Resume');
         }
         else {
             let noAudioExtension = new NoAudioExtension();
-            this.webviewAssembler.addWebviewModule(noAudioExtension, 147, '// Audio Init');
+            this.webviewAssembler.addWebviewModule(noAudioExtension, '// Audio Init');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Packages
         {
             let jqueryExtension = new JQueryExtension(this.context);
-            this.webviewAssembler.addReplaceModule(jqueryExtension, 60, '<!-- JQuery.js -->');
+            this.webviewAssembler.addReplaceModule(jqueryExtension, '<script src="<!-- JQuery.js -->"></script>', '<!-- JQuery.js -->');
 
             let threeExtension = new ThreeExtension(this.context);
-            this.webviewAssembler.addReplaceModule(threeExtension, 61, '<!-- Three.js -->');
+            this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             let statsExtension = new StatsExtension(this.context);
-            this.webviewAssembler.addWebviewModule(statsExtension, 62, '<!-- Stats.js -->');
+            this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Pause Logic
         if (this.context.getConfig<boolean>('showPauseButton')) {
             let pauseButtonStyleExtension = new PauseButtonStyleExtension(this.context);
-            this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, 48, '/* Pause Button Style */');
+            this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
 
             let pauseButtonExtension = new PauseButtonExtension();
-            this.webviewAssembler.addWebviewModule(pauseButtonExtension, 56, '<!-- Pause Element -->');
+            this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
         }
 
         if (this.context.getConfig<boolean>('pauseWholeRender')) {
             let pauseWholeRenderExtension = new PauseWholeRenderExtension();
-            this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, 235, '// Pause Whole Render');
+            this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
 
             let advanceTimeExtension = new AdvanceTimeExtension();
-            this.webviewAssembler.addWebviewModule(advanceTimeExtension, 237, '// Advance Time');
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
         }
         else {
             let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
-            this.webviewAssembler.addWebviewModule(advanceTimeExtension, 237, '// Advance Time');
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Screenshot Logic
         if (this.context.getConfig<boolean>('showScreenshotButton')) {
             let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(this.context);
-            this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, 50, '/* Screenshot Button Style */');
+            this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
 
             let screenshotButtonExtension = new ScreenshotButtonExtension();
-            this.webviewAssembler.addWebviewModule(screenshotButtonExtension, 58, '<!-- Screenshot Element -->');
+            this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -272,16 +271,10 @@ export class WebviewContentProvider {
         else {
             errorsExtension = new DefaultErrorsExtension();
         }
-        this.webviewAssembler.addWebviewModule(errorsExtension, 81, '// Error Callback');
+        this.webviewAssembler.addWebviewModule(errorsExtension, '// Error Callback');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Final Assembly
-        try {
-            return this.webviewAssembler.assembleWebviewConent();
-        }
-        catch (err) {
-            this.context.showErrorMessage('An internal error has occured, please contact the extension maintainers.');
-            return '';
-        }
+        return this.webviewAssembler.assembleWebviewConent();
     }
 }

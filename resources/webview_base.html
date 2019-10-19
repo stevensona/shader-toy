@@ -181,7 +181,8 @@
         currentShader = {
             Name: include.Name,
             File: include.File,
-            LineOffset: <!-- Preamble Line Numbers --> + 2 // add two for version and precision lines
+            // add two for version and precision lines
+            LineOffset: <!-- Preamble Line Numbers --> + 2
         };
         // bail if there is an error found in the include script
         if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) {

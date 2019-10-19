@@ -7,9 +7,12 @@ export class WebviewContent {
     
     constructor(originalFile: string) {
         let rawContent = fs.readFileSync(originalFile, "utf-8");
-        this.content = rawContent.split('\n');
+        this.content = rawContent.split(/\r?\n/);
     }
 
+    public getLines() {
+        return this.content;
+    }
     public getLine(lineNumber: number) {
         return this.content[lineNumber - 1];
     }
