@@ -88,23 +88,38 @@ export class ShaderParser {
     }
 
     private mapUserPathToWorkspacePath(userPath: string): { file: string, userPath: string } {
-        // Fix path to use '/' over '\\' and relative to the current working directory
+        userPath = userPath.replace(/\\/g, '/');
+
         let file = ((file: string) => {
             const relFile = vscode.workspace.asRelativePath(file);
             const herePos = relFile.indexOf("./");
-            if (vscode.workspace.rootPath === undefined && herePos === 0) {
+            if (vscode.workspace.workspaceFolders === undefined && herePos === 0) {
                 vscode.window.showErrorMessage("To use relative paths please open a workspace!");
             }
-            if (relFile !== file || herePos === 0) {
-                return vscode.workspace.rootPath + '/' + relFile;
+            if ((relFile !== file || herePos === 0) && vscode.workspace.workspaceFolders !== undefined) {
+                let fileCandidates: string[] = [];
+                for (let worspaceFolder of vscode.workspace.workspaceFolders) {
+                    let fileCandidate = worspaceFolder.uri.fsPath + '/' + relFile;
+                    fileCandidate = fileCandidate.replace(/\\/g, '/');
+                    fileCandidate = fileCandidate.replace(/\.\//g, '');
+                    if (fs.existsSync(fileCandidate)) {
+                        fileCandidates.push(fileCandidate);
+                    }
+                }
+
+                if (fileCandidates.length === 0) {
+                    vscode.window.showErrorMessage(`No candidates for file '${userPath}' were found in your workspace folders.`);
+                }
+                else if (fileCandidates.length > 1) {
+                    vscode.window.showErrorMessage(`Multiple candidates for file '${userPath}' were found in your workspace folders, first option was picked: '${fileCandidates[0]}'`);
+                }
+
+                return fileCandidates[0];
             }
             else {
                 return file;
             }
         })(userPath);
-        file = file.replace(/\\/g, '/');
-        file = file.replace(/\.\//g, '');
-        userPath = userPath.replace(/\\/g, '/');
         return { file, userPath };
     }
 
