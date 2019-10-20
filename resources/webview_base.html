@@ -319,14 +319,35 @@
         frameCounter = 0;
     }
     function saveScreenshot() {
-        renderer.render(scene, camera);
-        renderer.domElement.toBlob(function(blob){
-            let a = document.createElement('a');
-            let url = URL.createObjectURL(blob);
-            a.href = url;
-            a.download = 'shadertoy.png';
-            a.click();
-        }, 'image/png', 1.0);
+        let doSaveScreenshot = () => {
+            renderer.domElement.toBlob(function(blob){
+                let a = document.createElement('a');
+                let url = URL.createObjectURL(blob);
+                a.href = url;
+                a.download = 'shadertoy.png';
+                a.click();
+            }, 'image/png', 1.0);
+        };
+
+        let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];
+        if (forcedScreenshotResolution[0] <= 0 || forcedScreenshotResolution[1] <= 0) {
+            renderer.render(scene, camera);
+            doSaveScreenshot();
+        }
+        else {
+            renderer.setSize(forcedScreenshotResolution[0], forcedScreenshotResolution[1], false);
+            
+            for (let buffer of buffers) {
+                buffer.Shader.uniforms['iResolution'].value = new THREE.Vector3(forcedScreenshotResolution[0], forcedScreenshotResolution[1], 1);
+                buffer.Shader.uniforms['resolution'].value = new THREE.Vector3(forcedScreenshotResolution[0], forcedScreenshotResolution[1], 1);
+
+                quad.material = buffer.Shader;
+                renderer.render(scene, camera, buffer.Target);
+            }
+
+            doSaveScreenshot();
+            renderer.setSize(resolution.x, resolution.y, false);
+        }
     }
     function updateMouse() {
         vscode.postMessage({

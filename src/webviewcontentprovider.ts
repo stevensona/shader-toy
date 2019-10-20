@@ -11,6 +11,7 @@ import { InitialMouseExtension } from './extensions/initial_mouse_extension';
 import { InitialNormalizedMouseExtension } from './extensions/initial_normalized_mouse_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
+import { ForcedScreenshotResolutionExtension } from './extensions/forced_screenshot_resolution_extension';
 
 import { ShaderPreambleExtension } from './extensions/preamble_extension';
 
@@ -258,6 +259,12 @@ export class WebviewContentProvider {
             let screenshotButtonExtension = new ScreenshotButtonExtension();
             this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
         }
+        let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
+        if (forcedScreenshotResolution === undefined) {
+            forcedScreenshotResolution = [ -1, -1 ];
+        }
+        let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
+        this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling

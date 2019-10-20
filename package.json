@@ -75,6 +75,17 @@
                     "default": true,
                     "description": "Shows a screenshot button in the OpenGL viewport which allows to save the current frame as a png file."
                 },
+                "shader-toy.screenshotResolution": {
+                    "type": [
+                        "number",
+                        "number"
+                    ],
+                    "default": [
+                        0,
+                        0
+                    ],
+                    "description": "Manually set the resolution of a screenshot. Set either to zero or negative to use the viewports resolution."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,
