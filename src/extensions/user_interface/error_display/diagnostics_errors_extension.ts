@@ -20,9 +20,10 @@ console.error = function () {
                 line: lineNumber,
                 message: error
             });
-            let lineHighlight = \`${`<a class="error" unselectable onclick="revealError(\${lineNumber}, '\${currentShader.File}')">Line \${lineNumber}</a>`}\`;
+            let lineHighlight = \`${`<a class='error' unselectable onclick='revealError(\${lineNumber}, "\${currentShader.File}")'>Line \${lineNumber}</a>`}\`;
             message += \`<li>\${lineHighlight}: \${error}</li>\`;
         }
+        console.log(message);
         let diagnosticBatch = {
             filename: currentShader.File,
             diagnostics: diagnostics
@@ -33,10 +34,10 @@ console.error = function () {
             diagnosticBatch: diagnosticBatch
         });
 
-        $("#message").append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
-        $("#message").append('<ul>');
-        $("#message").append(message);
-        $("#message").append('</ul>');
+        $('#message').append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
+        $('#message').append('<ul>');
+        $('#message').append(message);
+        $('#message').append('</ul>');
     }
 };`;
     }

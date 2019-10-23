@@ -92,8 +92,8 @@ export class WebviewContentProvider {
                         Channel: 0
                     });
                     buffers.push({
-                        Name: "final-blit",
-                        File: "final-blit",
+                        Name: 'final-blit',
+                        File: 'final-blit',
                         Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
                         TextureInputs: [{
                             Channel: 0,
@@ -151,13 +151,13 @@ export class WebviewContentProvider {
         let keyboardShaderExtension: KeyboardShaderExtension | undefined;
         if (useKeyboard) {
             let keyboardInit = new KeyboardInitExtension(startingState.Keys);
-            this.webviewAssembler.addWebviewModule(keyboardInit, "// Keyboard Init");
+            this.webviewAssembler.addWebviewModule(keyboardInit, '// Keyboard Init');
 
             let keyboardUpdate = new KeyboardUpdateExtension();
-            this.webviewAssembler.addWebviewModule(keyboardUpdate, "// Keyboard Update");
+            this.webviewAssembler.addWebviewModule(keyboardUpdate, '// Keyboard Update');
 
             let keyboardCallbacks = new KeyboardCallbacksExtension();
-            this.webviewAssembler.addWebviewModule(keyboardCallbacks, "// Keyboard Callbacks");
+            this.webviewAssembler.addWebviewModule(keyboardCallbacks, '// Keyboard Callbacks');
 
             keyboardShaderExtension = new KeyboardShaderExtension();
         }

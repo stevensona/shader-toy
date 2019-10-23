@@ -15,8 +15,8 @@ export class IncludesInitExtension implements WebviewExtension {
         for (let include of includes) {
             this.content += `\
 commonIncludes.push({
-    Name: "${include.Name}",
-    File: "${include.File}"
+    Name: '${include.Name}',
+    File: '${include.File}'
 });`;
         }
     }

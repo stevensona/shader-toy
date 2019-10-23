@@ -18,40 +18,40 @@ export class TexturesInitExtension implements WebviewExtension {
             let magFilter: string = (() => {
                 switch(texture.Mag) {
                 case Types.TextureMagFilter.Nearest:
-                    return "THREE.NearestFilter";
+                    return 'THREE.NearestFilter';
                 case Types.TextureMagFilter.Linear:
                 default:
-                    return "THREE.LinearFilter";
+                    return 'THREE.LinearFilter';
                 }
             })();
 
             let minFilter: string = (() => {
                 switch(texture.Min) {
                     case Types.TextureMinFilter.Nearest:
-                        return"THREE.NearestFilter";
+                        return'THREE.NearestFilter';
                     case Types.TextureMinFilter.NearestMipMapNearest:
-                        return"THREE.NearestMipmapNearestFilter";
+                        return'THREE.NearestMipmapNearestFilter';
                     case Types.TextureMinFilter.NearestMipMapLinear:
-                        return"THREE.NearestMipmapLinearFilter";
+                        return'THREE.NearestMipmapLinearFilter';
                     case Types.TextureMinFilter.Linear:
                     default:
-                        return"THREE.LinearFilter";
+                        return'THREE.LinearFilter';
                     case Types.TextureMinFilter.LinearMipMapNearest:
-                        return"THREE.LinearMipmapNearestFilter";
+                        return'THREE.LinearMipmapNearestFilter';
                     case Types.TextureMinFilter.LinearMipMapLinear:
-                        return"THREE.LinearMipmapLinearFilter";
+                        return'THREE.LinearMipmapLinearFilter';
                 }
             })();
 
             let wrapMode: string = (() => {
                 switch(texture.Wrap) {
                 case Types.TextureWrapMode.Clamp:
-                    return "THREE.ClampToEdgeWrapping";
+                    return 'THREE.ClampToEdgeWrapping';
                 case Types.TextureWrapMode.Repeat:
                 default:
-                    return "THREE.RepeatWrapping";
+                    return 'THREE.RepeatWrapping';
                 case Types.TextureWrapMode.Mirror:
-                    return "THREE.MirroredRepeatWrapping";
+                    return 'THREE.MirroredRepeatWrapping';
                 }
             })();
 
@@ -67,21 +67,21 @@ export class TexturesInitExtension implements WebviewExtension {
                 let diagnostics = [];
                 ${texture.MagLine !== undefined ? `diagnostics.push({
                         line: ${texture.MagLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
+                        message: 'Texture is not power of two, custom texture settings may not work.'
                     });` : ''
                 }
                 ${texture.MinLine !== undefined ? `diagnostics.push({
                         line: ${texture.MinLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
+                        message: 'Texture is not power of two, custom texture settings may not work.'
                     });` : ''
                 }
                 ${texture.WrapLine !== undefined ? `diagnostics.push({
                         line: ${texture.WrapLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
+                        message: 'Texture is not power of two, custom texture settings may not work.'
                     });` : ''
                 }
                 let diagnosticBatch = {
-                    filename: "${textureFileOrigin}",
+                    filename: '${textureFileOrigin}',
                     diagnostics: diagnostics
                 };
                 vscode.postMessage({
@@ -106,7 +106,7 @@ export class TexturesInitExtension implements WebviewExtension {
             return `function(err) {
                 vscode.postMessage({
                     command: 'errorMessage',
-                    message: "Failed loading texture file ${filename}"
+                    message: 'Failed loading texture file ${filename}'
                 });
             }`;
         };
@@ -122,7 +122,7 @@ export class TexturesInitExtension implements WebviewExtension {
                 const remotePath = texture.RemoteTexture;
 
                 let textureLoadScript: string | undefined;
-                let textureSizeScript: string = "null";
+                let textureSizeScript: string = 'null';
                 if (textureBufferIndex !== undefined) {
                     textureLoadScript = `buffers[${textureBufferIndex}].Target.texture`;
                     textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;

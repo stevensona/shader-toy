@@ -6,7 +6,7 @@ export class WebviewContent {
     private content: string[];
     
     constructor(originalFile: string) {
-        let rawContent = fs.readFileSync(originalFile, "utf-8");
+        let rawContent = fs.readFileSync(originalFile, 'utf-8');
         this.content = rawContent.split(/\r?\n/);
     }
 

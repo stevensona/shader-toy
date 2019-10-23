@@ -12,7 +12,7 @@ export class StatsExtension implements WebviewExtension {
 
     public generateContent(): string {
         return `\
-<script src="${this.context.getWebviewResourcePath('stats.min.js')}" onload="
+<script src='${this.context.getWebviewResourcePath('stats.min.js')}' onload='
 let stats = new Stats();
 compileTimePanel = stats.addPanel(new Stats.Panel('CT MS', '#ff8', '#221'));
 stats.showPanel(1);
@@ -21,6 +21,6 @@ requestAnimationFrame(function loop() {
     stats.update();
     requestAnimationFrame(loop);
 });
-"></script>`;
+'></script>`;
     }
 }

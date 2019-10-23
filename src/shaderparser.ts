@@ -70,10 +70,10 @@ export class ShaderParser {
     private readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
         // Read the whole file of the shader
         let success = false;
-        let bufferCode = "";
+        let bufferCode = '';
         let error = null;
         try {
-            bufferCode = fs.readFileSync(file, "utf-8");
+            bufferCode = fs.readFileSync(file, 'utf-8');
             success = true;
         }
         catch (e) {
@@ -92,9 +92,9 @@ export class ShaderParser {
 
         let file = ((file: string) => {
             const relFile = vscode.workspace.asRelativePath(file);
-            const herePos = relFile.indexOf("./");
+            const herePos = relFile.indexOf('./');
             if (vscode.workspace.workspaceFolders === undefined && herePos === 0) {
-                vscode.window.showErrorMessage("To use relative paths please open a workspace!");
+                vscode.window.showErrorMessage('To use relative paths please open a workspace!');
             }
             if ((relFile !== file || herePos === 0) && vscode.workspace.workspaceFolders !== undefined) {
                 let fileCandidates: string[] = [];
@@ -136,7 +136,7 @@ export class ShaderParser {
             return {
                 Name: name,
                 File: file,
-                Code: "",
+                Code: '',
                 LineCount: 0
             };
         }
@@ -155,8 +155,8 @@ export class ShaderParser {
                 let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
 
                 if (leftQuotePos < 0 || rightQuotePos < 0) {
-                    if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                        vscode.window.showErrorMessage("Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme.");
+                    if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                        vscode.window.showErrorMessage('Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme.');
                     }
                 }
                 else {
@@ -202,7 +202,7 @@ export class ShaderParser {
             // Get type and name of file
             let colonPos = depFile.indexOf('://', 0);
             
-            let inputType = "file";
+            let inputType = 'file';
             let userPath = depFile;
 
             if (colonPos >= 0) {
@@ -212,24 +212,24 @@ export class ShaderParser {
 
             ({ file: depFile, userPath } = this.mapUserPathToWorkspacePath(userPath));
 
-            if (inputType !== "file" && inputType !== "https") {
-                if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                    if (passType === "include") {
-                        vscode.window.showWarningMessage("You are using deprecated input methods, no protocol is required for includes, simply use '#include \"./file.glsl\"'");
+            if (inputType !== 'file' && inputType !== 'https') {
+                if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                    if (passType === 'include') {
+                        vscode.window.showWarningMessage(`You are using deprecated input methods, no protocol is required for includes, simply use '#include './file.glsl''`);
                     }
                     else {
-                        vscode.window.showWarningMessage("You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.");
+                        vscode.window.showWarningMessage(`You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.`);
                     }
                 }
-                inputType = "file";
+                inputType = 'file';
             }
 
-            let isLocalFile: boolean = inputType === "file";
+            let isLocalFile: boolean = inputType === 'file';
             let fileType = depFile.split('.').pop();
-            let fullMime = mime.getType(fileType || "txt") || "text/plain";
-            let mimeType = fullMime.split('/')[0] || "text";
+            let fullMime = mime.getType(fileType || 'txt') || 'text/plain';
+            let mimeType = fullMime.split('/')[0] || 'text';
 
-            if (passType === "include") {
+            if (passType === 'include') {
                 const name = path.basename(depFile);
 
                 // Attempt to get the include if already exists
@@ -249,8 +249,8 @@ export class ShaderParser {
             }
             else {
                 switch (mimeType) {
-                    case "text": {
-                        if (depFile === "self" || depFile === file) {
+                    case 'text': {
+                        if (depFile === 'self' || depFile === file) {
                             // Push self as feedback-buffer
                             textures.push({
                                 Channel: channel,
@@ -276,7 +276,7 @@ export class ShaderParser {
                         }
                         break;
                     }
-                    case "image": {
+                    case 'image': {
                         if (isLocalFile) {
                             textures.push({
                                 Channel: channel,
@@ -297,8 +297,8 @@ export class ShaderParser {
                         }
                         break;
                     }
-                    case "audio": {
-                        if (this.context.getConfig<boolean>("enabledAudioInput")) {
+                    case 'audio': {
+                        if (this.context.getConfig<boolean>('enabledAudioInput')) {
                             if (isLocalFile) {
                                 audios.push({
                                     Channel: channel,
@@ -355,7 +355,7 @@ export class ShaderParser {
                     endlineMatch.index += channelPos;
                     let endlinePos = endlineMatch.index + endlineMatch[0].length;
 
-                    if (nextMatch.PassType === "iKeyboard") {
+                    if (nextMatch.PassType === 'iKeyboard') {
                         usesKeyboard = true;
                     }
                     else {
@@ -368,17 +368,17 @@ export class ShaderParser {
                         let input: string | undefined;
 
                         if (leftQuotePos < 0 || rightQuotePos < 0) {
-                            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                                vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated syntax.");
+                            if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                                vscode.window.showWarningMessage('To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated syntax.');
                             }
 
-                            let spacePos = Math.min(code.indexOf(" ", channelPos), endlineMatch.index);
+                            let spacePos = Math.min(code.indexOf(' ', channelPos), endlineMatch.index);
     
                             // Get channel number
                             channel = parseInt(code.substring(channelPos, spacePos));
     
-                            let afterSpacePos = code.indexOf(" ", spacePos + 1);
-                            let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
+                            let afterSpacePos = code.indexOf(' ', spacePos + 1);
+                            let afterCommentPos = code.indexOf('//', code.indexOf('://', spacePos)  + 3);
                             let textureEndPos = Math.min(endlineMatch.index,
                                 afterSpacePos > 0 ? afterSpacePos : code.length,
                                 afterCommentPos > 0 ? afterCommentPos : code.length);
@@ -396,7 +396,7 @@ export class ShaderParser {
                                 input = quotedPart;
                             }
                             else {
-                                scopePos = leftPart.search("::");
+                                scopePos = leftPart.search('::');
 
                                 let magFilter: Types.TextureMagFilter | undefined;
                                 let minFilter: Types.TextureMinFilter | undefined;
@@ -407,19 +407,19 @@ export class ShaderParser {
 
                                 let settingName = leftPart.substring(scopePos + 2);
                                 switch (settingName) {
-                                    case "MagFilter":
+                                    case 'MagFilter':
                                         magFilter = (() => {
                                             switch(quotedPart) {
-                                                case "Nearest":
+                                                case 'Nearest':
                                                     return Types.TextureMagFilter.Nearest;
-                                                case "Linear":
+                                                case 'Linear':
                                                     return Types.TextureMagFilter.Linear;
                                                 default:
                                                     let diagnosticBatch: Types.DiagnosticBatch = {
                                                         filename: file,
                                                         diagnostics: [{
                                                             line: getLineNumber(endlinePos),
-                                                            message: `Valid MagFilter options are: "Nearest" or "Linear"`
+                                                            message: `Valid MagFilter options are: 'Nearest' or 'Linear'`
                                                         }]
                                                     };
                                                     this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
@@ -427,27 +427,27 @@ export class ShaderParser {
                                         })();
 
                                         break;
-                                    case "MinFilter":
+                                    case 'MinFilter':
                                         minFilter = (() => {
                                             switch(quotedPart) {
-                                                case "Nearest":
+                                                case 'Nearest':
                                                     return Types.TextureMinFilter.Nearest;
-                                                case "NearestMipMapNearest":
+                                                case 'NearestMipMapNearest':
                                                     return Types.TextureMinFilter.NearestMipMapNearest;
-                                                case "NearestMipMapLinear":
+                                                case 'NearestMipMapLinear':
                                                     return Types.TextureMinFilter.NearestMipMapLinear;
-                                                case "Linear":
+                                                case 'Linear':
                                                     return Types.TextureMinFilter.Linear;
-                                                case "LinearMipMapNearest":
+                                                case 'LinearMipMapNearest':
                                                     return Types.TextureMinFilter.LinearMipMapNearest;
-                                                case "LinearMipMapLinear":
+                                                case 'LinearMipMapLinear':
                                                     return Types.TextureMinFilter.LinearMipMapLinear;
                                                 default:
                                                     let diagnosticBatch: Types.DiagnosticBatch = {
                                                         filename: file,
                                                         diagnostics: [{
                                                             line: getLineNumber(endlinePos),
-                                                            message: `Valid MinFilter options are: "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear"`
+                                                            message: `Valid MinFilter options are: 'Nearest', 'NearestMipMapNearest', 'NearestMipMapLinear', 'Linear', 'LinearMipMapNearest' or 'LinearMipMapLinear'`
                                                         }]
                                                     };
                                                     this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
@@ -455,21 +455,21 @@ export class ShaderParser {
                                         })();
 
                                         break;
-                                    case "WrapMode":
+                                    case 'WrapMode':
                                         wrapMode = (() => {
                                             switch(quotedPart) {
-                                                case "Repeat":
+                                                case 'Repeat':
                                                     return Types.TextureWrapMode.Repeat;
-                                                case "Clamp":
+                                                case 'Clamp':
                                                     return Types.TextureWrapMode.Clamp;
-                                                case "Mirror":
+                                                case 'Mirror':
                                                     return Types.TextureWrapMode.Mirror;
                                                 default:
                                                     let diagnosticBatch: Types.DiagnosticBatch = {
                                                         filename: file,
                                                         diagnostics: [{
                                                             line: getLineNumber(endlinePos),
-                                                            message: `Valid WrapMode options are: "Clamp", "Repeat" or "Mirror"`
+                                                            message: `Valid WrapMode options are: 'Clamp', 'Repeat' or 'Mirror'`
                                                         }]
                                                     };
                                                     this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
@@ -478,7 +478,7 @@ export class ShaderParser {
                                         
                                         break;
                                     default:
-                                        vscode.window.showWarningMessage(`Unkown texture setting "${settingName}", choose either "MinFilter", "MagFilter" or "WrapMode"`);
+                                        vscode.window.showWarningMessage(`Unkown texture setting '${settingName}', choose either 'MinFilter', 'MagFilter' or 'WrapMode'`);
                                 }
 
                                 let texture = textures.find((texture: Types.TextureDefinition) => {
@@ -522,14 +522,14 @@ export class ShaderParser {
 
                     // Remove #iChannel define
                     let channelDefine = code.substring(nextMatch.TexturePos, endlinePos - 1);
-                    code = code.replace(channelDefine, "");
+                    code = code.replace(channelDefine, '');
                     nextMatch = findNextMatch();
                 }
             }
         }
         else {
-            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
+            if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                vscode.window.showWarningMessage('Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.');
             }
             let textures: any[] | undefined = this.context.getConfig('textures');
             if (textures) {
@@ -538,7 +538,7 @@ export class ShaderParser {
                     if (texture.length > 0) {
                         // Check for buffer to load to avoid circular loading
                         if (this.stripPath(texture) !== this.stripPath(file)) {
-                            loadDependency(texture, parseInt(i), "iChannel", 0);
+                            loadDependency(texture, parseInt(i), 'iChannel', 0);
                         }
                     }
                 }
@@ -550,7 +550,7 @@ export class ShaderParser {
             if (versionPos === 0) {
                 let newLinePos = code.search('\n');
                 let versionDirective = code.substring(versionPos, newLinePos - 1);
-                code = code.replace(versionDirective, "");
+                code = code.replace(versionDirective, '');
 
                 let diagnosticBatch: Types.DiagnosticBatch = {
                     filename: file,
@@ -599,18 +599,18 @@ export class ShaderParser {
         }
         if (this.context.getConfig<boolean>('warnOnUndefinedTextures')) {
             for (let i = 0; i < 9; i++) {
-                if (code.search("iChannel" + i) > 0) {
+                if (code.search('iChannel' + i) > 0) {
                     if (definedTextures[i] === undefined) {
                         if (useTextureDefinitionInShaders) {
-                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, "Details")
+                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, 'Details')
                                 .then(() => {
-                                    vscode.window.showInformationMessage(`To use this channel add to your shader a line "#iChannel${i}" followed by a space and the path to your texture. Use "file://" for local textures, "https://" for remote textures or "buf://" for other shaders.`);
+                                    vscode.window.showInformationMessage(`To use this channel add to your shader a line '#iChannel${i}' followed by a space and the path to your texture. Use 'file://' for local textures, 'https://' for remote textures or 'buf://' for other shaders.`);
                                 });
                         }
                         else {
-                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition "${i}" in settings.json`, "Details")
+                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition '${i}' in settings.json`, 'Details')
                                 .then(() => {
-                                    vscode.window.showInformationMessage(`To use this channel you will need to open your "settings.json" file and set the option "shader-toy.textures.${i}" to the path to your texture. Use "file://" for local textures, "https://" for remote textures or "buf://" for other shaders. It is advised to set the option "shader-toy.textures.useInShaderTextures" to true and define your texture path directly inside your shader.`);
+                                    vscode.window.showInformationMessage(`To use this channel you will need to open your 'settings.json' file and set the option 'shader-toy.textures.${i}' to the path to your texture. Use 'file://' for local textures, 'https://' for remote textures or 'buf://' for other shaders. It is advised to set the option 'shader-toy.textures.useInShaderTextures' to true and define your texture path directly inside your shader.`);
                                 });
                         }
                     }
@@ -618,7 +618,7 @@ export class ShaderParser {
             }
         }
 
-        if (this.context.getConfig<boolean>("enableGlslifySupport")) {
+        if (this.context.getConfig<boolean>('enableGlslifySupport')) {
             // glslify the code
             var glsl = require('glslify');
             try {

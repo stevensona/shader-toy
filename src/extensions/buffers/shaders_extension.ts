@@ -16,9 +16,9 @@ export class ShadersExtension implements WebviewExtension {
     private processBuffers(buffers: Types.BufferDefinition[],  preambleExtension: ShaderPreambleExtension, keyboardShaderExtension: KeyboardShaderExtension | undefined) {
         for (let buffer of buffers) {
             this.content += `\
-<script id="${buffer.Name}" type="x-shader/x-fragment">
+<script id='${buffer.Name}' type='x-shader/x-fragment'>
 ${preambleExtension.getShaderPreamble()}
-${keyboardShaderExtension !== undefined ? keyboardShaderExtension.getShaderPreamble() : ""}
+${keyboardShaderExtension !== undefined ? keyboardShaderExtension.getShaderPreamble() : ''}
 ${buffer.Code}
 </script>`;
         }
