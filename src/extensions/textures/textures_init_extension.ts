@@ -30,16 +30,16 @@ export class TexturesInitExtension implements WebviewExtension {
                     case Types.TextureMinFilter.Nearest:
                         return"THREE.NearestFilter";
                     case Types.TextureMinFilter.NearestMipMapNearest:
-                        return"THREE.NearestMipMapNearestFilter";
+                        return"THREE.NearestMipmapNearestFilter";
                     case Types.TextureMinFilter.NearestMipMapLinear:
-                        return"THREE.NearestMipMapLinearFilter";
+                        return"THREE.NearestMipmapLinearFilter";
                     case Types.TextureMinFilter.Linear:
                     default:
                         return"THREE.LinearFilter";
                     case Types.TextureMinFilter.LinearMipMapNearest:
-                        return"THREE.LinearMipMapNearestFilter";
+                        return"THREE.LinearMipmapNearestFilter";
                     case Types.TextureMinFilter.LinearMipMapLinear:
-                        return"THREE.LinearMipMapLinearFilter";
+                        return"THREE.LinearMipmapLinearFilter";
                 }
             })();
 

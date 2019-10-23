@@ -197,7 +197,8 @@
             LineOffset: buffer.LineOffset
         };
         quad.material = buffer.Shader;
-        renderer.render(scene, camera, buffer.Target);
+        renderer.setRenderTarget(buffer.Target);
+        renderer.render(scene, camera);
     }
     currentShader = {};
     let compileTimeEnd = performance.now();
@@ -253,7 +254,8 @@
             buffer.Shader.uniforms['mouse'].value = normalizedMouse;
 
             quad.material = buffer.Shader;
-            renderer.render(scene, camera, buffer.Target);
+            renderer.setRenderTarget(buffer.Target);
+            renderer.render(scene, camera);
         }
 
         // Keyboard Update
@@ -342,7 +344,8 @@
                 buffer.Shader.uniforms['resolution'].value = new THREE.Vector3(forcedScreenshotResolution[0], forcedScreenshotResolution[1], 1);
 
                 quad.material = buffer.Shader;
-                renderer.render(scene, camera, buffer.Target);
+                renderer.setRenderTarget(buffer.Target);
+                renderer.render(scene, camera);
             }
 
             doSaveScreenshot();
