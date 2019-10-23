@@ -70,7 +70,7 @@ export class WebviewContentProvider {
         let preambleExtension = new ShaderPreambleExtension();
         this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
 
-        let webglLineNumbers = 101;
+        let webglLineNumbers = 105;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: Types.BufferDefinition[] = [];
