@@ -59,56 +59,58 @@ export class TexturesInitExtension implements WebviewExtension {
                 || (texture.MinLine ? texture.MinLine.File : undefined)
                 || (texture.WrapLine ? texture.WrapLine.File : undefined);
             let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
-            let powerOfTwoWarning = `
-            function isPowerOfTwo(n) {
-                return n && (n & (n - 1)) === 0;
-            };
-            if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
-                let diagnostics = [];
-                ${texture.MagLine !== undefined ? `diagnostics.push({
-                        line: ${texture.MagLine.Line},
-                        message: 'Texture is not power of two, custom texture settings may not work.'
-                    });` : ''
-                }
-                ${texture.MinLine !== undefined ? `diagnostics.push({
-                        line: ${texture.MinLine.Line},
-                        message: 'Texture is not power of two, custom texture settings may not work.'
-                    });` : ''
-                }
-                ${texture.WrapLine !== undefined ? `diagnostics.push({
-                        line: ${texture.WrapLine.Line},
-                        message: 'Texture is not power of two, custom texture settings may not work.'
-                    });` : ''
-                }
-                let diagnosticBatch = {
-                    filename: '${textureFileOrigin}',
-                    diagnostics: diagnostics
-                };
-                vscode.postMessage({
-                    command: 'showGlslDiagnostic',
-                    type: 'warning',
-                    diagnosticBatch: diagnosticBatch
-                });
-            };
-            buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
-            buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
-            `;
+            let powerOfTwoWarning = `\
+function isPowerOfTwo(n) {
+    return n && (n & (n - 1)) === 0;
+};
+if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
+    let diagnostics = [];
+    ${texture.MagLine !== undefined ? `diagnostics.push({
+            line: ${texture.MagLine.Line},
+            message: 'Texture is not power of two, custom texture settings may not work.'
+        });` : ''
+    }
+    ${texture.MinLine !== undefined ? `diagnostics.push({
+            line: ${texture.MinLine.Line},
+            message: 'Texture is not power of two, custom texture settings may not work.'
+        });` : ''
+    }
+    ${texture.WrapLine !== undefined ? `diagnostics.push({
+            line: ${texture.WrapLine.Line},
+            message: 'Texture is not power of two, custom texture settings may not work.'
+        });` : ''
+    }
+    let diagnosticBatch = {
+        filename: '${textureFileOrigin}',
+        diagnostics: diagnostics
+    };
+    vscode.postMessage({
+        command: 'showGlslDiagnostic',
+        type: 'warning',
+        diagnosticBatch: diagnosticBatch
+    });
+};
+buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
+buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
+`;
 
-            return `function(texture) {
-                ${hasCustomSettings ? powerOfTwoWarning : ''}
-                texture.magFilter = ${magFilter};
-                texture.minFilter = ${minFilter};
-                texture.wrapS = ${wrapMode};
-                texture.wrapT = ${wrapMode};
-            }`;
+            return `\
+function(texture) {
+    ${hasCustomSettings ? powerOfTwoWarning : ''}
+    texture.magFilter = ${magFilter};
+    texture.minFilter = ${minFilter};
+    texture.wrapS = ${wrapMode};
+    texture.wrapT = ${wrapMode};
+}`;
         };
         let makeTextureLoadErrorScript = (filename: string) => { 
-            return `function(err) {
-                vscode.postMessage({
-                    command: 'errorMessage',
-                    message: 'Failed loading texture file ${filename}'
-                });
-            }`;
+            return `\
+function(err) {
+    vscode.postMessage({
+        command: 'errorMessage',
+        message: 'Failed loading texture file ${filename}'
+    });
+}`;
         };
 
         for (let i in buffers) {

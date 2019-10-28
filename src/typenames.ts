@@ -57,6 +57,12 @@ export type AudioDefinition = {
     RemotePath?: string,
     UserPath: string
 };
+export type UniformDefinition = {
+    Name: string,
+    Default: number[],
+    Min?: number[],
+    Max?: number[]
+};
 export type BufferDependency = {
     Index: number,
     Channel: number
@@ -67,6 +73,7 @@ export type BufferDefinition = {
     Code: string,
     TextureInputs: TextureDefinition[],
     AudioInputs: AudioDefinition[],
+    CustomUniforms: UniformDefinition[],
     UsesSelf: boolean,
     SelfChannel: number,
     Dependents: BufferDependency[],

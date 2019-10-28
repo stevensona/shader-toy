@@ -50,6 +50,10 @@ import { AudioUpdateExtension } from './extensions/audio/audio_update_extension'
 import { AudioPauseExtension } from './extensions/audio/audio_pause_extension';
 import { AudioResumeExtension } from './extensions/audio/audio_resume_extension';
 
+import { UniformsInitExtension } from './extensions/uniforms/uniforms_init_extension';
+import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_extension';
+import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
+
 export class WebviewContentProvider {
     private context: Context;
     private webviewAssembler: WebviewContentAssembler;
@@ -66,9 +70,6 @@ export class WebviewContentProvider {
     public generateWebviewConent(startingState: Types.RenderStartingData): string {
         let shader = this.documentContent;
         let shaderName = this.documentName;
-
-        let preambleExtension = new ShaderPreambleExtension();
-        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
 
         let webglLineNumbers = 105;
 
@@ -101,6 +102,7 @@ export class WebviewContentProvider {
                             BufferIndex: finalBufferIndex,
                         }],
                         AudioInputs: [],
+                        CustomUniforms: [],
                         Includes: [],
                         UsesSelf: false,
                         SelfChannel: -1,
@@ -116,6 +118,7 @@ export class WebviewContentProvider {
         // Feature Check
         let useKeyboard = false;
         let useAudio = false;
+        let useUniforms = false;
         for (const buffer of buffers) {
             if (buffer.UsesKeyboard) {
                 useKeyboard = true;
@@ -124,7 +127,11 @@ export class WebviewContentProvider {
             const audios =  buffer.AudioInputs;
             if (audios.length > 0) {
                 useAudio = true;
-                break;
+            }
+
+            const uniforms =  buffer.CustomUniforms;
+            if (uniforms.length > 0) {
+                useUniforms = true;
             }
         }
 
@@ -163,6 +170,21 @@ export class WebviewContentProvider {
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Shader Preamble
+        let preambleExtension = new ShaderPreambleExtension();
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Custom Uniforms
+        if (useUniforms) {
+            let uniformsInitExtension = new UniformsInitExtension(buffers);
+            this.webviewAssembler.addWebviewModule(uniformsInitExtension, '// Uniforms Init');
+            let uniformsUpdateExtension = new UniformsUpdateExtension(buffers);
+            this.webviewAssembler.addWebviewModule(uniformsUpdateExtension, '// Uniforms Update');
+            let uniformsPreambleExtension = new UniformsPreambleExtension(buffers);
+            preambleExtension.addPreambleExtension(uniformsPreambleExtension);
+        }
+
         // Fix up line offsets
         for (let buffer of buffers) {
             buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglLineNumbers;

@@ -4,7 +4,8 @@ import { WebviewExtension } from './webview_extension';
 
 export class ShaderPreambleExtension implements WebviewExtension {
     private shaderPreamble: string;
-    private shaderPreambleLineNumbers: number;
+
+    private preambleExtensions: WebviewExtension[];
 
     constructor() {
         this.shaderPreamble = 
@@ -34,17 +35,21 @@ uniform float       iSampleRate;
 #define iGlobalFrame iFrame
 
 #define SHADER_TOY`;
-        this.shaderPreambleLineNumbers = this.shaderPreamble.split(/\r\n|\n/).length;
+        this.preambleExtensions = [];
     }
 
     public getShaderPreamble() {
-        return this.shaderPreamble;
+        return this.shaderPreamble + '\n' + this.preambleExtensions.map((ext) => ext.generateContent()).join('\n');
     }
     public getShaderPreambleLineNumbers() {
-        return this.shaderPreambleLineNumbers;
+        return this.getShaderPreamble().split(/\r\n|\n/).length;
+    }
+
+    public addPreambleExtension(extension: WebviewExtension) {
+        this.preambleExtensions.push(extension);
     }
 
     public generateContent(): string {
-        return `${this.shaderPreambleLineNumbers}`;
+        return `${this.getShaderPreambleLineNumbers()}`;
     }
 }
