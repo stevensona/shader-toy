@@ -33,7 +33,7 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                     path = context.makeWebviewResource(context.makeUri(localPath)).toString();
                 }
                 else if (remotePath !== undefined) {
-                    path = "https://" + remotePath;
+                    path = 'https://' + remotePath;
                 }
 
                 if (path !== undefined) {
@@ -50,7 +50,7 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                                     audio.loop = true;
 
                                     let analyser = audioContext.createAnalyser();
-                                    analyser.fftSize = ${context.getConfig<number>("audioDomainSize")};
+                                    analyser.fftSize = ${context.getConfig<number>('audioDomainSize')};
 
                                     const dataSize = Math.max(analyser.fftSize, analyser.frequencyBinCount);
                                     const dataArray = new Uint8Array(dataSize * 2);
@@ -78,14 +78,14 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                                 .catch(function(){
                                     vscode.postMessage({
                                         command: 'errorMessage',
-                                        message: "Failed decoding audio file: ${audio.UserPath}"
+                                        message: 'Failed decoding audio file: ${audio.UserPath}'
                                     });
                                 });
                         }).
                         catch(function(){
                             vscode.postMessage({
                                 command: 'errorMessage',
-                                message: "Failed loading audio file: ${audio.UserPath}"
+                                message: 'Failed loading audio file: ${audio.UserPath}'
                             });
                         });
                     `;
@@ -94,7 +94,7 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
             }
         }
 
-        if (this.content !== "") {
+        if (this.content !== '') {
             this.content = `
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const audioContext = new AudioContext();

@@ -70,10 +70,10 @@ export class ShaderParser {
     private readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
         // Read the whole file of the shader
         let success = false;
-        let bufferCode = "";
+        let bufferCode = '';
         let error = null;
         try {
-            bufferCode = fs.readFileSync(file, "utf-8");
+            bufferCode = fs.readFileSync(file, 'utf-8');
             success = true;
         }
         catch (e) {
@@ -88,23 +88,38 @@ export class ShaderParser {
     }
 
     private mapUserPathToWorkspacePath(userPath: string): { file: string, userPath: string } {
-        // Fix path to use '/' over '\\' and relative to the current working directory
+        userPath = userPath.replace(/\\/g, '/');
+
         let file = ((file: string) => {
             const relFile = vscode.workspace.asRelativePath(file);
-            const herePos = relFile.indexOf("./");
-            if (vscode.workspace.rootPath === undefined && herePos === 0) {
-                vscode.window.showErrorMessage("To use relative paths please open a workspace!");
+            const herePos = relFile.indexOf('./');
+            if (vscode.workspace.workspaceFolders === undefined && herePos === 0) {
+                vscode.window.showErrorMessage('To use relative paths please open a workspace!');
             }
-            if (relFile !== file || herePos === 0) {
-                return vscode.workspace.rootPath + '/' + relFile;
+            if ((relFile !== file || herePos === 0) && vscode.workspace.workspaceFolders !== undefined) {
+                let fileCandidates: string[] = [];
+                for (let worspaceFolder of vscode.workspace.workspaceFolders) {
+                    let fileCandidate = worspaceFolder.uri.fsPath + '/' + relFile;
+                    fileCandidate = fileCandidate.replace(/\\/g, '/');
+                    fileCandidate = fileCandidate.replace(/\.\//g, '');
+                    if (fs.existsSync(fileCandidate)) {
+                        fileCandidates.push(fileCandidate);
+                    }
+                }
+
+                if (fileCandidates.length === 0) {
+                    vscode.window.showErrorMessage(`No candidates for file '${userPath}' were found in your workspace folders.`);
+                }
+                else if (fileCandidates.length > 1) {
+                    vscode.window.showErrorMessage(`Multiple candidates for file '${userPath}' were found in your workspace folders, first option was picked: '${fileCandidates[0]}'`);
+                }
+
+                return fileCandidates[0];
             }
             else {
                 return file;
             }
         })(userPath);
-        file = file.replace(/\\/g, '/');
-        file = file.replace(/\.\//g, '');
-        userPath = userPath.replace(/\\/g, '/');
         return { file, userPath };
     }
 
@@ -121,7 +136,7 @@ export class ShaderParser {
             return {
                 Name: name,
                 File: file,
-                Code: "",
+                Code: '',
                 LineCount: 0
             };
         }
@@ -140,8 +155,8 @@ export class ShaderParser {
                 let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
 
                 if (leftQuotePos < 0 || rightQuotePos < 0) {
-                    if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                        vscode.window.showErrorMessage("Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme.");
+                    if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                        vscode.window.showErrorMessage('Nested includes have to use non-deprecated syntax, i.e. use quotes and omit a scheme.');
                     }
                 }
                 else {
@@ -171,23 +186,18 @@ export class ShaderParser {
         }
         this.visitedFiles.push(file);
 
-        const getLineNumber = (position: number) => {
-            let substr = code.substring(0, position);
-            var count = (substr.match(/(\r\n|\r|\n)/g) || []).length;
-            return count;
-        };
-
         let line_offset = 0;
         let textures: Types.TextureDefinition[] = [];
         let pendingTextureSettings: Types.TextureDefinition[] = [];
         let audios: Types.AudioDefinition[] = [];
+        let uniforms: Types.UniformDefinition[] = [];
         let includes: string[] = [];
 
         const loadDependency = (depFile: string, channel: number, passType: string, codePosition: number) => {
             // Get type and name of file
             let colonPos = depFile.indexOf('://', 0);
             
-            let inputType = "file";
+            let inputType = 'file';
             let userPath = depFile;
 
             if (colonPos >= 0) {
@@ -197,24 +207,24 @@ export class ShaderParser {
 
             ({ file: depFile, userPath } = this.mapUserPathToWorkspacePath(userPath));
 
-            if (inputType !== "file" && inputType !== "https") {
-                if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                    if (passType === "include") {
-                        vscode.window.showWarningMessage("You are using deprecated input methods, no protocol is required for includes, simply use '#include \"./file.glsl\"'");
+            if (inputType !== 'file' && inputType !== 'https') {
+                if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                    if (passType === 'include') {
+                        vscode.window.showWarningMessage(`You are using deprecated input methods, no protocol is required for includes, simply use '#include './file.glsl''`);
                     }
                     else {
-                        vscode.window.showWarningMessage("You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.");
+                        vscode.window.showWarningMessage(`You are using deprecated input methods, use 'file://' or 'https://', the type of input will be inferred.`);
                     }
                 }
-                inputType = "file";
+                inputType = 'file';
             }
 
-            let isLocalFile: boolean = inputType === "file";
+            let isLocalFile: boolean = inputType === 'file';
             let fileType = depFile.split('.').pop();
-            let fullMime = mime.getType(fileType || "txt") || "text/plain";
-            let mimeType = fullMime.split('/')[0] || "text";
+            let fullMime = mime.getType(fileType || 'txt') || 'text/plain';
+            let mimeType = fullMime.split('/')[0] || 'text';
 
-            if (passType === "include") {
+            if (passType === 'include') {
                 const name = path.basename(depFile);
 
                 // Attempt to get the include if already exists
@@ -234,8 +244,8 @@ export class ShaderParser {
             }
             else {
                 switch (mimeType) {
-                    case "text": {
-                        if (depFile === "self" || depFile === file) {
+                    case 'text': {
+                        if (depFile === 'self' || depFile === file) {
                             // Push self as feedback-buffer
                             textures.push({
                                 Channel: channel,
@@ -261,7 +271,7 @@ export class ShaderParser {
                         }
                         break;
                     }
-                    case "image": {
+                    case 'image': {
                         if (isLocalFile) {
                             textures.push({
                                 Channel: channel,
@@ -282,8 +292,8 @@ export class ShaderParser {
                         }
                         break;
                     }
-                    case "audio": {
-                        if (this.context.getConfig<boolean>("enabledAudioInput")) {
+                    case 'audio': {
+                        if (this.context.getConfig<boolean>('enabledAudioInput')) {
                             if (isLocalFile) {
                                 audios.push({
                                     Channel: channel,
@@ -311,6 +321,23 @@ export class ShaderParser {
             }
         };
 
+        const getLineNumber = (position: number) => {
+            let substr = code.substring(0, position);
+            var count = (substr.match(/(\r\n|\r|\n)/g) || []).length;
+            return count - line_offset;
+        };
+
+        const showDiagnosticAtPosition = (message: string, position: number) => {
+            let diagnosticBatch: Types.DiagnosticBatch = {
+                filename: file,
+                diagnostics: [{
+                    line: getLineNumber(position),
+                    message: message
+                }]
+            };
+            this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
+        };
+
         let usesKeyboard = false;
         let useTextureDefinitionInShaders = this.context.getConfig<boolean>('useInShaderTextures');
         if (useTextureDefinitionInShaders) {
@@ -322,7 +349,7 @@ export class ShaderParser {
             };
 
             const findNextMatch = (): Match | undefined => {
-                let channelMatch = code.match(/#(iChannel|include|iKeyboard)/m);
+                let channelMatch = code.match(/#(iChannel|include|iKeyboard|iUniform)/m);
                 if (channelMatch && channelMatch.index !== undefined && channelMatch.index >= 0) {
                     return {
                         TexturePos: channelMatch.index,
@@ -332,189 +359,179 @@ export class ShaderParser {
                 }
                 return undefined;
             };
-            let nextMatch = findNextMatch();
-            while (nextMatch) {
+            let nextMatch: Match | undefined;
+            while (nextMatch = findNextMatch()) {
                 let channelPos = nextMatch.TexturePos + nextMatch.MatchLength;
                 let endlineMatch = code.substring(channelPos).match(/\r\n|\r|\n/);
                 if (endlineMatch !== null && endlineMatch.index !== undefined) {
                     endlineMatch.index += channelPos;
                     let endlinePos = endlineMatch.index + endlineMatch[0].length;
 
-                    if (nextMatch.PassType === "iKeyboard") {
-                        usesKeyboard = true;
-                    }
-                    else {
-                        let line = code.substring(channelPos, endlineMatch.index);
-
-                        let leftQuotePos = line.search(/"|'/);
-                        let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
-
-                        let channel: number | undefined;
-                        let input: string | undefined;
-
-                        if (leftQuotePos < 0 || rightQuotePos < 0) {
-                            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                                vscode.window.showWarningMessage("To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated syntax.");
-                            }
-
-                            let spacePos = Math.min(code.indexOf(" ", channelPos), endlineMatch.index);
-    
-                            // Get channel number
-                            channel = parseInt(code.substring(channelPos, spacePos));
-    
-                            let afterSpacePos = code.indexOf(" ", spacePos + 1);
-                            let afterCommentPos = code.indexOf("//", code.indexOf("://", spacePos)  + 3);
-                            let textureEndPos = Math.min(endlineMatch.index,
-                                afterSpacePos > 0 ? afterSpacePos : code.length,
-                                afterCommentPos > 0 ? afterCommentPos : code.length);
-
-                            // Get dependencies' name
-                            input = code.substring(spacePos + 1, textureEndPos);
+                    switch (nextMatch.PassType) {
+                        case 'iKeyboard': {
+                            usesKeyboard = true;
+                            break;
                         }
-                        else {
-                            let leftPart = line.substring(0, leftQuotePos).trim();
-                            let quotedPart = line.substring(leftQuotePos + 1, rightQuotePos).trim();
-                            
-                            let scopePos = leftPart.search(/^\d+::/);
-                            if (scopePos < 0) {
-                                channel = parseInt(leftPart);
-                                input = quotedPart;
+                        case 'iUniform': {
+                            let line = code.substring(channelPos, endlineMatch.index);
+                            let uniform = this.parseUniformCode(line, (message: string) => showDiagnosticAtPosition(message, endlinePos));
+                            if (uniform !== undefined) {
+                                uniforms.push(uniform);
+                            }
+                            break;
+                        }
+                        case 'iChannel':
+                        case 'include': {
+                            let line = code.substring(channelPos, endlineMatch.index);
+
+                            let leftQuotePos = line.search(/"|'/);
+                            let rightQuotePos = line.substring(leftQuotePos + 1).search(/"|'/) + leftQuotePos + 1;
+
+                            let channel: number | undefined;
+                            let input: string | undefined;
+
+                            if (leftQuotePos < 0 || rightQuotePos < 0) {
+                                if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                                    vscode.window.showWarningMessage('To use input, wrap the path/url of your input in quotes, omitting quotes is deprecated syntax.');
+                                }
+
+                                let spacePos = Math.min(code.indexOf(' ', channelPos), endlineMatch.index);
+        
+                                // Get channel number
+                                channel = parseInt(code.substring(channelPos, spacePos));
+        
+                                let afterSpacePos = code.indexOf(' ', spacePos + 1);
+                                let afterCommentPos = code.indexOf('//', code.indexOf('://', spacePos)  + 3);
+                                let textureEndPos = Math.min(endlineMatch.index,
+                                    afterSpacePos > 0 ? afterSpacePos : code.length,
+                                    afterCommentPos > 0 ? afterCommentPos : code.length);
+
+                                // Get dependencies' name
+                                input = code.substring(spacePos + 1, textureEndPos);
                             }
                             else {
-                                scopePos = leftPart.search("::");
-
-                                let magFilter: Types.TextureMagFilter | undefined;
-                                let minFilter: Types.TextureMinFilter | undefined;
-                                let wrapMode: Types.TextureWrapMode | undefined;
-
-                                let channelPart = leftPart.substring(0, scopePos);
-                                channel = parseInt(channelPart);
-
-                                let settingName = leftPart.substring(scopePos + 2);
-                                switch (settingName) {
-                                    case "MagFilter":
-                                        magFilter = (() => {
-                                            switch(quotedPart) {
-                                                case "Nearest":
-                                                    return Types.TextureMagFilter.Nearest;
-                                                case "Linear":
-                                                    return Types.TextureMagFilter.Linear;
-                                                default:
-                                                    let diagnosticBatch: Types.DiagnosticBatch = {
-                                                        filename: file,
-                                                        diagnostics: [{
-                                                            line: getLineNumber(endlinePos),
-                                                            message: `Valid MagFilter options are: "Nearest" or "Linear"`
-                                                        }]
-                                                    };
-                                                    this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
-                                            }
-                                        })();
-
-                                        break;
-                                    case "MinFilter":
-                                        minFilter = (() => {
-                                            switch(quotedPart) {
-                                                case "Nearest":
-                                                    return Types.TextureMinFilter.Nearest;
-                                                case "NearestMipMapNearest":
-                                                    return Types.TextureMinFilter.NearestMipMapNearest;
-                                                case "NearestMipMapLinear":
-                                                    return Types.TextureMinFilter.NearestMipMapLinear;
-                                                case "Linear":
-                                                    return Types.TextureMinFilter.Linear;
-                                                case "LinearMipMapNearest":
-                                                    return Types.TextureMinFilter.LinearMipMapNearest;
-                                                case "LinearMipMapLinear":
-                                                    return Types.TextureMinFilter.LinearMipMapLinear;
-                                                default:
-                                                    let diagnosticBatch: Types.DiagnosticBatch = {
-                                                        filename: file,
-                                                        diagnostics: [{
-                                                            line: getLineNumber(endlinePos),
-                                                            message: `Valid MinFilter options are: "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear"`
-                                                        }]
-                                                    };
-                                                    this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
-                                            }
-                                        })();
-
-                                        break;
-                                    case "WrapMode":
-                                        wrapMode = (() => {
-                                            switch(quotedPart) {
-                                                case "Repeat":
-                                                    return Types.TextureWrapMode.Repeat;
-                                                case "Clamp":
-                                                    return Types.TextureWrapMode.Clamp;
-                                                case "Mirror":
-                                                    return Types.TextureWrapMode.Mirror;
-                                                default:
-                                                    let diagnosticBatch: Types.DiagnosticBatch = {
-                                                        filename: file,
-                                                        diagnostics: [{
-                                                            line: getLineNumber(endlinePos),
-                                                            message: `Valid WrapMode options are: "Clamp", "Repeat" or "Mirror"`
-                                                        }]
-                                                    };
-                                                    this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
-                                            }
-                                        })();
-                                        
-                                        break;
-                                    default:
-                                        vscode.window.showWarningMessage(`Unkown texture setting "${settingName}", choose either "MinFilter", "MagFilter" or "WrapMode"`);
-                                }
-
-                                let texture = textures.find((texture: Types.TextureDefinition) => {
-                                    return texture.Channel === channel;
-                                });
-                                if (texture === undefined) {
-                                    texture = pendingTextureSettings.find((texture: Types.TextureDefinition) => {
-                                        return texture.Channel === channel;
-                                    });
-                                }
-
-                                let lineInformation = { File: file, Line: getLineNumber(endlinePos) };
-
-                                if (texture !== undefined) {
-                                    texture.Mag = magFilter || texture.Mag;
-                                    texture.MagLine = magFilter ? lineInformation : undefined;
-                                    texture.Min = minFilter || texture.Min;
-                                    texture.MinLine = minFilter ? lineInformation : undefined;
-                                    texture.Wrap = wrapMode || texture.Wrap;
-                                    texture.WrapLine = wrapMode ? lineInformation : undefined;
+                                let leftPart = line.substring(0, leftQuotePos).trim();
+                                let quotedPart = line.substring(leftQuotePos + 1, rightQuotePos).trim();
+                                
+                                let scopePos = leftPart.search(/^\d+::/);
+                                if (scopePos < 0) {
+                                    channel = parseInt(leftPart);
+                                    input = quotedPart;
                                 }
                                 else {
-                                    pendingTextureSettings.push({
-                                        Channel: channel,
-                                        Mag: magFilter || Types.TextureMagFilter.Linear,
-                                        MagLine: magFilter ? lineInformation : undefined,
-                                        Min: minFilter || Types.TextureMinFilter.Linear,
-                                        MinLine: minFilter ? lineInformation : undefined,
-                                        Wrap: wrapMode || Types.TextureWrapMode.Clamp,
-                                        WrapLine: wrapMode ? lineInformation : undefined
+                                    scopePos = leftPart.search('::');
+
+                                    let magFilter: Types.TextureMagFilter | undefined;
+                                    let minFilter: Types.TextureMinFilter | undefined;
+                                    let wrapMode: Types.TextureWrapMode | undefined;
+
+                                    let channelPart = leftPart.substring(0, scopePos);
+                                    channel = parseInt(channelPart);
+
+                                    let settingName = leftPart.substring(scopePos + 2);
+                                    switch (settingName) {
+                                        case 'MagFilter':
+                                            magFilter = (() => {
+                                                switch(quotedPart) {
+                                                    case 'Nearest':
+                                                        return Types.TextureMagFilter.Nearest;
+                                                    case 'Linear':
+                                                        return Types.TextureMagFilter.Linear;
+                                                    default:
+                                                        showDiagnosticAtPosition(`Valid MagFilter options are: 'Nearest' or 'Linear'`, endlinePos);
+                                                }
+                                            })();
+
+                                            break;
+                                        case 'MinFilter':
+                                            minFilter = (() => {
+                                                switch(quotedPart) {
+                                                    case 'Nearest':
+                                                        return Types.TextureMinFilter.Nearest;
+                                                    case 'NearestMipMapNearest':
+                                                        return Types.TextureMinFilter.NearestMipMapNearest;
+                                                    case 'NearestMipMapLinear':
+                                                        return Types.TextureMinFilter.NearestMipMapLinear;
+                                                    case 'Linear':
+                                                        return Types.TextureMinFilter.Linear;
+                                                    case 'LinearMipMapNearest':
+                                                        return Types.TextureMinFilter.LinearMipMapNearest;
+                                                    case 'LinearMipMapLinear':
+                                                        return Types.TextureMinFilter.LinearMipMapLinear;
+                                                    default:
+                                                        showDiagnosticAtPosition(`Valid MinFilter options are: 'Nearest', 'NearestMipMapNearest', 'NearestMipMapLinear', 'Linear', 'LinearMipMapNearest' or 'LinearMipMapLinear'`, endlinePos);
+                                                }
+                                            })();
+
+                                            break;
+                                        case 'WrapMode':
+                                            wrapMode = (() => {
+                                                switch(quotedPart) {
+                                                    case 'Repeat':
+                                                        return Types.TextureWrapMode.Repeat;
+                                                    case 'Clamp':
+                                                        return Types.TextureWrapMode.Clamp;
+                                                    case 'Mirror':
+                                                        return Types.TextureWrapMode.Mirror;
+                                                    default:
+                                                        showDiagnosticAtPosition(`Valid WrapMode options are: 'Clamp', 'Repeat' or 'Mirror'`, endlinePos);
+                                                }
+                                            })();
+                                            
+                                            break;
+                                        default:
+                                            vscode.window.showWarningMessage(`Unkown texture setting '${settingName}', choose either 'MinFilter', 'MagFilter' or 'WrapMode'`);
+                                    }
+
+                                    let texture = textures.find((texture: Types.TextureDefinition) => {
+                                        return texture.Channel === channel;
                                     });
+                                    if (texture === undefined) {
+                                        texture = pendingTextureSettings.find((texture: Types.TextureDefinition) => {
+                                            return texture.Channel === channel;
+                                        });
+                                    }
+
+                                    let lineInformation = { File: file, Line: getLineNumber(endlinePos) };
+
+                                    if (texture !== undefined) {
+                                        texture.Mag = magFilter || texture.Mag;
+                                        texture.MagLine = magFilter ? lineInformation : undefined;
+                                        texture.Min = minFilter || texture.Min;
+                                        texture.MinLine = minFilter ? lineInformation : undefined;
+                                        texture.Wrap = wrapMode || texture.Wrap;
+                                        texture.WrapLine = wrapMode ? lineInformation : undefined;
+                                    }
+                                    else {
+                                        pendingTextureSettings.push({
+                                            Channel: channel,
+                                            Mag: magFilter || Types.TextureMagFilter.Linear,
+                                            MagLine: magFilter ? lineInformation : undefined,
+                                            Min: minFilter || Types.TextureMinFilter.Linear,
+                                            MinLine: minFilter ? lineInformation : undefined,
+                                            Wrap: wrapMode || Types.TextureWrapMode.Clamp,
+                                            WrapLine: wrapMode ? lineInformation : undefined
+                                        });
+                                    }
                                 }
                             }
-                        }
                         
-                        if (input !== undefined && channel !== undefined) {
-                            // Load the dependency
-                            loadDependency(input, channel, nextMatch.PassType, endlinePos);
+                            if (input !== undefined && channel !== undefined) {
+                                // Load the dependency
+                                loadDependency(input, channel, nextMatch.PassType, endlinePos);
+                            }
                         }
                     }
 
                     // Remove #iChannel define
                     let channelDefine = code.substring(nextMatch.TexturePos, endlinePos - 1);
-                    code = code.replace(channelDefine, "");
-                    nextMatch = findNextMatch();
+                    code = code.replace(channelDefine, '');
                 }
             }
         }
         else {
-            if (this.context.getConfig<boolean>("omitDeprecationWarnings") === false) {
-                vscode.window.showWarningMessage("Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.");
+            if (this.context.getConfig<boolean>('omitDeprecationWarnings') === false) {
+                vscode.window.showWarningMessage('Loading textures through configuration is deprecated and will be removed in a future version. Please use inline texture definitions.');
             }
             let textures: any[] | undefined = this.context.getConfig('textures');
             if (textures) {
@@ -523,7 +540,7 @@ export class ShaderParser {
                     if (texture.length > 0) {
                         // Check for buffer to load to avoid circular loading
                         if (this.stripPath(texture) !== this.stripPath(file)) {
-                            loadDependency(texture, parseInt(i), "iChannel", 0);
+                            loadDependency(texture, parseInt(i), 'iChannel', 0);
                         }
                     }
                 }
@@ -535,16 +552,9 @@ export class ShaderParser {
             if (versionPos === 0) {
                 let newLinePos = code.search('\n');
                 let versionDirective = code.substring(versionPos, newLinePos - 1);
-                code = code.replace(versionDirective, "");
+                code = code.replace(versionDirective, '');
 
-                let diagnosticBatch: Types.DiagnosticBatch = {
-                    filename: file,
-                    diagnostics: [{
-                        line: 1,
-                        message: `Version directive '${versionDirective}' ignored by shader-toy extension`
-                    }]
-                };
-                this.context.showDiagnostics(diagnosticBatch, vscode.DiagnosticSeverity.Information);
+                showDiagnosticAtPosition(`Version directive '${versionDirective}' ignored by shader-toy extension`, 0);
             }
         }
 
@@ -584,18 +594,18 @@ export class ShaderParser {
         }
         if (this.context.getConfig<boolean>('warnOnUndefinedTextures')) {
             for (let i = 0; i < 9; i++) {
-                if (code.search("iChannel" + i) > 0) {
+                if (code.search('iChannel' + i) > 0) {
                     if (definedTextures[i] === undefined) {
                         if (useTextureDefinitionInShaders) {
-                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, "Details")
+                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, 'Details')
                                 .then(() => {
-                                    vscode.window.showInformationMessage(`To use this channel add to your shader a line "#iChannel${i}" followed by a space and the path to your texture. Use "file://" for local textures, "https://" for remote textures or "buf://" for other shaders.`);
+                                    vscode.window.showInformationMessage(`To use this channel add to your shader a line '#iChannel${i}' followed by a space and the path to your texture. Use 'file://' for local textures, 'https://' for remote textures or 'buf://' for other shaders.`);
                                 });
                         }
                         else {
-                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition "${i}" in settings.json`, "Details")
+                            vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition '${i}' in settings.json`, 'Details')
                                 .then(() => {
-                                    vscode.window.showInformationMessage(`To use this channel you will need to open your "settings.json" file and set the option "shader-toy.textures.${i}" to the path to your texture. Use "file://" for local textures, "https://" for remote textures or "buf://" for other shaders. It is advised to set the option "shader-toy.textures.useInShaderTextures" to true and define your texture path directly inside your shader.`);
+                                    vscode.window.showInformationMessage(`To use this channel you will need to open your 'settings.json' file and set the option 'shader-toy.textures.${i}' to the path to your texture. Use 'file://' for local textures, 'https://' for remote textures or 'buf://' for other shaders. It is advised to set the option 'shader-toy.textures.useInShaderTextures' to true and define your texture path directly inside your shader.`);
                                 });
                         }
                     }
@@ -603,7 +613,7 @@ export class ShaderParser {
             }
         }
 
-        if (this.context.getConfig<boolean>("enableGlslifySupport")) {
+        if (this.context.getConfig<boolean>('enableGlslifySupport')) {
             // glslify the code
             var glsl = require('glslify');
             try {
@@ -622,11 +632,98 @@ export class ShaderParser {
             Includes: includes,
             TextureInputs: textures,
             AudioInputs: audios,
+            CustomUniforms: uniforms,
             UsesSelf: false,
             SelfChannel: -1,
             Dependents: [],
             UsesKeyboard: usesKeyboard,
             LineOffset: line_offset
         });
+    }
+
+    private parseUniformCode(line: string, informationDiagnostic: (message: string) => void): Types.UniformDefinition | undefined {
+        let uniformName = "(missing_uniform_name)";
+        let defaultValue: number[] | undefined;
+        let range: [ number[], number[] ] | undefined;
+
+        // TODO: Verify types given, instead of just stripping float, vec2, vec3 and vec4
+
+        let inPos = line.indexOf(' in ');
+        if (inPos >= 0) {
+            let rangeString = line.substring(inPos + 4).trim()
+                .replace(/\(/g, '[')
+                .replace(/\)/g, ']')
+                .replace(/float/g, '')
+                .replace(/vec2/g, '')
+                .replace(/vec3/g, '')
+                .replace(/vec4/g, '');
+            let rangeDirect: [ number | number[], number | number[] ] = JSON.parse(`{"value": ${rangeString}}`).value;
+            range = [[], []];
+            for (let i of [ 0, 1 ]) {
+                let value = rangeDirect[i];
+                if (Array.isArray(value)) {
+                    range[i] = value;
+                }
+                else {
+                    range[i] = [ value ];
+                }
+            }
+
+            line = line.substring(0, inPos).trim();
+        }
+        
+        let equalPos = line.indexOf('=');
+        if (equalPos >= 0) {
+            uniformName = line.substring(0, equalPos).trim();
+            let defaultValueString = line.substring(equalPos + 1).trim()
+                .replace(/\(/g, '[')
+                .replace(/\)/g, ']')
+                .replace(/float/g, '')
+                .replace(/vec2/g, '')
+                .replace(/vec3/g, '')
+                .replace(/vec4/g, '');
+            if (defaultValueString.indexOf('[') < 0) {
+                defaultValueString = '[' + defaultValueString + ']';
+            }
+
+            defaultValue = JSON.parse(`{"value": ${defaultValueString}}`).value;
+        }
+        else {
+            uniformName = line.trim();
+        }
+
+        if (defaultValue !== undefined && range !== undefined) {
+            for (let i of [ 0, 1 ]) {
+                let value = range[i];
+                if (value.length !== defaultValue.length) {
+                    if (value.length !== 1) {
+                        let mismatchType = value.length < defaultValue.length ?
+                            'missing values will be replaced with first value given' :
+                            'redundant values will be removed';
+                        let valueType = i === 0 ? 'minimum' : 'maximum';
+                        informationDiagnostic(`Type mismatch in ${valueType} value, ${mismatchType}.`);
+                    }
+                }
+            }
+        }
+
+        if (defaultValue === undefined && range !== undefined) {
+            defaultValue = range[0];
+            informationDiagnostic(`Custom uniform specifies no default value, the minimum of its range will be used.`);
+        }
+
+        if (defaultValue !== undefined || range !== undefined) {
+            return {
+                Name: uniformName,
+                Default: defaultValue !== undefined ? defaultValue : range !== undefined ? range[0] : [ NaN ],
+                Min: range !== undefined ? range[0] : undefined,
+                Max: range !== undefined ? range[1] : undefined,
+            };
+        }
+        else {
+            informationDiagnostic(`Custom uniform specifies neither a default value nor a range, it's type can thus not be deduced.`);
+        }
+
+        return undefined;
     }
 }

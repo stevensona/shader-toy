@@ -18,40 +18,40 @@ export class TexturesInitExtension implements WebviewExtension {
             let magFilter: string = (() => {
                 switch(texture.Mag) {
                 case Types.TextureMagFilter.Nearest:
-                    return "THREE.NearestFilter";
+                    return 'THREE.NearestFilter';
                 case Types.TextureMagFilter.Linear:
                 default:
-                    return "THREE.LinearFilter";
+                    return 'THREE.LinearFilter';
                 }
             })();
 
             let minFilter: string = (() => {
                 switch(texture.Min) {
                     case Types.TextureMinFilter.Nearest:
-                        return"THREE.NearestFilter";
+                        return'THREE.NearestFilter';
                     case Types.TextureMinFilter.NearestMipMapNearest:
-                        return"THREE.NearestMipMapNearestFilter";
+                        return'THREE.NearestMipmapNearestFilter';
                     case Types.TextureMinFilter.NearestMipMapLinear:
-                        return"THREE.NearestMipMapLinearFilter";
+                        return'THREE.NearestMipmapLinearFilter';
                     case Types.TextureMinFilter.Linear:
                     default:
-                        return"THREE.LinearFilter";
+                        return'THREE.LinearFilter';
                     case Types.TextureMinFilter.LinearMipMapNearest:
-                        return"THREE.LinearMipMapNearestFilter";
+                        return'THREE.LinearMipmapNearestFilter';
                     case Types.TextureMinFilter.LinearMipMapLinear:
-                        return"THREE.LinearMipMapLinearFilter";
+                        return'THREE.LinearMipmapLinearFilter';
                 }
             })();
 
             let wrapMode: string = (() => {
                 switch(texture.Wrap) {
                 case Types.TextureWrapMode.Clamp:
-                    return "THREE.ClampToEdgeWrapping";
+                    return 'THREE.ClampToEdgeWrapping';
                 case Types.TextureWrapMode.Repeat:
                 default:
-                    return "THREE.RepeatWrapping";
+                    return 'THREE.RepeatWrapping';
                 case Types.TextureWrapMode.Mirror:
-                    return "THREE.MirroredRepeatWrapping";
+                    return 'THREE.MirroredRepeatWrapping';
                 }
             })();
 
@@ -59,56 +59,58 @@ export class TexturesInitExtension implements WebviewExtension {
                 || (texture.MinLine ? texture.MinLine.File : undefined)
                 || (texture.WrapLine ? texture.WrapLine.File : undefined);
             let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
-            let powerOfTwoWarning = `
-            function isPowerOfTwo(n) {
-                return n && (n & (n - 1)) === 0;
-            };
-            if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
-                let diagnostics = [];
-                ${texture.MagLine !== undefined ? `diagnostics.push({
-                        line: ${texture.MagLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
-                    });` : ''
-                }
-                ${texture.MinLine !== undefined ? `diagnostics.push({
-                        line: ${texture.MinLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
-                    });` : ''
-                }
-                ${texture.WrapLine !== undefined ? `diagnostics.push({
-                        line: ${texture.WrapLine.Line},
-                        message: "Texture is not power of two, custom texture settings may not work."
-                    });` : ''
-                }
-                let diagnosticBatch = {
-                    filename: "${textureFileOrigin}",
-                    diagnostics: diagnostics
-                };
-                vscode.postMessage({
-                    command: 'showGlslDiagnostic',
-                    type: 'warning',
-                    diagnosticBatch: diagnosticBatch
-                });
-            };
-            buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
-            buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
-            `;
+            let powerOfTwoWarning = `\
+function isPowerOfTwo(n) {
+    return n && (n & (n - 1)) === 0;
+};
+if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
+    let diagnostics = [];
+    ${texture.MagLine !== undefined ? `diagnostics.push({
+            line: ${texture.MagLine.Line},
+            message: 'Texture is not power of two, custom texture settings may not work.'
+        });` : ''
+    }
+    ${texture.MinLine !== undefined ? `diagnostics.push({
+            line: ${texture.MinLine.Line},
+            message: 'Texture is not power of two, custom texture settings may not work.'
+        });` : ''
+    }
+    ${texture.WrapLine !== undefined ? `diagnostics.push({
+            line: ${texture.WrapLine.Line},
+            message: 'Texture is not power of two, custom texture settings may not work.'
+        });` : ''
+    }
+    let diagnosticBatch = {
+        filename: '${textureFileOrigin}',
+        diagnostics: diagnostics
+    };
+    vscode.postMessage({
+        command: 'showGlslDiagnostic',
+        type: 'warning',
+        diagnosticBatch: diagnosticBatch
+    });
+};
+buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
+buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
+`;
 
-            return `function(texture) {
-                ${hasCustomSettings ? powerOfTwoWarning : ''}
-                texture.magFilter = ${magFilter};
-                texture.minFilter = ${minFilter};
-                texture.wrapS = ${wrapMode};
-                texture.wrapT = ${wrapMode};
-            }`;
+            return `\
+function(texture) {
+    ${hasCustomSettings ? powerOfTwoWarning : ''}
+    texture.magFilter = ${magFilter};
+    texture.minFilter = ${minFilter};
+    texture.wrapS = ${wrapMode};
+    texture.wrapT = ${wrapMode};
+}`;
         };
         let makeTextureLoadErrorScript = (filename: string) => { 
-            return `function(err) {
-                vscode.postMessage({
-                    command: 'errorMessage',
-                    message: "Failed loading texture file ${filename}"
-                });
-            }`;
+            return `\
+function(err) {
+    vscode.postMessage({
+        command: 'errorMessage',
+        message: 'Failed loading texture file ${filename}'
+    });
+}`;
         };
 
         for (let i in buffers) {
@@ -122,7 +124,7 @@ export class TexturesInitExtension implements WebviewExtension {
                 const remotePath = texture.RemoteTexture;
 
                 let textureLoadScript: string | undefined;
-                let textureSizeScript: string = "null";
+                let textureSizeScript: string = 'null';
                 if (textureBufferIndex !== undefined) {
                     textureLoadScript = `buffers[${textureBufferIndex}].Target.texture`;
                     textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;

@@ -41,7 +41,7 @@ export class PauseButtonStyleExtension implements WebviewExtension {
     border-radius: 8px;
     margin: auto;
     transform: translateX(-50%);
-    background: url("${this.context.getWebviewResourcePath('pause.png')}");
+    background: url('${this.context.getWebviewResourcePath('pause.png')}');
     background-size: 40px;
     background-repeat: no-repeat;
     background-position: center;
@@ -57,7 +57,7 @@ export class PauseButtonStyleExtension implements WebviewExtension {
     transition-duration: 0.2s;
 }
 .button-container input:checked ~ .pause-play {
-    background: url("${this.context.getWebviewResourcePath('play.png')}");
+    background: url('${this.context.getWebviewResourcePath('play.png')}');
     background-size: 40px;
     background-repeat: no-repeat;
     background-position: center;

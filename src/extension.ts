@@ -7,20 +7,20 @@ import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 
 export function activate(extensionContext: vscode.ExtensionContext) {
-    let shadertoyExtension = vscode.extensions.getExtension("stevensona.shader-toy");
+    let shadertoyExtension = vscode.extensions.getExtension('stevensona.shader-toy');
     if (shadertoyExtension) {
-        let lastVersion = extensionContext.globalState.get<string>("version") || '0.0.0';
+        let lastVersion = extensionContext.globalState.get<string>('version') || '0.0.0';
         let currentVersion = <string | undefined>shadertoyExtension.packageJSON.version || '9.9.9';
         if (compare_versions(currentVersion, lastVersion) > 0) {
-            vscode.window.showInformationMessage("Your ShaderToy version just got updated, check out the readme to see what's new.");
-            extensionContext.globalState.update("version", currentVersion);
+            vscode.window.showInformationMessage('Your ShaderToy version just got updated, check out the readme to see what\'s new.');
+            extensionContext.globalState.update('version', currentVersion);
         }
     }
 
     let context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
 
-    if (context.getConfig<boolean>("omitDeprecationWarnings") === true) {
-        vscode.window.showWarningMessage("Deprecation warnings are omitted, stay safe otherwise!");
+    if (context.getConfig<boolean>('omitDeprecationWarnings') === true) {
+        vscode.window.showWarningMessage('Deprecation warnings are omitted, stay safe otherwise!');
     }
 
     let webviewPanel: vscode.WebviewPanel | undefined = undefined;
@@ -50,7 +50,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         }
         if (context.getConfig<boolean>('reloadOnChangeEditor')) {
             changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor: vscode.TextEditor | undefined) => {
-                if (swappedEditor !== undefined && swappedEditor.document.getText() !== "" && swappedEditor !== context.activeEditor) {
+                if (swappedEditor !== undefined && swappedEditor.document.getText() !== '' && swappedEditor !== context.activeEditor) {
                     if (context.getConfig<boolean>('resetStateOnChangeEditor')) {
                         resetStartingData();
                     }
@@ -71,7 +71,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
             webviewPanel.webview.html = webviewContentProvider.generateWebviewConent(startingData);
         }
         else if (webviewPanel !== undefined) {
-            vscode.window.showErrorMessage("Select a TextEditor to show GLSL Preview.");
+            vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
         }
     };
     const resetStartingData = () => {
@@ -79,7 +79,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
     };
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration("shader-toy")) {
+        if (e.affectsConfiguration('shader-toy')) {
             context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
             registerCallbacks();
             updateWebview();

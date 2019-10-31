@@ -161,6 +161,9 @@
 
     // Keyboard Init
     
+    // Uniforms Init
+    // Uniforms Update
+
     let texLoader = new THREE.TextureLoader();
     // Texture Init
 
@@ -181,7 +184,8 @@
         currentShader = {
             Name: include.Name,
             File: include.File,
-            LineOffset: <!-- Preamble Line Numbers --> + 2 // add two for version and precision lines
+            // add two for version and precision lines
+            LineOffset: <!-- Preamble Line Numbers --> + 2
         };
         // bail if there is an error found in the include script
         if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) {
@@ -196,7 +200,8 @@
             LineOffset: buffer.LineOffset
         };
         quad.material = buffer.Shader;
-        renderer.render(scene, camera, buffer.Target);
+        renderer.setRenderTarget(buffer.Target);
+        renderer.render(scene, camera);
     }
     currentShader = {};
     let compileTimeEnd = performance.now();
@@ -252,8 +257,11 @@
             buffer.Shader.uniforms['mouse'].value = normalizedMouse;
 
             quad.material = buffer.Shader;
-            renderer.render(scene, camera, buffer.Target);
+            renderer.setRenderTarget(buffer.Target);
+            renderer.render(scene, camera);
         }
+        
+        // Uniforms Update
 
         // Keyboard Update
 
@@ -318,14 +326,36 @@
         frameCounter = 0;
     }
     function saveScreenshot() {
-        renderer.render(scene, camera);
-        renderer.domElement.toBlob(function(blob){
-            let a = document.createElement('a');
-            let url = URL.createObjectURL(blob);
-            a.href = url;
-            a.download = 'shadertoy.png';
-            a.click();
-        }, 'image/png', 1.0);
+        let doSaveScreenshot = () => {
+            renderer.domElement.toBlob(function(blob){
+                let a = document.createElement('a');
+                let url = URL.createObjectURL(blob);
+                a.href = url;
+                a.download = 'shadertoy.png';
+                a.click();
+            }, 'image/png', 1.0);
+        };
+
+        let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];
+        if (forcedScreenshotResolution[0] <= 0 || forcedScreenshotResolution[1] <= 0) {
+            renderer.render(scene, camera);
+            doSaveScreenshot();
+        }
+        else {
+            renderer.setSize(forcedScreenshotResolution[0], forcedScreenshotResolution[1], false);
+            
+            for (let buffer of buffers) {
+                buffer.Shader.uniforms['iResolution'].value = new THREE.Vector3(forcedScreenshotResolution[0], forcedScreenshotResolution[1], 1);
+                buffer.Shader.uniforms['resolution'].value = new THREE.Vector3(forcedScreenshotResolution[0], forcedScreenshotResolution[1], 1);
+
+                quad.material = buffer.Shader;
+                renderer.setRenderTarget(buffer.Target);
+                renderer.render(scene, camera);
+            }
+
+            doSaveScreenshot();
+            renderer.setSize(resolution.x, resolution.y, false);
+        }
     }
     function updateMouse() {
         vscode.postMessage({

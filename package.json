@@ -25,9 +25,14 @@
         "configuration": {
             "properties": {
                 "shader-toy.forceAspectRatio": {
-                    "type": [
-                        "number",
-                        "number"
+                    "type": "array",
+                    "items": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "number"
+                        }
                     ],
                     "default": [
                         0,
@@ -74,6 +79,22 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Shows a screenshot button in the OpenGL viewport which allows to save the current frame as a png file."
+                },
+                "shader-toy.screenshotResolution": {
+                    "type": "array",
+                    "items": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "default": [
+                        0,
+                        0
+                    ],
+                    "description": "Manually set the resolution of a screenshot. Set either to zero or negative to use the viewports resolution."
                 },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",

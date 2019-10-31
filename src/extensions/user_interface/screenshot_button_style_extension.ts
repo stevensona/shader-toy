@@ -23,7 +23,7 @@ export class ScreenshotButtonStyleExtension implements WebviewExtension {
     border-radius: 8px;
     margin: 8px;
     transform: translateX(0%);
-    background: url("${this.context.getWebviewResourcePath('screen.png')}");
+    background: url('${this.context.getWebviewResourcePath('screen.png')}');
     background-size: 26px;
     background-repeat: no-repeat;
     background-position: center;

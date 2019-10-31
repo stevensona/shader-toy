@@ -10,12 +10,11 @@ enum ModuleType {
 }
 type InsertModule = {
     Type: ModuleType.Insert,
-    Extension: WebviewExtension,
-    OriginalLine: string,
+    Extension: WebviewExtension
 };
 type ReplaceModule = {
     Type: ModuleType.Replace,
-    SourceContent: string,
+    ReplaceContent: string,
     Extension: WebviewExtension,
 };
 
@@ -27,38 +26,54 @@ type WebviewModule = {
 export class WebviewContentAssembler {
     private webviewContent: WebviewContent;
     private webviewModules: WebviewModule[];
+    private webviewContentLineMappings: Record<string, number[]>;
     
     constructor(context: Context) {
         this.webviewContent = new WebviewContent(context.getResourceUri('webview_base.html').fsPath);
         this.webviewModules = [];
+
+        this.webviewContentLineMappings = {};
+        let lineNumber = 1;
+        for (let line of this.webviewContent.getLines()) {
+            if (!this.webviewContentLineMappings.hasOwnProperty(line.trim())) {
+                this.webviewContentLineMappings[line.trim()] = [];
+            }
+            this.webviewContentLineMappings[line.trim()].push(lineNumber);
+            lineNumber++;
+        }
     }
 
-    public addWebviewModule(extension: WebviewExtension, lineNumber: number, originalLine: string) {
+    public addWebviewModule(extension: WebviewExtension, originalLine: string) {
         let insertModule: InsertModule = {
             Type: ModuleType.Insert,
-            Extension: extension,
-            OriginalLine: originalLine.trim()
-        };
-        let webviewModule: WebviewModule = {
-            Module: insertModule,
-            LineNumber: lineNumber
-        };
-
-        this.insertModule(webviewModule);
-    }
-
-    public addReplaceModule(extension: WebviewExtension, lineNumber: number, sourceContent: string) {
-        let replaceModule: ReplaceModule = {
-            Type: ModuleType.Replace,
-            SourceContent: sourceContent,
             Extension: extension
         };
-        let webviewModule: WebviewModule = {
-            Module: replaceModule,
-            LineNumber: lineNumber
+
+        originalLine = originalLine.trim();
+        for (let lineNumber of this.webviewContentLineMappings[originalLine]) {
+            let webviewModule: WebviewModule = {
+                Module: insertModule,
+                LineNumber: lineNumber
+            };
+            this.insertModule(webviewModule);
+        }
+    }
+
+    public addReplaceModule(extension: WebviewExtension, originalLine: string, replaceContent: string) {
+        let replaceModule: ReplaceModule = {
+            Type: ModuleType.Replace,
+            ReplaceContent: replaceContent,
+            Extension: extension
         };
 
-        this.insertModule(webviewModule);
+        originalLine = originalLine.trim();
+        for (let lineNumber of this.webviewContentLineMappings[originalLine]) {
+            let webviewModule: WebviewModule = {
+                Module: replaceModule,
+                LineNumber: lineNumber
+            };
+            this.insertModule(webviewModule);
+        }
     }
 
     private insertModule(webviewModule: WebviewModule) {
@@ -74,18 +89,10 @@ export class WebviewContentAssembler {
     public assembleWebviewConent() {
         for (let webviewModule of this.webviewModules) {
             if (webviewModule.Module.Type === ModuleType.Insert) {
-                let originalLine = this.webviewContent.getLine(webviewModule.LineNumber).trim();
-                if (originalLine !== webviewModule.Module.OriginalLine) {
-                    throw new Error(`Original webview content does not look as expected, should be '${webviewModule.Module.OriginalLine}' but got '${originalLine}'`);
-                }
                 this.webviewContent.insertAfterLine(webviewModule.Module.Extension.generateContent(), webviewModule.LineNumber);
             }
             else {
-                let originalLine = this.webviewContent.getLine(webviewModule.LineNumber);
-                if (originalLine.search(webviewModule.Module.SourceContent) === -1) {
-                    throw new Error(`Original webview content does not look as expected, should contain '${webviewModule.Module.SourceContent}' but got '${originalLine}'`);
-                }
-                this.webviewContent.replaceWithinLine(webviewModule.Module.SourceContent, webviewModule.Module.Extension.generateContent(), webviewModule.LineNumber);
+                this.webviewContent.replaceWithinLine(webviewModule.Module.ReplaceContent, webviewModule.Module.Extension.generateContent(), webviewModule.LineNumber);
             }
         }
         return this.webviewContent.getContent();
