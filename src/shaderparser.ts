@@ -645,8 +645,9 @@ export class ShaderParser {
         let uniformName = "(missing_uniform_name)";
         let defaultValue: number[] | undefined;
         let range: [ number[], number[] ] | undefined;
+        let step: number[] | undefined;
 
-        // TODO: Verify types given, instead of just stripping float, vec2, vec3 and vec4
+        // TODO: Verify types given, instead of just stripping float, vec2, vec3, vec4, int, ivec2, ivec3, ivec4
 
         let inPos = line.indexOf(' in ');
         if (inPos >= 0) {
@@ -656,7 +657,11 @@ export class ShaderParser {
                 .replace(/float/g, '')
                 .replace(/vec2/g, '')
                 .replace(/vec3/g, '')
-                .replace(/vec4/g, '');
+                .replace(/vec4/g, '')
+                .replace(/int/g, '')
+                .replace(/ivec2/g, '')
+                .replace(/ivec3/g, '')
+                .replace(/ivec4/g, '');
             let rangeDirect: [ number | number[], number | number[] ] = JSON.parse(`{"value": ${rangeString}}`).value;
             range = [[], []];
             for (let i of [ 0, 1 ]) {
@@ -681,7 +686,11 @@ export class ShaderParser {
                 .replace(/float/g, '')
                 .replace(/vec2/g, '')
                 .replace(/vec3/g, '')
-                .replace(/vec4/g, '');
+                .replace(/vec4/g, '')
+                .replace(/int/g, '')
+                .replace(/ivec2/g, '')
+                .replace(/ivec3/g, '')
+                .replace(/ivec4/g, '');
             if (defaultValueString.indexOf('[') < 0) {
                 defaultValueString = '[' + defaultValueString + ']';
             }
@@ -718,12 +727,22 @@ export class ShaderParser {
             informationDiagnostic(`Custom uniform specifies no default value, the minimum of its range will be used.`);
         }
 
+        if (defaultValue !== undefined) {
+            if (line.search('int') >= 0 ||
+                line.search('ivec2') >= 0||
+                line.search('ivec3') >= 0||
+                line.search('ivec4') >= 0) {
+                step = Array(defaultValue.length).fill(1);
+            }
+        }
+
         if (defaultValue !== undefined || range !== undefined) {
             return {
                 Name: uniformName,
                 Default: defaultValue !== undefined ? defaultValue : range !== undefined ? range[0] : [ NaN ],
                 Min: range !== undefined ? range[0] : undefined,
                 Max: range !== undefined ? range[1] : undefined,
+                Step: step
             };
         }
         else {
