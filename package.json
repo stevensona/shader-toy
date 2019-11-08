@@ -165,7 +165,6 @@
     },
     "dependencies": {
         "compare-versions": "^3.4.0",
-        "glsl-noise": "0.0.0",
         "glslify": "^7.0.0",
         "mime": "^2.4.2"
     },
