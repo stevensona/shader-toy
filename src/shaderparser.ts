@@ -703,6 +703,12 @@ export class ShaderParser {
                         let valueType = i === 0 ? 'minimum' : 'maximum';
                         informationDiagnostic(`Type mismatch in ${valueType} value, ${mismatchType}.`);
                     }
+
+                    for (let j of [ 0, 1, 2, 3 ]) {
+                        if (range[i][j] === undefined) {
+                            range[i][j] = range[i][0];
+                        }
+                    }
                 }
             }
         }
