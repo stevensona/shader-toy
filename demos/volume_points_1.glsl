@@ -14,7 +14,7 @@
 #iUniform CUBE_SIZE = 1.5 in [ 0.5, 3.5 ]
 #iUniform GRID_RES = 17.0 in [ 8, 32 ]
 #iUniform POINT_SIZE = 0.375 in [ 0.01, 1.5 ]
-#iUniform COLOR_BOOST = vec4(1, 1, 1, 3) in [ 0.0, 5.0 ]
+#iUniform COLOR_BOOST = vec4(1, 1, 1, 3) in [ 0, vec4(1, 1, 1, 3) ]
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
