@@ -61,7 +61,8 @@ export type UniformDefinition = {
     Name: string,
     Default: number[],
     Min?: number[],
-    Max?: number[]
+    Max?: number[],
+    Step?: number[]
 };
 export type BufferDependency = {
     Index: number,
