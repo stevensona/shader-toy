@@ -68,6 +68,14 @@ export class ShaderParser {
     }
 
     private readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
+        for (let editor of vscode.window.visibleTextEditors) {
+            let editorFile = editor.document.fileName;
+            editorFile = editorFile.replace(/\\/g, '/');
+            if (editorFile === file) {
+                return { success: true, error: null, bufferCode: editor.document.getText() };
+            }
+        }
+
         // Read the whole file of the shader
         let success = false;
         let bufferCode = '';
