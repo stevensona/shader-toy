@@ -16,8 +16,9 @@ export class UniformsUpdateExtension implements WebviewExtension {
             let buffer = buffers[i];
             let uniforms = buffer.CustomUniforms;
             for (let uniform of uniforms) {
+                let uniform_access = `buffers[${i}].UniformValues.${uniform.Name}`;
                 this.content += `\
-buffers[${i}].Shader.uniforms.${uniform.Name} = { type: '${this.mapArrayToShaderType(uniform.Default)}', value: ${uniform.Name} };
+buffers[${i}].Shader.uniforms.${uniform.Name} = { type: '${this.mapArrayToShaderType(uniform.Default)}', value: ${uniform_access} };
 `;
             }
         }

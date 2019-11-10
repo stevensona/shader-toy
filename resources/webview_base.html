@@ -45,6 +45,13 @@
             position: absolute;
         }
 
+        #dat_gui_container {
+            position: absolute;
+            left: 0px;   /* position inside relatively positioned parent */
+            top: 0px;
+            z-index: 3;   /* adjust as needed */
+        }
+
         /* Pause Button Style */
         
         /* Screenshot Button Style */
@@ -52,6 +59,7 @@
 </head>
 <body>
     <div id="message"></div>
+    <div id="dat_gui_container"></div>
     <div id="container">
         <!-- Pause Element -->
     </div>
