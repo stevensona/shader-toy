@@ -8,6 +8,8 @@ To run the command, either open the "Command Palette" and type "Shader Toy: Show
 
 Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is `void main()` or if that is unavailable `void mainImage(out vec4, in vec2)` where the first parameter is the output color and the second parameter is the fragments screen position.
 
+An alternative command "Shader Toy: Show Static GLSL Preview" is available, which will open a preview that does not react to changing editors. An arbitrary amount of those views can be opened at one time, which enables a unique workflow to edit shaders that rely on multiple passes. 
+
 ## Features
 
 ### Uniforms
@@ -55,6 +57,15 @@ You may also include other files into your shader via a standard C-like syntax:
 #include "./other/local/shader_code.glsl"
 ```
 These shaders may not define a `void main()` function and as such can be used only for utility functions, constant definitions etc.
+
+### Custom Uniforms
+To use custom uniforms define those directly in your shader, giving an initial value as well as an optional range for the uniform.
+```glsl
+#iUniform my_scalar = 1.0 in [0.0, 5.0] // This will expose a slider to edit the value
+#iUniform other_scalar = 5.0 // This will expose a text field to give an arbitrary value
+#iUniform my_color = vec3(1.0) // This will be editable as a color picker
+#iUniform other_color = vec4(1.0) in [0.0, 1.0] // This will expose four sliders
+```
 
 ### Compatibility with Shadertoy.com
 The following is an example of a shader ported from *shadertoy.com*:
@@ -137,6 +148,12 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.9.2
+* Add controls for custom uniforms,
+* add documentation for custom uniforms,
+* add a static GLSL view for working on multi pass projects,
+* enabled code to be loaded from visible editors instead of files.
 
 ### 0.9.1
 * Small refactor to improve development iteration time,
