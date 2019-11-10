@@ -14,7 +14,8 @@
 #iUniform CUBE_SIZE = 1.5 in [ 0.5, 3.5 ]
 #iUniform GRID_RES = 17.0 in [ 8, 32 ]
 #iUniform POINT_SIZE = 0.375 in [ 0.01, 1.5 ]
-#iUniform COLOR_BOOST = vec4(1, 1, 1, 3) in [ 0, vec4(1, 1, 1, 3) ]
+#iUniform COLOR_BOOST = vec3(1, 1, 1)
+#iUniform ALPHA_BOOST = 3.0 in [ 0, 3 ]
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
@@ -56,7 +57,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
             
             //Sample the pseudo-volumetric texture in BufA
             vec4 vCol = texture3DLinear(iChannel0, volUVW, volRes);
-            vCol = clamp(vCol*COLOR_BOOST, 0.0, 1.0);
+            vCol = clamp(vCol * vec4(COLOR_BOOST, ALPHA_BOOST), 0.0, 1.0);
             
             //Make the points face the camera.
             //This makes the transition between planes seamless.
