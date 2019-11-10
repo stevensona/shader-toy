@@ -171,6 +171,9 @@ export function activate(extensionContext: vscode.ExtensionContext) {
             webviewPanel.dispose();
         }
         webviewPanel = createWebview('GLSL Preview');
+        webviewPanel.onDidDispose(() => {
+            webviewPanel = undefined;
+        });
         if (context.activeEditor !== undefined) {
             updateWebview(webviewPanel, context.activeEditor.document);
         }
