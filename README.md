@@ -58,7 +58,7 @@ You may also include other files into your shader via a standard C-like syntax:
 ```
 These shaders may not define a `void main()` function and as such can be used only for utility functions, constant definitions etc.
 
-### Custom Uniforms
+### Custom Uniforms (experimental and subject to change)
 To use custom uniforms define those directly in your shader, giving an initial value as well as an optional range for the uniform.
 ```glsl
 #iUniform my_scalar = 1.0 in [0.0, 5.0] // This will expose a slider to edit the value
