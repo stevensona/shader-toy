@@ -23,6 +23,7 @@ import { KeyboardShaderExtension } from './extensions/keyboard/keyboard_shader_e
 import { JQueryExtension } from './extensions/packages/jquery_extension';
 import { ThreeExtension } from './extensions/packages/three_extension';
 import { StatsExtension } from './extensions/packages/stats_extension';
+import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 
 import { PauseButtonStyleExtension } from './extensions/user_interface/pause_button_style_extension';
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
@@ -183,6 +184,9 @@ export class WebviewContentProvider {
             this.webviewAssembler.addWebviewModule(uniformsUpdateExtension, '// Uniforms Update');
             let uniformsPreambleExtension = new UniformsPreambleExtension(buffers);
             preambleExtension.addPreambleExtension(uniformsPreambleExtension);
+
+            let datGuiExtension = new DatGuiExtension(this.context);
+            this.webviewAssembler.addWebviewModule(datGuiExtension, '<!-- dat.gui -->');
         }
 
         // Fix up line offsets

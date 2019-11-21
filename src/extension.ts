@@ -42,9 +42,20 @@ export function activate(extensionContext: vscode.ExtensionContext) {
             changeTextEvent = vscode.workspace.onDidChangeTextDocument((changingEditor: vscode.TextDocumentChangeEvent) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => { 
-                    if (changingEditor !== undefined && context.activeEditor !== undefined && changingEditor.document === context.activeEditor.document) {
-                        updateWebview();
+                    if (changingEditor !== undefined) {
+                        const staticWebview = staticWebviews.find((webview: StaticWebview) => { return webview.Document === changingEditor.document; });
+                        const isActiveDocument = context.activeEditor !== undefined && changingEditor.document === context.activeEditor.document;
+                        if (isActiveDocument || staticWebview !== undefined) {
+                            if (webviewPanel !== undefined && context.activeEditor !== undefined) {
+                                updateWebview(webviewPanel, context.activeEditor.document);
+                            }
+
+                            for (let staticWebviewPanel of staticWebviews) {
+                                updateWebview(staticWebviewPanel.WebviewPanel, staticWebviewPanel.Document);
+                            }
+                        }
                     }
+
                 }, reloadDelay * 1000);
             });
         }
@@ -55,7 +66,9 @@ export function activate(extensionContext: vscode.ExtensionContext) {
                         resetStartingData();
                     }
                     context.activeEditor = swappedEditor;
-                    updateWebview();
+                    if (webviewPanel !== undefined) {
+                        updateWebview(webviewPanel, context.activeEditor.document);
+                    }
                 }
             });
         }
@@ -64,14 +77,11 @@ export function activate(extensionContext: vscode.ExtensionContext) {
     registerCallbacks();
 
     let startingData = new RenderStartingData();
-    const updateWebview = () => {
+    const updateWebview = (webview: vscode.WebviewPanel, document: vscode.TextDocument) => {
         context.clearDiagnostics();
-        if (webviewPanel !== undefined && context.activeEditor !== undefined) {
-            let webviewContentProvider = new WebviewContentProvider(context, context.activeEditor.document.getText(), context.activeEditor.document.fileName);
-            webviewPanel.webview.html = webviewContentProvider.generateWebviewConent(startingData);
-        }
-        else if (webviewPanel !== undefined) {
-            vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
+        if (webview !== undefined) {
+            let webviewContentProvider = new WebviewContentProvider(context, document.getText(), document.fileName);
+            webview.webview.html = webviewContentProvider.generateWebviewConent(startingData);
         }
     };
     const resetStartingData = () => {
@@ -82,33 +92,25 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         if (e.affectsConfiguration('shader-toy')) {
             context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
             registerCallbacks();
-            updateWebview();
+            if (context.activeEditor !== undefined && webviewPanel !== undefined) {
+                updateWebview(webviewPanel, context.activeEditor.document);
+            }
         }
     });
 
-    let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
-        if (context.getConfig<boolean>('reloadOnChangeEditor') !== true) {
-            context.activeEditor = vscode.window.activeTextEditor;
-        }
-
-        if (webviewPanel) {
-            webviewPanel.dispose();
-        }
-        
+    let createWebview = (title: string) => {
         let options: vscode.WebviewOptions = {
             enableScripts: true,
             localResourceRoots: undefined
         };
-        webviewPanel = vscode.window.createWebviewPanel(
+        let newWebviewPanel = vscode.window.createWebviewPanel(
             'shadertoy',
-            'GLSL Preview',
+            title,
             vscode.ViewColumn.Two,
             options
         );
-        webviewPanel.iconPath = context.getResourceUri('thumb.png');
-        updateWebview();
-
-        webviewPanel.webview.onDidReceiveMessage(
+        newWebviewPanel.iconPath = context.getResourceUri('thumb.png');
+        newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => {
               switch (message.command) {
                 case 'updateTime':
@@ -157,9 +159,57 @@ export function activate(extensionContext: vscode.ExtensionContext) {
             undefined,
             extensionContext.subscriptions
         );
+        return newWebviewPanel;
+    };
+
+    let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
+        if (context.getConfig<boolean>('reloadOnChangeEditor') !== true) {
+            context.activeEditor = vscode.window.activeTextEditor;
+        }
+
+        if (webviewPanel) {
+            webviewPanel.dispose();
+        }
+        webviewPanel = createWebview('GLSL Preview');
+        webviewPanel.onDidDispose(() => {
+            webviewPanel = undefined;
+        });
+        if (context.activeEditor !== undefined) {
+            updateWebview(webviewPanel, context.activeEditor.document);
+        }
+        else {
+            vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
+        }
+    });
+
+    type StaticWebview = {
+        WebviewPanel: vscode.WebviewPanel,
+        Document: vscode.TextDocument
+    };
+    let staticWebviews: StaticWebview[] = [];
+    let staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {      
+        if (vscode.window.activeTextEditor !== undefined) {
+            let document = vscode.window.activeTextEditor.document;
+            if (staticWebviews.find((webview: StaticWebview) => { return webview.Document === document; }) === undefined) {
+                let newWebviewPanel = createWebview('Static GLSL Preview');
+                updateWebview(newWebviewPanel, vscode.window.activeTextEditor.document);
+                staticWebviews.push({
+                    WebviewPanel: newWebviewPanel,
+                    Document: document
+                });
+                newWebviewPanel.onDidDispose(() => {
+                    const staticWebview = staticWebviews.find((webview: StaticWebview) => { return webview.WebviewPanel === newWebviewPanel; });
+                    if (staticWebview !== undefined) {
+                        const index = staticWebviews.indexOf(staticWebview);
+                        staticWebviews.splice(index, 1);
+                    }
+                });
+            }
+        }
     });
     
     extensionContext.subscriptions.push(previewCommand);
+    extensionContext.subscriptions.push(staticPreviewCommand);
 }
 export function deactivate() {
 }

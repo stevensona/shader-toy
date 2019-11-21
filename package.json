@@ -18,7 +18,8 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:shader-toy.showGlslPreview"
+        "onCommand:shader-toy.showGlslPreview",
+        "onCommand:shader-toy.showStaticGlslPreview"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
@@ -145,12 +146,20 @@
             {
                 "command": "shader-toy.showGlslPreview",
                 "title": "Shader Toy: Show GLSL Preview"
+            },
+            {
+                "command": "shader-toy.showStaticGlslPreview",
+                "title": "Shader Toy: Show Static GLSL Preview"
             }
         ],
         "menus": {
             "editor/context": [
                 {
                     "command": "shader-toy.showGlslPreview",
+                    "group": "ShaderToy"
+                },
+                {
+                    "command": "shader-toy.showStaticGlslPreview",
                     "group": "ShaderToy"
                 }
             ]
@@ -165,7 +174,6 @@
     },
     "dependencies": {
         "compare-versions": "^3.4.0",
-        "glsl-noise": "0.0.0",
         "glslify": "^7.0.0",
         "mime": "^2.4.2"
     },
