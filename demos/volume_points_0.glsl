@@ -1,4 +1,4 @@
-#include "./volume_points_common.glsl"
+#include "volume_points_common.glsl"
 
 vec3 iVResolution = vec3(0);
 

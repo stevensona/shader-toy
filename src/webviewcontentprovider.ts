@@ -1,8 +1,8 @@
 'use strict';
 
 import * as Types from './typenames';
-import { ShaderParser } from './shaderparser';
 import { Context } from './context';
+import { BufferProvider } from './bufferprovider';
 import { WebviewContentAssembler } from './webviewcontentassembler';
 import { WebviewExtension } from './extensions/webview_extension';
 
@@ -69,7 +69,6 @@ export class WebviewContentProvider {
     }
 
     public generateWebviewConent(startingState: Types.RenderStartingData): string {
-        let shader = this.documentContent;
         let shaderName = this.documentName;
 
         let webglLineNumbers = 105;
@@ -81,7 +80,8 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Parse Shaders
         {
-            new ShaderParser(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
+            let shader = this.documentContent;
+            new BufferProvider(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
 
             // If final buffer uses feedback we need to add a last pass that renders it to the screen
             // because we can not ping-pong the screen
@@ -99,6 +99,7 @@ export class WebviewContentProvider {
                         Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
                         TextureInputs: [{
                             Channel: 0,
+                            File: "",
                             Buffer: finalBuffer.Name,
                             BufferIndex: finalBufferIndex,
                         }],
@@ -113,7 +114,6 @@ export class WebviewContentProvider {
                 }
             }
         }
-
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Feature Check

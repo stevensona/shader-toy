@@ -22,7 +22,7 @@ export class UniformsInitExtension implements WebviewExtension {
 
         if (has_uniforms) {
             this.content += `
-let dat_gui = new dat.GUI({ autoPlace: false });
+let dat_gui = new dat.GUI({ autoPlace: false, closed: true });
 var dat_gui_container = document.getElementById('dat_gui_container');
 dat_gui_container.appendChild(dat_gui.domElement);
 `;
@@ -74,6 +74,7 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)};
             for (let i = 0; i < value.Default.length; i++) {
                 let sub_value: Types.UniformDefinition = {
                     Name: this.indexToDimension(i),
+                    Typename: value.Typename[0] === 'i' ? "integer" : "float",
                     Default: [ value.Default[i] ],
                     Min: value.Min ? [ value.Min[i] ] : undefined,
                     Max: value.Max ? [ value.Max[i] ] : undefined,
