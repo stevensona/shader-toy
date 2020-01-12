@@ -118,7 +118,7 @@ export class ShaderLexer {
         return ShaderLexer.is_identifier_start(val) || /[0-9]/i.test(val) || "_".indexOf(val) >= 0;
     }
     private static is_operator(val: string) {
-        return "=*/+-%~&|<>?!".indexOf(val) >= 0;
+        return "=*/+-%~&|<>?!^".indexOf(val) >= 0;
     }
     private static is_punctuation(val: string) {
         return ".,:;()[]{}".indexOf(val) >= 0;
@@ -208,7 +208,7 @@ export class ShaderLexer {
 
         return {
             type: TokenType.Unkown,
-            value: next_peek
+            value: this.stream.next()
         };
     }
 
