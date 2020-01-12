@@ -120,6 +120,7 @@ export class ShaderParser {
                     Type: ObjectType.Keyboard
                 };
                 returnObject = keyboard;
+                break;
             case 'iUniform':
                 returnObject = this.getUniformObject();
                 break;

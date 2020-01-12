@@ -11,7 +11,8 @@ export enum TokenType {
     Identifier,
     PreprocessorKeyword,
     Keyword,
-    Type
+    Type,
+    Unkown
 }
 export type Token = {
     type: TokenType,
@@ -117,7 +118,7 @@ export class ShaderLexer {
         return ShaderLexer.is_identifier_start(val) || /[0-9]/i.test(val) || "_".indexOf(val) >= 0;
     }
     private static is_operator(val: string) {
-        return "=*/+-%~&|<>?".indexOf(val) >= 0;
+        return "=*/+-%~&|<>?!".indexOf(val) >= 0;
     }
     private static is_punctuation(val: string) {
         return ".,:;()[]{}".indexOf(val) >= 0;
@@ -189,21 +190,26 @@ export class ShaderLexer {
                 this.stream.next();
                 return {
                     type: TokenType.Punctuation,
-                    value : '::'
+                    value: '::'
                 };
             }
 
             return {
                 type: TokenType.Punctuation,
-                value : this.stream.next()
+                value: this.stream.next()
             };
         }
         if (ShaderLexer.is_operator(next_peek)) {
             return {
                 type: TokenType.Operator,
-                value : this.stream.next()
+                value: this.stream.next()
             };
         }
+
+        return {
+            type: TokenType.Unkown,
+            value: next_peek
+        };
     }
 
     private next_while(predicate: (_: string) => boolean) {

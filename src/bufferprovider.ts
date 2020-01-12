@@ -125,14 +125,15 @@ export class BufferProvider {
         let pendingTextureSettings: Record<ChannelId, InputTextureSettings> = {};
         let pendingUniforms: Types.UniformDefinition[] = [];
         let includes: Types.IncludeDefinition[] = [];
-        let usesKeyboard = false;
+        let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
 
-        code = this.transformCode(file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, usesKeyboard);
+        code = this.transformCode(file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
         let audios: Types.AudioDefinition[] = [];
         let uniforms: Types.UniformDefinition[] = [];
+        let usesKeyboard = boxedUsesKeyboard.Value;
 
         // Resolve textures
         for (let pendingTexture of pendingTextures) {
@@ -318,7 +319,7 @@ void main() {
     }
 
     private transformCode(file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Record<ChannelId, InputTextureSettings>, 
-                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: boolean): string {
+                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>): string {
         
         let addTextureSettingIfNew = (channel: number) => {
             if (!textureSettings.hasOwnProperty(channel)) {
@@ -493,7 +494,7 @@ void main() {
                     removeLastObject();
                     break;
                 case ObjectType.Keyboard:
-                    usesKeyboard = true;
+                    usesKeyboard.Value = true;
                     removeLastObject();
                 default:
                     break;
