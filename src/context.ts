@@ -2,6 +2,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import { DiagnosticBatch } from './typenames';
 
 export class Context {
@@ -36,6 +37,54 @@ export class Context {
         const webviewResourceUri = this.makeWebviewResource(resourceUri);
         return webviewResourceUri.toString();
     }
+    
+    public mapUserPath(userPath: string, sourcePath: string): { file: string, userPath: string } {
+        userPath = userPath.replace(/\\/g, '/');
+        sourcePath = path.dirname(sourcePath);
+
+        let file = ((file: string) => {
+            let fileCandidates: string[] = [];
+
+            // Highest priority are absolute paths
+            fileCandidates.push(file);
+            if (fs.existsSync(file)) {
+                return file;
+            }
+
+            // Second priority are relative to sourcePath
+            {
+                const fileCandidate = [ sourcePath, file ].join('/');
+                fileCandidates.push(fileCandidate);
+                if (fs.existsSync(fileCandidate)) {
+                    return fileCandidate;
+                }
+            }
+
+            // Last priority are relative to workspace folders
+            if (vscode.workspace.workspaceFolders !== undefined) {
+                let workspaceFileCandidates: string[] = [];
+                for (let worspaceFolder of vscode.workspace.workspaceFolders) {
+                    let fileCandidate = worspaceFolder.uri.fsPath + '/' + file;
+                    fileCandidate = fileCandidate.replace(/\\/g, '/');
+                    fileCandidate = fileCandidate.replace(/\.\//g, '');
+                    if (fs.existsSync(fileCandidate)) {
+                        workspaceFileCandidates.push(fileCandidate);
+                    }
+                    fileCandidates.push(fileCandidate);
+                }
+
+                if (workspaceFileCandidates.length > 1) {
+                    vscode.window.showErrorMessage(`Multiple candidates for file '${userPath}' were found in your workspace folders, first option was picked: '${workspaceFileCandidates[0]}'`);
+                }
+
+                return workspaceFileCandidates[0];
+            }
+
+            vscode.window.showErrorMessage(`File '${userPath}' was not found, paths that were tried were\n\t${fileCandidates.join('\n\t')}`);
+            return file;
+        })(userPath);
+        return { file, userPath };
+    }
 
     public showErrorMessage(message: string) {
         vscode.window.showErrorMessage(message);
@@ -54,7 +103,7 @@ export class Context {
             }
             
             for (let diagnostic of diagnosticBatch.diagnostics) {
-                let line = Math.max(1, diagnostic.line) - 1;
+                let line = Math.min(Math.max(1, diagnostic.line), document.lineCount) - 1;
                 let range = document.lineAt(line).range;
                 this.collectedDiagnostics[file].push(new vscode.Diagnostic(range, diagnostic.message, severity));
             }
@@ -66,7 +115,8 @@ export class Context {
 
     public revealLine(file: string, line: number) {
         let highlightLine = (document: vscode.TextDocument, line: number) => {
-            let range = document.lineAt(line - 1).range;
+            line = Math.min(Math.max(1, line), document.lineCount) - 1;
+            let range = document.lineAt(line).range;
             vscode.window.showTextDocument(document, vscode.ViewColumn.One, true)
                 .then((editor: vscode.TextEditor) => {
                     editor.selection = new vscode.Selection(range.start, range.end);

@@ -15,25 +15,10 @@ export class UniformsPreambleExtension implements WebviewExtension {
         for (let buffer of buffers) {
             let uniforms = buffer.CustomUniforms;
             for (let uniform of uniforms) {
-                let glslType = this.mapArrayToGlslType(uniform.Default);
                 this.content += `\
-uniform ${glslType} ${uniform.Name};
+uniform ${uniform.Typename} ${uniform.Name};
 `;
             }
-        }
-    }
-
-    private mapArrayToGlslType(value: number[]) {
-        let l = value.length;
-        switch (l) {
-            case 1:
-                return 'float';
-            case 2:
-            case 3:
-            case 4:
-                return `vec${l}`;
-            default:
-                return 'error_type';
         }
     }
 

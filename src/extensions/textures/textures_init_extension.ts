@@ -55,9 +55,7 @@ export class TexturesInitExtension implements WebviewExtension {
                 }
             })();
 
-            let textureFileOrigin = (texture.MagLine ? texture.MagLine.File : undefined)
-                || (texture.MinLine ? texture.MinLine.File : undefined)
-                || (texture.WrapLine ? texture.WrapLine.File : undefined);
+            let textureFileOrigin = texture.File;
             let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
             let powerOfTwoWarning = `\
 function isPowerOfTwo(n) {
@@ -66,17 +64,17 @@ function isPowerOfTwo(n) {
 if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
     let diagnostics = [];
     ${texture.MagLine !== undefined ? `diagnostics.push({
-            line: ${texture.MagLine.Line},
+            line: ${texture.MagLine},
             message: 'Texture is not power of two, custom texture settings may not work.'
         });` : ''
     }
     ${texture.MinLine !== undefined ? `diagnostics.push({
-            line: ${texture.MinLine.Line},
+            line: ${texture.MinLine},
             message: 'Texture is not power of two, custom texture settings may not work.'
         });` : ''
     }
     ${texture.WrapLine !== undefined ? `diagnostics.push({
-            line: ${texture.WrapLine.Line},
+            line: ${texture.WrapLine},
             message: 'Texture is not power of two, custom texture settings may not work.'
         });` : ''
     }
@@ -135,7 +133,7 @@ function(err) {
                     textureLoadScript = `texLoader.load('${resolvedPathString}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
                 }
                 else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    textureLoadScript = `texLoader.load('https://${remotePath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(`https://${remotePath}`)})`;
+                    textureLoadScript = `texLoader.load('${remotePath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(`${remotePath}`)})`;
                 }
 
                 if (textureLoadScript !== undefined) {

@@ -1,4 +1,4 @@
-#include "./common/math-common.glsl"
+#include "math-common.glsl"
 
 #define saturate01(x) (clamp(x, 0., 1.))
 

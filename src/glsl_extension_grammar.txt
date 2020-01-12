@@ -1,0 +1,46 @@
+statement = "#" command
+
+command =
+      "include" string
+    | "iChannel" number ( string | texture_parameter )
+    | "iKeyboard"
+    | "iUniform" uniform
+
+texture_parameter = "::" ( min_filter | mag_filter | wrap_mode )
+
+min_filter = "MinFilter"
+    ( "Nearest"
+    | "NearestMipMapNearest"
+    | "NearestMipMapLinear"
+    | "Linear"
+    | "LinearMipMapNearest"
+    | "LinearMipMapLinear" )
+
+mag_filter = "MagFilter"
+    ( "Nearest"
+    | "Linear")
+
+wrap_mode = "WrapMode"
+    ( "Repeat"
+    | "Clamp"
+    | "Mirror")
+
+uniform = type identifier [ "=" value ] [ "in" range ]
+
+range = "[" value "," value "]"
+
+value = decimal | number | ( type "(" parameters ")" )
+
+parameters = [ value { "," value } ]
+
+decimal = number "." number
+
+type =
+      "int"
+    | "ivec2"
+    | "ivec3"
+    | "ivec4"
+    | "float"
+    | "vec2"
+    | "vec3"
+    | "vec4"

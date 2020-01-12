@@ -11,45 +11,50 @@ export class NormalizedMouse {
     y: number = 0;
 }
 export type Keys = number[];
+export type UniformsGuiStartingData = {
+    Open: boolean;
+    Values: Record<string, number[]>;
+};
 export class RenderStartingData {
     Time: number = 0;
     Mouse: Mouse = new Mouse();
     NormalizedMouse: NormalizedMouse = new NormalizedMouse();
     Keys: Keys = [];
+    UniformsGui: UniformsGuiStartingData = { Open: false, Values: {} };
 }
 
-// Texture setting enums start at 1 so valid settings never implicitly convert to false
 export enum TextureMagFilter {
-    Linear  = 1,
-    Nearest = 2,
+    Linear  = "Linear",
+    Nearest = "Nearest",
 }
 export enum TextureMinFilter {
-    Nearest                 = 1,
-    NearestMipMapNearest    = 2,
-    NearestMipMapLinear     = 3,
-    Linear                  = 4,
-    LinearMipMapNearest     = 5,
-    LinearMipMapLinear      = 6,
+    Nearest                 = "Nearest",
+    NearestMipMapNearest    = "NearestMipMapNearest",
+    NearestMipMapLinear     = "NearestMipMapLinear",
+    Linear                  = "Linear",
+    LinearMipMapNearest     = "LinearMipMapNearest",
+    LinearMipMapLinear      = "LinearMipMapLinear",
 }
 export enum TextureWrapMode {
-    Repeat  = 1,
-    Clamp   = 2,
-    Mirror  = 3,
+    Repeat  = "Repeat",
+    Clamp   = "Clamp",
+    Mirror  = "Mirror",
 }
 
 export type TextureDefinition = {
     Channel: number,
+    File: string,
     Buffer?: string,
     BufferIndex?: number,
     LocalTexture?: string,
     RemoteTexture?: string,
     Self?: boolean,
     Mag?: TextureMagFilter,
-    MagLine?: { File: String, Line: Number },
+    MagLine?: number,
     Min?: TextureMinFilter,
-    MinLine?: { File: String, Line: Number },
+    MinLine?: number,
     Wrap?: TextureWrapMode
-    WrapLine?: { File: String, Line: Number },
+    WrapLine?: number,
 };
 export type AudioDefinition = {
     Channel: number,
@@ -59,6 +64,7 @@ export type AudioDefinition = {
 };
 export type UniformDefinition = {
     Name: string,
+    Typename: string,
     Default: number[],
     Min?: number[],
     Max?: number[],
@@ -67,6 +73,12 @@ export type UniformDefinition = {
 export type BufferDependency = {
     Index: number,
     Channel: number
+};
+export type IncludeDefinition = {
+    Name: string,
+    File: string,
+    Code: string,
+    LineCount: number
 };
 export type BufferDefinition = {
     Name: string,
@@ -79,15 +91,8 @@ export type BufferDefinition = {
     SelfChannel: number,
     Dependents: BufferDependency[],
     LineOffset: number
-    Includes: string[],
+    Includes: IncludeDefinition[],
     UsesKeyboard?: boolean,
-};
-
-export type IncludeDefinition = {
-    Name: string,
-    File: string,
-    Code: string,
-    LineCount: number
 };
 
 export type Diagnostic = {
@@ -98,3 +103,5 @@ export type DiagnosticBatch = {
     filename: string,
     diagnostics: Diagnostic[]
 };
+
+export type BoxedValue<T> = { Value: T };

@@ -18,11 +18,11 @@ At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iF
 ### Texture Input
 The texture channels `iChannelN` may be defined by inserting code of the following form at the top of your shader
 ```
-#iChannel0 "file://./duck.png"
+#iChannel0 "file://duck.png"
 #iChannel1 "https://66.media.tumblr.com/tumblr_mcmeonhR1e1ridypxo1_500.jpg"
-#iChannel2 "file://./other/shader.glsl"
+#iChannel2 "file://other/shader.glsl"
 #iChannel2 "self"
-#iChannel4 "file://./music/epic.mp3"
+#iChannel4 "file://music/epic.mp3"
 ```
 This demonstrates using local and remote images as textures *(Remember that power of 2 texture sizes is generally what you want to stick to.)*, using another shaders results as a texture, using the last frame of this shader by specifying `self` or using audio input. Note that to use relative paths for local input you will have to open a folder in Visual Code.
 ![texture example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example2.png)
@@ -53,18 +53,18 @@ Additionally it will expose variables such as `Key_A` to `Key_Z`, `Key_0` to `Ke
 ### Shader Includes
 You may also include other files into your shader via a standard C-like syntax:
 ```
-#include "./some/shared/code.glsl"
-#include "./other/local/shader_code.glsl"
+#include "some/shared/code.glsl"
+#include "other/local/shader_code.glsl"
 ```
 These shaders may not define a `void main()` function and as such can be used only for utility functions, constant definitions etc.
 
 ### Custom Uniforms (experimental and subject to change)
 To use custom uniforms define those directly in your shader, giving an initial value as well as an optional range for the uniform.
 ```glsl
-#iUniform my_scalar = 1.0 in [0.0, 5.0] // This will expose a slider to edit the value
-#iUniform other_scalar = 5.0 // This will expose a text field to give an arbitrary value
-#iUniform my_color = vec3(1.0) // This will be editable as a color picker
-#iUniform other_color = vec4(1.0) in [0.0, 1.0] // This will expose four sliders
+#iUniform float my_scalar = 1.0 in { 0.0, 5.0 } // This will expose a slider to edit the value
+#iUniform float other_scalar = 5.0 // This will expose a text field to give an arbitrary value
+#iUniform vec3 my_color = vec3(1.0) // This will be editable as a color picker
+#iUniform vec4 other_color = vec4(1.0) in { 0.0, 1.0 } // This will expose four sliders
 ```
 
 ### Compatibility with Shadertoy.com
@@ -137,7 +137,10 @@ The extension also supports highlighting of compilation errors in the text edito
 
 ## Todo
 
-* Receive more feedback
+* Receive more feedback,
+* portable export of shader,
+* disable audio in non-portable version,
+* cubemap sampling.
 
 ## Contributing
 
@@ -148,6 +151,15 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.10.1
+* Correctly parse comments in GLSL code, allowing to remove e.g. texture definitions with both single- as well as multi-line comments,
+* changed syntax for uniform definitions to align closer to standard GLSL syntax,
+* allow definitions of e.g. textures to be made in include files,
+* reworked path resolution for files, adding the possibility to find files relative to the file they are used in,
+* make the initial './' in relative paths optional,
+* reload shaders when their dependents change, e.g. when included files change,
+* maintain state of uniforms gui across reloads.
 
 ### 0.9.2
 * Add controls for custom uniforms,
