@@ -33,7 +33,7 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                     path = context.makeWebviewResource(context.makeUri(localPath)).toString();
                 }
                 else if (remotePath !== undefined) {
-                    path = 'https://' + remotePath;
+                    path = remotePath;
                 }
 
                 if (path !== undefined) {

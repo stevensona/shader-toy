@@ -1,9 +1,9 @@
 // Shader by Flyguy
 // Adapted for shadertoy VS-Code from: https://www.shadertoy.com/view/MtdcDn
 
-#iChannel0 "./volume_points_0.glsl"
+#iChannel0 "volume_points_0.glsl"
 
-#include "./volume_points_common.glsl"
+#include "volume_points_common.glsl"
 
 #define DEBUG 0 //Visualize the planes
 #define ADD 1
@@ -11,11 +11,11 @@
 
 #define BLENDMODE ADD
 
-#iUniform CUBE_SIZE = 1.5 in [ 0.5, 3.5 ]
-#iUniform GRID_RES = 17.0 in [ 8, 32 ]
-#iUniform POINT_SIZE = 0.375 in [ 0.01, 1.5 ]
-#iUniform COLOR_BOOST = vec3(1, 1, 1)
-#iUniform ALPHA_BOOST = 3.0 in [ 0, 3 ]
+#iUniform float CUBE_SIZE = 1.5 in { 0.5, 3.5 }
+#iUniform float GRID_RES = 17.0 in { 8, 32 }
+#iUniform float POINT_SIZE = 0.375 in { 0.01, 1.5 }
+#iUniform vec3 COLOR_BOOST = vec3(1, 1, 1)
+#iUniform float ALPHA_BOOST = 3.0 in { 0, 3 }
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {

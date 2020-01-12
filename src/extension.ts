@@ -123,6 +123,12 @@ export function activate(extensionContext: vscode.ExtensionContext) {
                 case 'updateKeyboard':
                     startingData.Keys = message.keys;
                     return;
+                case 'updateUniformsGuiOpen':
+                    startingData.UniformsGui.Open = message.value;
+                    return;
+                case 'updateUniformsGuiValue':
+                    startingData.UniformsGui.Values[message.name] = message.value;
+                    return;
                 case 'showGlslDiagnostic':
                     let diagnosticBatch: DiagnosticBatch = message.diagnosticBatch;
                     let severity: vscode.DiagnosticSeverity;
