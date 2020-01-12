@@ -11,14 +11,18 @@ export class NormalizedMouse {
     y: number = 0;
 }
 export type Keys = number[];
+export type UniformsGuiStartingData = {
+    Open: boolean;
+    Values: Record<string, number[]>;
+};
 export class RenderStartingData {
     Time: number = 0;
     Mouse: Mouse = new Mouse();
     NormalizedMouse: NormalizedMouse = new NormalizedMouse();
     Keys: Keys = [];
+    UniformsGui: UniformsGuiStartingData = { Open: false, Values: {} };
 }
 
-// Texture setting enums start at 1 so valid settings never implicitly convert to false
 export enum TextureMagFilter {
     Linear  = "Linear",
     Nearest = "Nearest",

@@ -178,7 +178,7 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Custom Uniforms
         if (useUniforms) {
-            let uniformsInitExtension = new UniformsInitExtension(buffers);
+            let uniformsInitExtension = new UniformsInitExtension(buffers, startingState.UniformsGui);
             this.webviewAssembler.addWebviewModule(uniformsInitExtension, '// Uniforms Init');
             let uniformsUpdateExtension = new UniformsUpdateExtension(buffers);
             this.webviewAssembler.addWebviewModule(uniformsUpdateExtension, '// Uniforms Update');

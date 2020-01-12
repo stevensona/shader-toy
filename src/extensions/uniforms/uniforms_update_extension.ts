@@ -17,11 +17,23 @@ export class UniformsUpdateExtension implements WebviewExtension {
             let uniforms = buffer.CustomUniforms;
             for (let uniform of uniforms) {
                 let uniform_access = `buffers[${i}].UniformValues.${uniform.Name}`;
+                if (uniform.Default.length === 3) {
+                    this.content += `\
+let ${uniform.Name} = [ ${uniform_access}[0] / 255.0, ${uniform_access}[1] / 255.0, ${uniform_access}[2] / 255.0 ];
+`;
+                    uniform_access = uniform.Name;
+                }
                 this.content += `\
 buffers[${i}].Shader.uniforms.${uniform.Name} = { type: '${this.mapArrayToShaderType(uniform.Default)}', value: ${uniform_access} };
 `;
             }
         }
+        this.content += `\
+vscode.postMessage({
+    command: 'updateUniformsGuiOpen',
+    value: !dat_gui.closed
+});
+`;
     }
 
     private mapArrayToShaderType(value: number[]) {
