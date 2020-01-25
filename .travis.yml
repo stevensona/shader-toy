@@ -1,0 +1,16 @@
+language: node_js
+
+sudo: false
+
+node_js:
+  - "node"
+
+install:
+  - npm install
+  - npm run vscode:prepublish
+
+script:
+  - npm test --silent
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
