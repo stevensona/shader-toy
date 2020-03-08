@@ -256,42 +256,46 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Pause Logic
-        if (this.context.getConfig<boolean>('showPauseButton')) {
-            let pauseButtonStyleExtension = new PauseButtonStyleExtension(this.context);
-            this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
+        if (!generateStandalone) {
+            if (this.context.getConfig<boolean>('showPauseButton')) {
+                let pauseButtonStyleExtension = new PauseButtonStyleExtension(this.context);
+                this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
 
-            let pauseButtonExtension = new PauseButtonExtension();
-            this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
-        }
+                let pauseButtonExtension = new PauseButtonExtension();
+                this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
+            }
 
-        if (this.context.getConfig<boolean>('pauseWholeRender')) {
-            let pauseWholeRenderExtension = new PauseWholeRenderExtension();
-            this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
+            if (this.context.getConfig<boolean>('pauseWholeRender')) {
+                let pauseWholeRenderExtension = new PauseWholeRenderExtension();
+                this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
 
-            let advanceTimeExtension = new AdvanceTimeExtension();
-            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
-        }
-        else {
-            let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
-            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
+                let advanceTimeExtension = new AdvanceTimeExtension();
+                this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
+            }
+            else {
+                let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
+                this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
+            }
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Screenshot Logic
-        if (this.context.getConfig<boolean>('showScreenshotButton')) {
-            let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(this.context);
-            this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
+        if (!generateStandalone) {
+            if (this.context.getConfig<boolean>('showScreenshotButton')) {
+                let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(this.context);
+                this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
 
-            let screenshotButtonExtension = new ScreenshotButtonExtension();
-            this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
+                let screenshotButtonExtension = new ScreenshotButtonExtension();
+                this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
+            }
+            let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
+            if (forcedScreenshotResolution === undefined) {
+                forcedScreenshotResolution = [ -1, -1 ];
+            }
+            let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
+            this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
         }
-        let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
-        if (forcedScreenshotResolution === undefined) {
-            forcedScreenshotResolution = [ -1, -1 ];
-        }
-        let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
-        this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
-
+        
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling
         let errorsExtension: WebviewExtension;
