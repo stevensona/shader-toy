@@ -8,10 +8,12 @@ export class AdvanceTimeIfNotPausedExtension implements WebviewExtension {
 if (paused == false) {
     deltaTime = clock.getDelta();
     time = startingTime + clock.getElapsedTime() - pausedTime;
-    vscode.postMessage({
-        command: 'updateTime',
-        time: time
-    });
+    if (vscode !== undefined) {
+        vscode.postMessage({
+            command: 'updateTime',
+            time: time
+        });
+    }
 } else {
     deltaTime = 0.0;
 }`;

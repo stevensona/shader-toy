@@ -82,11 +82,13 @@ if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
         filename: '${textureFileOrigin}',
         diagnostics: diagnostics
     };
-    vscode.postMessage({
-        command: 'showGlslDiagnostic',
-        type: 'warning',
-        diagnosticBatch: diagnosticBatch
-    });
+    if (vscode !== undefined) {
+        vscode.postMessage({
+            command: 'showGlslDiagnostic',
+            type: 'warning',
+            diagnosticBatch: diagnosticBatch
+        });
+    }
 };
 buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
 buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
@@ -104,10 +106,12 @@ function(texture) {
         let makeTextureLoadErrorScript = (filename: string) => { 
             return `\
 function(err) {
-    vscode.postMessage({
-        command: 'errorMessage',
-        message: 'Failed loading texture file ${filename}'
-    });
+    if (vscode !== undefined) {
+        vscode.postMessage({
+            command: 'errorMessage',
+            message: 'Failed loading texture file ${filename}'
+        });
+    }
 }`;
         };
 
@@ -145,11 +149,13 @@ buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${texture
             }
 
             if (buffer.UsesSelf) {
-                this.content += `buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
+                this.content += `
+buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
             }
 
             if (buffer.UsesKeyboard) {
-                this.content += `buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
+                this.content += `
+buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
             }
         }
     }

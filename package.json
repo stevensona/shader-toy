@@ -19,7 +19,8 @@
     ],
     "activationEvents": [
         "onCommand:shader-toy.showGlslPreview",
-        "onCommand:shader-toy.showStaticGlslPreview"
+        "onCommand:shader-toy.showStaticGlslPreview",
+        "onCommand:shader-toy.createPortableGlslPreview"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
@@ -150,6 +151,10 @@
             {
                 "command": "shader-toy.showStaticGlslPreview",
                 "title": "Shader Toy: Show Static GLSL Preview"
+            },
+            {
+                "command": "shader-toy.createPortableGlslPreview",
+                "title": "Shader Toy: Create Portable GLSL Preview"
             }
         ],
         "menus": {
@@ -160,6 +165,10 @@
                 },
                 {
                     "command": "shader-toy.showStaticGlslPreview",
+                    "group": "ShaderToy"
+                },
+                {
+                    "command": "shader-toy.createPortableGlslPreview",
                     "group": "ShaderToy"
                 }
             ]

@@ -68,7 +68,7 @@ export class WebviewContentProvider {
         this.documentName = documentName;
     }
 
-    public generateWebviewConent(startingState: Types.RenderStartingData): string {
+    public generateWebviewConent(startingState: Types.RenderStartingData, generateStandalone: boolean): string {
         let shaderName = this.documentName;
 
         let webglLineNumbers = 105;
@@ -185,7 +185,7 @@ export class WebviewContentProvider {
             let uniformsPreambleExtension = new UniformsPreambleExtension(buffers);
             preambleExtension.addPreambleExtension(uniformsPreambleExtension);
 
-            let datGuiExtension = new DatGuiExtension(this.context);
+            let datGuiExtension = new DatGuiExtension(this.context, generateStandalone);
             this.webviewAssembler.addWebviewModule(datGuiExtension, '<!-- dat.gui -->');
         }
 
@@ -243,14 +243,14 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Packages
         {
-            let jqueryExtension = new JQueryExtension(this.context);
+            let jqueryExtension = new JQueryExtension(this.context, generateStandalone);
             this.webviewAssembler.addReplaceModule(jqueryExtension, '<script src="<!-- JQuery.js -->"></script>', '<!-- JQuery.js -->');
 
-            let threeExtension = new ThreeExtension(this.context);
+            let threeExtension = new ThreeExtension(this.context, generateStandalone);
             this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
-            let statsExtension = new StatsExtension(this.context);
+            let statsExtension = new StatsExtension(this.context, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
         }
 

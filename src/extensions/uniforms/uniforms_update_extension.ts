@@ -29,10 +29,12 @@ buffers[${i}].Shader.uniforms.${uniform.Name} = { type: '${this.mapArrayToShader
             }
         }
         this.content += `\
-vscode.postMessage({
-    command: 'updateUniformsGuiOpen',
-    value: !dat_gui.closed
-});
+if (vscode !== undefined) {
+    vscode.postMessage({
+        command: 'updateUniformsGuiOpen',
+        value: !dat_gui.closed
+    });
+}
 `;
     }
 

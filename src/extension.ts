@@ -2,6 +2,8 @@
 
 import * as vscode from 'vscode';
 import * as compare_versions from 'compare-versions';
+import * as fs from 'fs';
+import * as path from 'path';
 import { RenderStartingData, DiagnosticBatch } from './typenames';
 import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
@@ -81,7 +83,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         context.clearDiagnostics();
         if (webview !== undefined) {
             let webviewContentProvider = new WebviewContentProvider(context, document.getText(), document.fileName);
-            webview.webview.html = webviewContentProvider.generateWebviewConent(startingData);
+            webview.webview.html = webviewContentProvider.generateWebviewConent(startingData, false);
         }
     };
     const resetStartingData = () => {
@@ -214,8 +216,20 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         }
     });
     
+    let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {      
+        if (vscode.window.activeTextEditor !== undefined) {
+            let document = vscode.window.activeTextEditor.document;
+            let webviewContentProvider = new WebviewContentProvider(context, document.getText(), document.fileName);
+            let htmlContent = webviewContentProvider.generateWebviewConent(startingData, true);
+            let originalFileExt = path.extname(document.fileName);
+            let previewFilePath = document.fileName.replace(originalFileExt, '.html');
+            fs.writeFileSync(previewFilePath, htmlContent);
+        }
+    });
+    
     extensionContext.subscriptions.push(previewCommand);
     extensionContext.subscriptions.push(staticPreviewCommand);
+    extensionContext.subscriptions.push(standaloneCompileCommand);
 }
 export function deactivate() {
 }

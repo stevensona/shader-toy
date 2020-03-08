@@ -185,11 +185,11 @@ export class ShaderParser {
     private getTextureParameter(index: number): TextureMagFilter | TextureMinFilter | TextureWrapMode | ErrorObject {
         let nextToken = this.lexer.next();
         if (nextToken === undefined) {
-            return this.makeError(`Expected texture parameter keyword after "::" but got end-of-file`);
+            return this.makeError(`Expected texture parameter keyword after "::" but got end-of-file, valid options are "MinFilter", "MagFilter" and "WrapMode"`);
         }
         if (nextToken.type !== TokenType.Keyword ||
             nextToken.value === 'in') {
-            return this.makeError(`Expected texture parameter keyword after "::" but got "${nextToken.value}"`);
+            return this.makeError(`Expected texture parameter keyword after "::" but got "${nextToken.value}", valid options are "MinFilter", "MagFilter" and "WrapMode"`);
         }
 
         let textureSetting = nextToken.value as string;

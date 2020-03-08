@@ -76,17 +76,21 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                                     })
                                 })
                                 .catch(function(){
-                                    vscode.postMessage({
-                                        command: 'errorMessage',
-                                        message: 'Failed decoding audio file: ${audio.UserPath}'
-                                    });
+                                    if (vscode !== undefined) {
+                                        vscode.postMessage({
+                                            command: 'errorMessage',
+                                            message: 'Failed decoding audio file: ${audio.UserPath}'
+                                        });
+                                    }
                                 });
                         }).
                         catch(function(){
-                            vscode.postMessage({
-                                command: 'errorMessage',
-                                message: 'Failed loading audio file: ${audio.UserPath}'
-                            });
+                            if (vscode !== undefined) {
+                                vscode.postMessage({
+                                    command: 'errorMessage',
+                                    message: 'Failed loading audio file: ${audio.UserPath}'
+                                });
+                            }
                         });
                     `;
                     this.textureContent += `buffers[${i}].Shader.uniforms.iChannel0 = { type: 't', value: null };\n`;
