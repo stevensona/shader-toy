@@ -8,12 +8,12 @@ import { TextureExtensionExtension } from '../textures/texture_extension_extensi
 export class TexturesInitExtension implements WebviewExtension {
     private content: string;
 
-    constructor(buffers: Types.BufferDefinition[], context: Context) {
+    constructor(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
         this.content = '';
-        this.processBuffers(buffers, context);
+        this.processBuffers(buffers, context, generateStandalone);
     }
 
-    private processBuffers(buffers: Types.BufferDefinition[], context: Context) {
+    private processBuffers(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
         let textureOnLoadScript = (texture: Types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
             let magFilter: string = (() => {
                 switch(texture.Mag) {
@@ -132,9 +132,8 @@ function(err) {
                     textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;
                 }
                 else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    const resolvedPath = context.makeWebviewResource(context.makeUri(localPath));
-                    const resolvedPathString = resolvedPath.toString();
-                    textureLoadScript = `texLoader.load('${resolvedPathString}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
+                    const resolvedPath = generateStandalone ? localPath : context.makeWebviewResource(context.makeUri(localPath)).toString();
+                    textureLoadScript = `texLoader.load('${resolvedPath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPath)})`;
                 }
                 else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
                     textureLoadScript = `texLoader.load('${remotePath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(`${remotePath}`)})`;

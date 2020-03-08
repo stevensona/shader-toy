@@ -83,6 +83,7 @@ export class Context {
             vscode.window.showErrorMessage(`File '${userPath}' was not found, paths that were tried were\n\t${fileCandidates.join('\n\t')}`);
             return file;
         })(userPath);
+        file = path.normalize(file);
         return { file, userPath };
     }
 

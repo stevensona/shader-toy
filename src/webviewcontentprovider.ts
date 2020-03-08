@@ -81,7 +81,7 @@ export class WebviewContentProvider {
         // Parse Shaders
         {
             let shader = this.documentContent;
-            new BufferProvider(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
+            new BufferProvider(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes, generateStandalone);
 
             // If final buffer uses feedback we need to add a last pass that renders it to the screen
             // because we can not ping-pong the screen
@@ -216,13 +216,13 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Texture Loading
-        let textureInitExtension = new TexturesInitExtension(buffers, this.context);
+        let textureInitExtension = new TexturesInitExtension(buffers, this.context, generateStandalone);
         this.webviewAssembler.addWebviewModule(textureInitExtension, '// Texture Init');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Audio Logic
         if (useAudio) {
-            let audioInitExtension = new AudioInitExtension(buffers, this.context);
+            let audioInitExtension = new AudioInitExtension(buffers, this.context, generateStandalone);
             this.webviewAssembler.addWebviewModule(audioInitExtension, '// Audio Init');
             textureInitExtension.addTextureContent(audioInitExtension);
 

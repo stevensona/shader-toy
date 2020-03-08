@@ -33,8 +33,8 @@ export class BufferProvider {
         this.visitedFiles = [];
     }
 
-    public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[]) {
-        this.parseShaderCodeInternal(file, code, buffers, commonIncludes);
+    public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
+        this.parseShaderCodeInternal(file, file, code, buffers, commonIncludes, generateStandalone);
 
         const findByName = (bufferName: string) => {
             let strippedName = this.stripPath(bufferName);
@@ -113,7 +113,7 @@ export class BufferProvider {
         return name.substring(lastSlash + 1);
     }
 
-    private parseShaderCodeInternal(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[]) {
+    private parseShaderCodeInternal(rootFile: string, file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
         const found = this.visitedFiles.find((visitedFile: string) => visitedFile === file);
         if (found) {
             return;
@@ -127,7 +127,7 @@ export class BufferProvider {
         let includes: Types.IncludeDefinition[] = [];
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
 
-        code = this.transformCode(file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard);
+        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, generateStandalone);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
@@ -163,7 +163,7 @@ export class BufferProvider {
                         }
     
                         // Parse the shader
-                        this.parseShaderCodeInternal(depFile, shaderFile.bufferCode, buffers, commonIncludes);
+                        this.parseShaderCodeInternal(rootFile, depFile, shaderFile.bufferCode, buffers, commonIncludes, generateStandalone);
             
                         // Push buffers as textures
                         textures.push({
@@ -318,8 +318,8 @@ void main() {
         });
     }
 
-    private transformCode(file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Record<ChannelId, InputTextureSettings>, 
-                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>): string {
+    private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Record<ChannelId, InputTextureSettings>, 
+                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
         
         let addTextureSettingIfNew = (channel: number) => {
             if (!textureSettings.hasOwnProperty(channel)) {
@@ -374,6 +374,9 @@ void main() {
                         }
                         else {
                             ({ file: textureFile, userPath: userPath } = this.context.mapUserPath(userPath, file));
+                            if (generateStandalone) {
+                                textureFile = path.relative(path.dirname(rootFile), textureFile);
+                            }
                         }
                     }
                     else {
@@ -424,8 +427,8 @@ void main() {
                         let includeCode = this.readShaderFile(includeFile);
                         if (includeCode.success) {
                             let include_line_offset: Types.BoxedValue<number> = { Value: 0 };
-                            let transformedIncludeCode = this.transformCode(includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                                                                            uniforms, includes, sharedIncludes, usesKeyboard);
+                            let transformedIncludeCode = this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
+                                                                            uniforms, includes, sharedIncludes, usesKeyboard, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
                                 Name: path.basename(includeFile),
                                 File: includeFile,
