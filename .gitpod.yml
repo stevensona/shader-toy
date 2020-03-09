@@ -1,0 +1,3 @@
+tasks:
+  - init: echo "apt-get install libnss3-dev"
+    command: echo "Open a shader..."
