@@ -71,7 +71,7 @@ export class WebviewContentProvider {
     public generateWebviewConent(startingState: Types.RenderStartingData, generateStandalone: boolean): string {
         let shaderName = this.documentName;
 
-        let webglLineNumbers = 105;
+        let webglPlusThreeJsLineNumbers = 107;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: Types.BufferDefinition[] = [];
@@ -191,7 +191,7 @@ export class WebviewContentProvider {
 
         // Fix up line offsets
         for (let buffer of buffers) {
-            buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglLineNumbers;
+            buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglPlusThreeJsLineNumbers;
             if (buffer.UsesKeyboard && keyboardShaderExtension !== undefined) {
                 buffer.LineOffset += keyboardShaderExtension.getShaderPreambleLineNumbers();
             }
