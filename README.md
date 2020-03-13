@@ -53,8 +53,6 @@ _Note: By default audio input is disabled, change the setting "Enable Audio Inpu
 Audio input is only supported from within _Visual Studio Code_, since _ffmpeg_ is not shipped with _Visual Studio Code_
 If your channel defines audio input, it will be inferred from the file extension. The channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
 
-![audio example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example4.png)
-
 ### Keyboard Input
 If you want to use keyboard input you can prepend `#iKeyboard` to your shader. This will expose to your shader the following functions:
 ```
