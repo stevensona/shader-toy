@@ -47,7 +47,7 @@ export class Context {
             let fileCandidates: string[] = [];
 
             let exists = (file: string) => {
-                if (file.indexOf('{}') < 0) {
+                if (file.indexOf('{}') < 0 && file.indexOf('*') < 0) {
                     return fs.existsSync(file);
                 }
                 else {
