@@ -29,13 +29,28 @@ This demonstrates using local and remote images as textures *(Remember that powe
 To influence the sampling behaviour of a texture, use the following syntax:
 ```
 #iChannel0::MinFilter "NearestMipMapNearest"
-#iChannel0::MaxFilter "Nearest"
+#iChannel0::MagFilter "Nearest"
 #iChannel0::WrapMode "Repeat"
 ```
 Though keep in mind that, because of the WebGL standard, many options will only work with textures of width and height that are power of 2.
 
+### Cubemap Input
+Cubemaps may be specified as any other texture, the fact that they are cubemaps is a combination of their path containing a wildcard and their type being explicitly stated.
+```
+#iChannel0 "file://cubemaps/yokohama_{}.jpg" // Note the wildcard '{}'
+#iChannel0::Type "CubeMap"
+```
+The wildcard will be resolved by replacement with values from any of the following sets
+* [ 'e', 'w', 'u', 'd', 'n', 's' ],
+* [ 'east', 'west', 'up', 'down', 'north', 'south' ],
+* [ 'px', 'nx', 'py', 'ny', 'pz', 'nz' ] or
+* [ 'posx', 'negx', 'posy', 'negy', 'posz', 'negz' ].
+
+If any of the six files can not be found, the next set is tried, starting from the first. 
+
 ### Audio Input (experimental)
 _Note: By default audio input is disabled, change the setting "Enable Audio Input" to use it._\
+Audio input is only supported from within _Visual Studio Code_, since _ffmpeg_ is not shipped with _Visual Studio Code_
 If your channel defines audio input, it will be inferred from the file extension. The channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
 
 ![audio example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example4.png)
@@ -138,9 +153,7 @@ The extension also supports highlighting of compilation errors in the text edito
 ## Todo
 
 * Receive more feedback,
-* portable export of shader,
-* disable audio in non-portable version,
-* cubemap sampling.
+* disable audio in non-portable version.
 
 ## Contributing
 
@@ -151,6 +164,15 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.10.3
+* Improve error diagnostic for texture settings,
+* add a command to generate a portable file of the GLSL preview,
+* fix a bug a bug where MinFilter was not recognised as a valid setting,
+* add basic support for cubemaps.
+
+### 0.10.2
+* Hotfix for infinite loop while parsing a shader.
 
 ### 0.10.1
 * Correctly parse comments in GLSL code, allowing to remove e.g. texture definitions with both single- as well as multi-line comments,
@@ -236,7 +258,7 @@ Contributions of any kind are welcome and encouraged.
 * fixed issue where editor changes would trigger a shader reload even if they were not text editors.
 
 ### 0.8.0
-* Refactored a lot of code to use Visual Studio Code's _WebView API_ instead of its deprecated _PreviewHtml_ command.
+* Refactored a lot of code to use _Visual Studio Code_'s _WebView API_ instead of its deprecated _PreviewHtml_ command.
 
 ### 0.7.10
 * Fixed behaviour of iMouse to resemble shaderoty.com as close as possible,
