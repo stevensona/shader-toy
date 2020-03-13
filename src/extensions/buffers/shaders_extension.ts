@@ -15,9 +15,15 @@ export class ShadersExtension implements WebviewExtension {
 
     private processBuffers(buffers: Types.BufferDefinition[],  preambleExtension: ShaderPreambleExtension, keyboardShaderExtension: KeyboardShaderExtension | undefined) {
         for (let buffer of buffers) {
+            let preamble = preambleExtension.getShaderPreamble();
+            for (let texture of buffer.TextureInputs) {
+                if (texture.Type === Types.TextureType.CubeMap) {
+                    preamble = preamble.replace(`sampler2D   iChannel${texture.Channel}`, `samplerCube iChannel${texture.Channel}`)
+                }
+            }
             this.content += `\
 <script id='${buffer.Name}' type='x-shader/x-fragment'>
-${preambleExtension.getShaderPreamble()}
+${preamble}
 ${keyboardShaderExtension !== undefined ? keyboardShaderExtension.getShaderPreamble() : ''}
 ${buffer.Code}
 </script>`;

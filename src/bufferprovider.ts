@@ -23,6 +23,8 @@ type InputTextureSettings = {
     MinLine?: number,
     Wrap?: Types.TextureWrapMode
     WrapLine?: number,
+    Type?: Types.TextureType
+    TypeLine?: number,
 };
 
 export class BufferProvider {
@@ -235,6 +237,8 @@ export class BufferProvider {
                 texture.MinLine = pendingSettings.MinLine;
                 texture.Wrap = pendingSettings.Wrap || Types.TextureWrapMode.Clamp;
                 texture.WrapLine = pendingSettings.WrapLine;
+                texture.Type = pendingSettings.Type || Types.TextureType.Texture2D;
+                texture.TypeLine = pendingSettings.TypeLine;
             }
         }
 
@@ -409,6 +413,12 @@ void main() {
                     addTextureSettingIfNew(nextObject.Index);
                     textureSettings[nextObject.Index].Wrap = nextObject.Value;
                     textureSettings[nextObject.Index].WrapLine = parser.line();
+                    removeLastObject();
+                    break;
+                case ObjectType.TextureType:
+                    addTextureSettingIfNew(nextObject.Index);
+                    textureSettings[nextObject.Index].Type = nextObject.Value;
+                    textureSettings[nextObject.Index].TypeLine = parser.line();
                     removeLastObject();
                     break;
                 case ObjectType.Include: {

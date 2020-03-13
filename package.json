@@ -185,7 +185,9 @@
         "test-compile": "tsc -p ./"
     },
     "dependencies": {
+        "@types/glob": "^7.1.1",
         "compare-versions": "^3.4.0",
+        "glob": "^7.1.6",
         "glslify": "^7.0.0",
         "mime": "^2.4.2"
     },
