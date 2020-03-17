@@ -158,4 +158,8 @@ export class Context {
     public getConfig<T>(section: string): T | undefined {
         return this.config.get<T>(section);
     }
+
+    public getVscodeExtensionContext(): vscode.ExtensionContext {
+        return this.context;
+    }
 }

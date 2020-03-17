@@ -27510,6 +27510,9 @@ class Context {
     getConfig(section) {
         return this.config.get(section);
     }
+    getVscodeExtensionContext() {
+        return this.context;
+    }
 }
 exports.Context = Context;
 
@@ -27528,11 +27531,8 @@ exports.Context = Context;
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const compare_versions = __webpack_require__(/*! compare-versions */ "./node_modules/compare-versions/index.js");
-const fs = __webpack_require__(/*! fs */ "fs");
-const path = __webpack_require__(/*! path */ "path");
-const typenames_1 = __webpack_require__(/*! ./typenames */ "./src/typenames.ts");
-const webviewcontentprovider_1 = __webpack_require__(/*! ./webviewcontentprovider */ "./src/webviewcontentprovider.ts");
 const context_1 = __webpack_require__(/*! ./context */ "./src/context.ts");
+const shadertoymanager_1 = __webpack_require__(/*! ./shadertoymanager */ "./src/shadertoymanager.ts");
 function activate(extensionContext) {
     let shadertoyExtension = vscode.extensions.getExtension('stevensona.shader-toy');
     if (shadertoyExtension) {
@@ -27547,7 +27547,7 @@ function activate(extensionContext) {
     if (context.getConfig('omitDeprecationWarnings') === true) {
         vscode.window.showWarningMessage('Deprecation warnings are omitted, stay safe otherwise!');
     }
-    let webviewPanel = undefined;
+    let shadertoyManager = new shadertoymanager_1.ShaderToyManager(context);
     let reloadDelay = context.getConfig('reloadOnEditTextDelay') || 1.0;
     let timeout;
     let changeTextEvent;
@@ -27560,164 +27560,35 @@ function activate(extensionContext) {
             changeEditorEvent.dispose();
         }
         if (context.getConfig('reloadOnEditText')) {
-            changeTextEvent = vscode.workspace.onDidChangeTextDocument((changingEditor) => {
+            changeTextEvent = vscode.workspace.onDidChangeTextDocument((documentChange) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
-                    if (changingEditor !== undefined) {
-                        const staticWebview = staticWebviews.find((webview) => { return webview.Document === changingEditor.document; });
-                        const isActiveDocument = context.activeEditor !== undefined && changingEditor.document === context.activeEditor.document;
-                        if (isActiveDocument || staticWebview !== undefined) {
-                            if (webviewPanel !== undefined && context.activeEditor !== undefined) {
-                                updateWebview(webviewPanel, context.activeEditor.document);
-                            }
-                            for (let staticWebviewPanel of staticWebviews) {
-                                updateWebview(staticWebviewPanel.WebviewPanel, staticWebviewPanel.Document);
-                            }
-                        }
-                    }
+                    shadertoyManager.onDocumentChanged(documentChange);
                 }, reloadDelay * 1000);
             });
         }
         if (context.getConfig('reloadOnChangeEditor')) {
-            changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((swappedEditor) => {
-                if (swappedEditor !== undefined && swappedEditor.document.getText() !== '' && swappedEditor !== context.activeEditor) {
-                    if (context.getConfig('resetStateOnChangeEditor')) {
-                        resetStartingData();
-                    }
-                    context.activeEditor = swappedEditor;
-                    if (webviewPanel !== undefined) {
-                        updateWebview(webviewPanel, context.activeEditor.document);
-                    }
-                }
+            changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((newEditor) => {
+                shadertoyManager.onEditorChanged(newEditor);
             });
         }
     };
     registerCallbacks();
-    let startingData = new typenames_1.RenderStartingData();
-    const updateWebview = (webview, document) => {
-        context.clearDiagnostics();
-        if (webview !== undefined) {
-            let webviewContentProvider = new webviewcontentprovider_1.WebviewContentProvider(context, document.getText(), document.fileName);
-            webview.webview.html = webviewContentProvider.generateWebviewConent(startingData, false);
-        }
-    };
-    const resetStartingData = () => {
-        startingData = new typenames_1.RenderStartingData();
-    };
     vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration('shader-toy')) {
             context = new context_1.Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
+            shadertoyManager = new shadertoymanager_1.ShaderToyManager(context);
             registerCallbacks();
-            if (context.activeEditor !== undefined && webviewPanel !== undefined) {
-                updateWebview(webviewPanel, context.activeEditor.document);
-            }
         }
     });
-    let createWebview = (title) => {
-        let options = {
-            enableScripts: true,
-            localResourceRoots: undefined
-        };
-        let newWebviewPanel = vscode.window.createWebviewPanel('shadertoy', title, vscode.ViewColumn.Two, options);
-        newWebviewPanel.iconPath = context.getResourceUri('thumb.png');
-        newWebviewPanel.webview.onDidReceiveMessage((message) => {
-            switch (message.command) {
-                case 'updateTime':
-                    startingData.Time = message.time;
-                    return;
-                case 'updateMouse':
-                    startingData.Mouse = message.mouse;
-                    startingData.NormalizedMouse = message.normalizedMouse;
-                    return;
-                case 'updateKeyboard':
-                    startingData.Keys = message.keys;
-                    return;
-                case 'updateUniformsGuiOpen':
-                    startingData.UniformsGui.Open = message.value;
-                    return;
-                case 'updateUniformsGuiValue':
-                    startingData.UniformsGui.Values[message.name] = message.value;
-                    return;
-                case 'showGlslDiagnostic':
-                    let diagnosticBatch = message.diagnosticBatch;
-                    let severity;
-                    switch (message.type) {
-                        case 'error':
-                            severity = vscode.DiagnosticSeverity.Error;
-                            break;
-                        case 'warning':
-                            severity = vscode.DiagnosticSeverity.Warning;
-                            break;
-                        case 'hint':
-                            severity = vscode.DiagnosticSeverity.Hint;
-                            break;
-                        case 'information':
-                        default:
-                            severity = vscode.DiagnosticSeverity.Information;
-                            break;
-                    }
-                    context.showDiagnostics(diagnosticBatch, severity);
-                    return;
-                case 'showGlslsError':
-                    let file = message.file;
-                    let line = message.line;
-                    context.revealLine(file, line);
-                    return;
-                case 'errorMessage':
-                    vscode.window.showErrorMessage(message.message);
-                    return;
-            }
-        }, undefined, extensionContext.subscriptions);
-        return newWebviewPanel;
-    };
     let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
-        if (context.getConfig('reloadOnChangeEditor') !== true) {
-            context.activeEditor = vscode.window.activeTextEditor;
-        }
-        if (webviewPanel) {
-            webviewPanel.dispose();
-        }
-        webviewPanel = createWebview('GLSL Preview');
-        webviewPanel.onDidDispose(() => {
-            webviewPanel = undefined;
-        });
-        if (context.activeEditor !== undefined) {
-            updateWebview(webviewPanel, context.activeEditor.document);
-        }
-        else {
-            vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
-        }
+        shadertoyManager.showDynamicPreview();
     });
-    let staticWebviews = [];
     let staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {
-        if (vscode.window.activeTextEditor !== undefined) {
-            let document = vscode.window.activeTextEditor.document;
-            if (staticWebviews.find((webview) => { return webview.Document === document; }) === undefined) {
-                let newWebviewPanel = createWebview('Static GLSL Preview');
-                updateWebview(newWebviewPanel, vscode.window.activeTextEditor.document);
-                staticWebviews.push({
-                    WebviewPanel: newWebviewPanel,
-                    Document: document
-                });
-                newWebviewPanel.onDidDispose(() => {
-                    const staticWebview = staticWebviews.find((webview) => { return webview.WebviewPanel === newWebviewPanel; });
-                    if (staticWebview !== undefined) {
-                        const index = staticWebviews.indexOf(staticWebview);
-                        staticWebviews.splice(index, 1);
-                    }
-                });
-            }
-        }
+        shadertoyManager.showDynamicPreview();
     });
     let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
-        if (vscode.window.activeTextEditor !== undefined) {
-            let document = vscode.window.activeTextEditor.document;
-            let webviewContentProvider = new webviewcontentprovider_1.WebviewContentProvider(context, document.getText(), document.fileName);
-            let htmlContent = webviewContentProvider.generateWebviewConent(startingData, true);
-            let originalFileExt = path.extname(document.fileName);
-            let previewFilePath = document.fileName.replace(originalFileExt, '.html');
-            fs.writeFileSync(previewFilePath, htmlContent);
-        }
+        shadertoyManager.createPortablePreview();
     });
     extensionContext.subscriptions.push(previewCommand);
     extensionContext.subscriptions.push(staticPreviewCommand);
@@ -30254,6 +30125,171 @@ exports.ShaderStream = ShaderStream;
 
 /***/ }),
 
+/***/ "./src/shadertoymanager.ts":
+/*!*********************************!*\
+  !*** ./src/shadertoymanager.ts ***!
+  \*********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const vscode = __webpack_require__(/*! vscode */ "vscode");
+const fs = __webpack_require__(/*! fs */ "fs");
+const path = __webpack_require__(/*! path */ "path");
+const typenames_1 = __webpack_require__(/*! ./typenames */ "./src/typenames.ts");
+const webviewcontentprovider_1 = __webpack_require__(/*! ./webviewcontentprovider */ "./src/webviewcontentprovider.ts");
+class ShaderToyManager {
+    constructor(context) {
+        this.startingData = new typenames_1.RenderStartingData();
+        this.staticWebviews = [];
+        this.showDynamicPreview = () => {
+            if (this.context.getConfig('reloadOnChangeEditor') !== true) {
+                this.context.activeEditor = vscode.window.activeTextEditor;
+            }
+            if (this.webviewPanel) {
+                this.webviewPanel.dispose();
+            }
+            this.webviewPanel = this.createWebview('GLSL Preview');
+            this.webviewPanel.onDidDispose(() => {
+                this.webviewPanel = undefined;
+            });
+            if (this.context.activeEditor !== undefined) {
+                this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+            }
+            else {
+                vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
+            }
+        };
+        this.showStaticPreview = () => {
+            if (vscode.window.activeTextEditor !== undefined) {
+                let document = vscode.window.activeTextEditor.document;
+                if (this.staticWebviews.find((webview) => { return webview.Document === document; }) === undefined) {
+                    let newWebviewPanel = this.createWebview('Static GLSL Preview');
+                    this.updateWebview(newWebviewPanel, vscode.window.activeTextEditor.document);
+                    this.staticWebviews.push({
+                        WebviewPanel: newWebviewPanel,
+                        Document: document
+                    });
+                    newWebviewPanel.onDidDispose(() => {
+                        const staticWebview = this.staticWebviews.find((webview) => { return webview.WebviewPanel === newWebviewPanel; });
+                        if (staticWebview !== undefined) {
+                            const index = this.staticWebviews.indexOf(staticWebview);
+                            this.staticWebviews.splice(index, 1);
+                        }
+                    });
+                }
+            }
+        };
+        this.createPortablePreview = () => {
+            if (vscode.window.activeTextEditor !== undefined) {
+                let document = vscode.window.activeTextEditor.document;
+                let webviewContentProvider = new webviewcontentprovider_1.WebviewContentProvider(this.context, document.getText(), document.fileName);
+                let htmlContent = webviewContentProvider.generateWebviewConent(this.startingData, true);
+                let originalFileExt = path.extname(document.fileName);
+                let previewFilePath = document.fileName.replace(originalFileExt, '.html');
+                fs.writeFileSync(previewFilePath, htmlContent);
+            }
+        };
+        this.onDocumentChanged = (documentChange) => {
+            const staticWebview = this.staticWebviews.find((webview) => { return webview.Document === documentChange.document; });
+            const isActiveDocument = this.context.activeEditor !== undefined && documentChange.document === this.context.activeEditor.document;
+            if (isActiveDocument || staticWebview !== undefined) {
+                if (this.webviewPanel !== undefined && this.context.activeEditor !== undefined) {
+                    this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                }
+                for (let staticWebviewPanel of this.staticWebviews) {
+                    this.updateWebview(staticWebviewPanel.WebviewPanel, staticWebviewPanel.Document);
+                }
+            }
+        };
+        this.onEditorChanged = (newEditor) => {
+            if (newEditor !== undefined && newEditor.document.getText() !== '' && newEditor !== this.context.activeEditor) {
+                if (this.context.getConfig('resetStateOnChangeEditor')) {
+                    this.resetStartingData();
+                }
+                this.context.activeEditor = newEditor;
+                if (this.webviewPanel !== undefined) {
+                    this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                }
+            }
+        };
+        this.resetStartingData = () => {
+            this.startingData = new typenames_1.RenderStartingData();
+        };
+        this.createWebview = (title) => {
+            let options = {
+                enableScripts: true,
+                localResourceRoots: undefined
+            };
+            let newWebviewPanel = vscode.window.createWebviewPanel('shadertoy', title, vscode.ViewColumn.Two, options);
+            newWebviewPanel.iconPath = this.context.getResourceUri('thumb.png');
+            newWebviewPanel.webview.onDidReceiveMessage((message) => {
+                switch (message.command) {
+                    case 'updateTime':
+                        this.startingData.Time = message.time;
+                        return;
+                    case 'updateMouse':
+                        this.startingData.Mouse = message.mouse;
+                        this.startingData.NormalizedMouse = message.normalizedMouse;
+                        return;
+                    case 'updateKeyboard':
+                        this.startingData.Keys = message.keys;
+                        return;
+                    case 'updateUniformsGuiOpen':
+                        this.startingData.UniformsGui.Open = message.value;
+                        return;
+                    case 'updateUniformsGuiValue':
+                        this.startingData.UniformsGui.Values[message.name] = message.value;
+                        return;
+                    case 'showGlslDiagnostic':
+                        let diagnosticBatch = message.diagnosticBatch;
+                        let severity;
+                        switch (message.type) {
+                            case 'error':
+                                severity = vscode.DiagnosticSeverity.Error;
+                                break;
+                            case 'warning':
+                                severity = vscode.DiagnosticSeverity.Warning;
+                                break;
+                            case 'hint':
+                                severity = vscode.DiagnosticSeverity.Hint;
+                                break;
+                            case 'information':
+                            default:
+                                severity = vscode.DiagnosticSeverity.Information;
+                                break;
+                        }
+                        this.context.showDiagnostics(diagnosticBatch, severity);
+                        return;
+                    case 'showGlslsError':
+                        let file = message.file;
+                        let line = message.line;
+                        this.context.revealLine(file, line);
+                        return;
+                    case 'errorMessage':
+                        vscode.window.showErrorMessage(message.message);
+                        return;
+                }
+            }, undefined, this.context.getVscodeExtensionContext().subscriptions);
+            return newWebviewPanel;
+        };
+        this.updateWebview = (webviewPanel, document) => {
+            this.context.clearDiagnostics();
+            if (webviewPanel !== undefined) {
+                let webviewContentProvider = new webviewcontentprovider_1.WebviewContentProvider(this.context, document.getText(), document.fileName);
+                webviewPanel.webview.html = webviewContentProvider.generateWebviewConent(this.startingData, false);
+            }
+        };
+        this.context = context;
+    }
+}
+exports.ShaderToyManager = ShaderToyManager;
+
+
+/***/ }),
+
 /***/ "./src/typenames.ts":
 /*!**************************!*\
   !*** ./src/typenames.ts ***!
@@ -30670,16 +30706,16 @@ class WebviewContentProvider {
                 let pauseButtonExtension = new pause_button_extension_1.PauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
-            if (this.context.getConfig('pauseWholeRender')) {
-                let pauseWholeRenderExtension = new pause_whole_render_extension_1.PauseWholeRenderExtension();
-                this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
-                let advanceTimeExtension = new advance_time_extension_1.AdvanceTimeExtension();
-                this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
-            }
-            else {
-                let advanceTimeExtension = new advance_time_if_not_paused_extension_1.AdvanceTimeIfNotPausedExtension();
-                this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
-            }
+        }
+        if (this.context.getConfig('pauseWholeRender')) {
+            let pauseWholeRenderExtension = new pause_whole_render_extension_1.PauseWholeRenderExtension();
+            this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
+            let advanceTimeExtension = new advance_time_extension_1.AdvanceTimeExtension();
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
+        }
+        else {
+            let advanceTimeExtension = new advance_time_if_not_paused_extension_1.AdvanceTimeIfNotPausedExtension();
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
         }
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Screenshot Logic
@@ -30690,13 +30726,13 @@ class WebviewContentProvider {
                 let screenshotButtonExtension = new screenshot_button_extension_1.ScreenshotButtonExtension();
                 this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
             }
-            let forcedScreenshotResolution = this.context.getConfig('screenshotResolution');
-            if (forcedScreenshotResolution === undefined) {
-                forcedScreenshotResolution = [-1, -1];
-            }
-            let forcedScreenshotResolutionExtension = new forced_screenshot_resolution_extension_1.ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
-            this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
         }
+        let forcedScreenshotResolution = this.context.getConfig('screenshotResolution');
+        if (forcedScreenshotResolution === undefined) {
+            forcedScreenshotResolution = [-1, -1];
+        }
+        let forcedScreenshotResolutionExtension = new forced_screenshot_resolution_extension_1.ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
+        this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling
         let errorsExtension;
