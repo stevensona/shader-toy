@@ -288,13 +288,13 @@ export class WebviewContentProvider {
                 let screenshotButtonExtension = new ScreenshotButtonExtension();
                 this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
             }
-            let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
-            if (forcedScreenshotResolution === undefined) {
-                forcedScreenshotResolution = [ -1, -1 ];
-            }
-            let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
-            this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
         }
+        let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
+        if (forcedScreenshotResolution === undefined) {
+            forcedScreenshotResolution = [ -1, -1 ];
+        }
+        let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
+        this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
         
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling
