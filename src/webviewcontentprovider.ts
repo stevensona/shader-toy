@@ -264,18 +264,18 @@ export class WebviewContentProvider {
                 let pauseButtonExtension = new PauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
+        }
 
-            if (this.context.getConfig<boolean>('pauseWholeRender')) {
-                let pauseWholeRenderExtension = new PauseWholeRenderExtension();
-                this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
+        if (this.context.getConfig<boolean>('pauseWholeRender')) {
+            let pauseWholeRenderExtension = new PauseWholeRenderExtension();
+            this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
 
-                let advanceTimeExtension = new AdvanceTimeExtension();
-                this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
-            }
-            else {
-                let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
-                this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
-            }
+            let advanceTimeExtension = new AdvanceTimeExtension();
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
+        }
+        else {
+            let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
+            this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
