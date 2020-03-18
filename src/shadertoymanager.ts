@@ -135,7 +135,7 @@ export class ShaderToyManager {
                     this.startingData.UniformsGui.Open = message.value;
                     return;
                 case 'updateUniformsGuiValue':
-                    this.startingData.UniformsGui.Values[message.name] = message.value;
+                    this.startingData.UniformsGui.Values.set(message.name, message.value);
                     return;
                 case 'showGlslDiagnostic':
                     let diagnosticBatch: DiagnosticBatch = message.diagnosticBatch;
@@ -180,7 +180,8 @@ export class ShaderToyManager {
         this.context.clearDiagnostics();
         if (webviewPanel !== undefined) {
             let webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
-            webviewPanel.webview.html = webviewContentProvider.generateWebviewConent(this.startingData, false);
+            let [ html, localResources ] = webviewContentProvider.generateWebviewConent(this.startingData, false);
+            webviewPanel.webview.html = html;
         }
     }
 }

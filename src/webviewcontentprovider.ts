@@ -68,7 +68,7 @@ export class WebviewContentProvider {
         this.documentName = documentName;
     }
 
-    public generateWebviewConent(startingState: Types.RenderStartingData, generateStandalone: boolean): string {
+    public generateWebviewConent(startingState: Types.RenderStartingData, generateStandalone: boolean): [ string, string[] ] {
         let shaderName = this.documentName;
 
         let webglPlusThreeJsLineNumbers = 107;
@@ -311,7 +311,38 @@ export class WebviewContentProvider {
         this.webviewAssembler.addWebviewModule(errorsExtension, '// Error Callback');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Local Resources
+        let localResources: string[] = [];
+        for (let buffer of buffers) {
+            for (let texture of buffer.TextureInputs) {
+                if (texture.LocalTexture) {
+                    localResources.push(texture.LocalTexture);
+                }
+            }
+            for (let audio of buffer.AudioInputs) {
+                if (audio.LocalPath) {
+                    localResources.push(audio.LocalPath);
+                }
+            }
+        }
+        localResources = localResources.filter(function(elem, index, self) {
+            return index === self.indexOf(elem);
+        });
+        let removeDuplicates = (array: string[]) => {
+            var m = new Map<string, void>();
+            var newArray = [];
+            for (let value of array) {
+                if (m.get(value) === undefined) {
+                    newArray.push(value);
+                    m.set(value);
+                }
+            }
+            return newArray;
+        };
+        localResources = removeDuplicates(localResources);
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Final Assembly
-        return this.webviewAssembler.assembleWebviewConent();
+        return [ this.webviewAssembler.assembleWebviewConent(), localResources ];
     }
 }

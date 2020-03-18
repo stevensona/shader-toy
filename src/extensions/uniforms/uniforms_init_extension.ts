@@ -47,8 +47,10 @@ buffers[${i}].UniformValues = {};
                         defaultValue[i] = defaultValue[i] * 255.0;
                     }
                 }
-                if (startingState.Values.hasOwnProperty(uniform.Name)) {
-                    defaultValue = startingState.Values[uniform.Name];
+
+                let startingValue = startingState.Values.get(uniform.Name);
+                if (startingValue !== undefined) {
+                    defaultValue = startingValue;
                 }
 
                 if (threeType === 'number') {

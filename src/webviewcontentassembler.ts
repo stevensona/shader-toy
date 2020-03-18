@@ -26,19 +26,23 @@ type WebviewModule = {
 export class WebviewContentAssembler {
     private webviewContent: WebviewContent;
     private webviewModules: WebviewModule[];
-    private webviewContentLineMappings: Record<string, number[]>;
+    private webviewContentLineMappings: Map<string, number[]>;
     
     constructor(context: Context) {
         this.webviewContent = new WebviewContent(context.getResourceUri('webview_base.html').fsPath);
         this.webviewModules = [];
 
-        this.webviewContentLineMappings = {};
+        this.webviewContentLineMappings = new Map<string, number[]>();
         let lineNumber = 1;
         for (let line of this.webviewContent.getLines()) {
-            if (!this.webviewContentLineMappings.hasOwnProperty(line.trim())) {
-                this.webviewContentLineMappings[line.trim()] = [];
+            line = line.trim();
+            let lines = this.webviewContentLineMappings.get(line);
+            if (lines !== undefined) {
+                lines.push(lineNumber);
             }
-            this.webviewContentLineMappings[line.trim()].push(lineNumber);
+            else {
+                this.webviewContentLineMappings.set(line, [ lineNumber ]);
+            }
             lineNumber++;
         }
     }
@@ -50,12 +54,15 @@ export class WebviewContentAssembler {
         };
 
         originalLine = originalLine.trim();
-        for (let lineNumber of this.webviewContentLineMappings[originalLine]) {
-            let webviewModule: WebviewModule = {
-                Module: insertModule,
-                LineNumber: lineNumber
-            };
-            this.insertModule(webviewModule);
+        let lines = this.webviewContentLineMappings.get(originalLine);
+        if (lines !== undefined) {
+            for (let lineNumber of lines) {
+                let webviewModule: WebviewModule = {
+                    Module: insertModule,
+                    LineNumber: lineNumber
+                };
+                this.insertModule(webviewModule);
+            }
         }
     }
 
@@ -67,12 +74,15 @@ export class WebviewContentAssembler {
         };
 
         originalLine = originalLine.trim();
-        for (let lineNumber of this.webviewContentLineMappings[originalLine]) {
-            let webviewModule: WebviewModule = {
-                Module: replaceModule,
-                LineNumber: lineNumber
-            };
-            this.insertModule(webviewModule);
+        let lines = this.webviewContentLineMappings.get(originalLine);
+        if (lines !== undefined) {
+            for (let lineNumber of lines) {
+                let webviewModule: WebviewModule = {
+                    Module: replaceModule,
+                    LineNumber: lineNumber
+                };
+                this.insertModule(webviewModule);
+            }
         }
     }
 

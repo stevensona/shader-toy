@@ -124,7 +124,7 @@ export class BufferProvider {
 
         let boxedLineOffset: Types.BoxedValue<number> = { Value: 0 };
         let pendingTextures: InputTexture[] = [];
-        let pendingTextureSettings: Record<ChannelId, InputTextureSettings> = {};
+        let pendingTextureSettings = new Map<ChannelId, InputTextureSettings>();
         let pendingUniforms: Types.UniformDefinition[] = [];
         let includes: Types.IncludeDefinition[] = [];
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
@@ -229,8 +229,8 @@ export class BufferProvider {
 
         // Assign pending texture settings
         for (let texture of textures) {
-            if (pendingTextureSettings.hasOwnProperty(texture.Channel)) {
-                let pendingSettings = pendingTextureSettings[texture.Channel];
+            let pendingSettings = pendingTextureSettings.get(texture.Channel);
+            if (pendingSettings !== undefined) {
                 texture.Mag = pendingSettings.Mag || Types.TextureMagFilter.Linear;
                 texture.MagLine = pendingSettings.MagLine;
                 texture.Min = pendingSettings.Min || Types.TextureMinFilter.Linear;
@@ -322,12 +322,12 @@ void main() {
         });
     }
 
-    private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Record<ChannelId, InputTextureSettings>, 
+    private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>, 
                           uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
         
         let addTextureSettingIfNew = (channel: number) => {
-            if (!textureSettings.hasOwnProperty(channel)) {
-                textureSettings[channel] = {};
+            if (textureSettings.get(channel) === undefined) {
+                textureSettings.set(channel, {});
             }
         };
 
@@ -345,6 +345,7 @@ void main() {
             replaceLastObject("");
         };
 
+        let thisTextureSettings: InputTextureSettings | undefined;
         while (!parser.eof()) {
             let nextObject = parser.next();
             if (nextObject === undefined) {
@@ -399,26 +400,38 @@ void main() {
                 }
                 case ObjectType.TextureMagFilter:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Mag = nextObject.Value;
-                    textureSettings[nextObject.Index].MagLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Mag = nextObject.Value;
+                        thisTextureSettings.MagLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.TextureMinFilter:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Min = nextObject.Value;
-                    textureSettings[nextObject.Index].MinLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Min = nextObject.Value;
+                        thisTextureSettings.MinLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.TextureWrapMode:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Wrap = nextObject.Value;
-                    textureSettings[nextObject.Index].WrapLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Wrap = nextObject.Value;
+                        thisTextureSettings.WrapLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.TextureType:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Type = nextObject.Value;
-                    textureSettings[nextObject.Index].TypeLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Type = nextObject.Value;
+                        thisTextureSettings.TypeLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.Include: {
