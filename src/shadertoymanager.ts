@@ -6,9 +6,13 @@ import * as path from 'path';
 import { RenderStartingData, DiagnosticBatch } from './typenames';
 import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
+import { removeDuplicates } from './utility';
 
-type StaticWebview = {
-    WebviewPanel: vscode.WebviewPanel,
+type Webview = {
+    Panel: vscode.WebviewPanel,
+    OnDidDispose: () => void
+};
+type StaticWebview = Webview & {
     Document: vscode.TextDocument
 };
 
@@ -17,7 +21,7 @@ export class ShaderToyManager {
 
     startingData = new RenderStartingData();
 
-    webviewPanel: vscode.WebviewPanel | undefined;
+    webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
     
     constructor(context: Context) {
@@ -30,14 +34,18 @@ export class ShaderToyManager {
         }
 
         if (this.webviewPanel) {
-            this.webviewPanel.dispose();
+            this.webviewPanel.Panel.dispose();
         }
-        this.webviewPanel = this.createWebview('GLSL Preview');
-        this.webviewPanel.onDidDispose(() => {
-            this.webviewPanel = undefined;
-        });
+        let newWebviewPanel = this.createWebview('GLSL Preview', undefined);
+        this.webviewPanel = {
+            Panel: newWebviewPanel,
+            OnDidDispose: () => {
+                this.webviewPanel = undefined;
+            }
+        };
+        newWebviewPanel.onDidDispose(this.webviewPanel.OnDidDispose);
         if (this.context.activeEditor !== undefined) {
-            this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+            this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
         }
         else {
             vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
@@ -48,19 +56,22 @@ export class ShaderToyManager {
         if (vscode.window.activeTextEditor !== undefined) {
             let document = vscode.window.activeTextEditor.document;
             if (this.staticWebviews.find((webview: StaticWebview) => { return webview.Document === document; }) === undefined) {
-                let newWebviewPanel = this.createWebview('Static GLSL Preview');
-                this.updateWebview(newWebviewPanel, vscode.window.activeTextEditor.document);
-                this.staticWebviews.push({
-                    WebviewPanel: newWebviewPanel,
-                    Document: document
-                });
-                newWebviewPanel.onDidDispose(() => {
-                    const staticWebview = this.staticWebviews.find((webview: StaticWebview) => { return webview.WebviewPanel === newWebviewPanel; });
+                let newWebviewPanel = this.createWebview('Static GLSL Preview', undefined);
+                let onDidDispose = () => {
+                    const staticWebview = this.staticWebviews.find((webview: StaticWebview) => { return webview.Panel === newWebviewPanel; });
                     if (staticWebview !== undefined) {
                         const index = this.staticWebviews.indexOf(staticWebview);
                         this.staticWebviews.splice(index, 1);
                     }
+                };
+                this.staticWebviews.push({
+                    Panel: newWebviewPanel,
+                    OnDidDispose: onDidDispose,
+                    Document: document
                 });
+                let staticWebview = this.staticWebviews[this.staticWebviews.length - 1];
+                this.staticWebviews[this.staticWebviews.length - 1] = this.updateWebview(staticWebview, vscode.window.activeTextEditor.document);
+                newWebviewPanel.onDidDispose(onDidDispose);
             }
         }
     }
@@ -81,12 +92,10 @@ export class ShaderToyManager {
         const isActiveDocument = this.context.activeEditor !== undefined && documentChange.document === this.context.activeEditor.document;
         if (isActiveDocument || staticWebview !== undefined) {
             if (this.webviewPanel !== undefined && this.context.activeEditor !== undefined) {
-                this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
             }
 
-            for (let staticWebviewPanel of this.staticWebviews) {
-                this.updateWebview(staticWebviewPanel.WebviewPanel, staticWebviewPanel.Document);
-            }
+            this.staticWebviews.map((staticWebview: StaticWebview) => this.updateWebview(staticWebview, staticWebview.Document));
         }
     }
 
@@ -97,7 +106,7 @@ export class ShaderToyManager {
             }
             this.context.activeEditor = newEditor;
             if (this.webviewPanel !== undefined) {
-                this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
             }
         }
     }
@@ -106,10 +115,14 @@ export class ShaderToyManager {
         this.startingData = new RenderStartingData();
     }
 
-    private createWebview = (title: string) => {
+    private createWebview = (title: string, localResourceRoots: vscode.Uri[] | undefined) => {
+        if (localResourceRoots !== undefined) {
+            let extensionRoot = vscode.Uri.file(this.context.getVscodeExtensionContext().extensionPath);
+            localResourceRoots.push(extensionRoot);
+        }
         let options: vscode.WebviewOptions = {
             enableScripts: true,
-            localResourceRoots: undefined
+            localResourceRoots: localResourceRoots
         };
         let newWebviewPanel = vscode.window.createWebviewPanel(
             'shadertoy',
@@ -176,12 +189,28 @@ export class ShaderToyManager {
         return newWebviewPanel;
     }
     
-    private updateWebview = (webviewPanel: vscode.WebviewPanel, document: vscode.TextDocument) => {
+    private updateWebview = <T extends Webview | StaticWebview>(webviewPanel: T, document: vscode.TextDocument): T => {
         this.context.clearDiagnostics();
-        if (webviewPanel !== undefined) {
-            let webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
-            let [ html, localResources ] = webviewContentProvider.generateWebviewConent(this.startingData, false);
-            webviewPanel.webview.html = html;
+        let [ html, localResources ] = new WebviewContentProvider(this.context, document.getText(), document.fileName)
+            .generateWebviewConent(this.startingData, false);
+
+        let localResourceRoots: vscode.Uri[] = [];
+        for (let localResource of localResources) {
+            let localResourceRoot = path.dirname(localResource);
+            localResourceRoots.push(vscode.Uri.file(localResourceRoot));
         }
+        localResourceRoots = removeDuplicates(localResourceRoots);
+
+        // Recreate webview if allowed resource roots are not part of the current resource roots
+        let previousLocalResourceRoots = webviewPanel.Panel.webview.options.localResourceRoots || [];
+        if (!localResourceRoots.every(val => previousLocalResourceRoots.includes(val))) {
+            let newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRoots);
+            webviewPanel.Panel.dispose();
+            newWebviewPanel.onDidDispose(webviewPanel.OnDidDispose);
+            webviewPanel.Panel = newWebviewPanel;
+        }
+
+        webviewPanel.Panel.webview.html = html;
+        return webviewPanel;
     }
 }

@@ -26986,7 +26986,7 @@ class BufferProvider {
         this.visitedFiles.push(file);
         let boxedLineOffset = { Value: 0 };
         let pendingTextures = [];
-        let pendingTextureSettings = {};
+        let pendingTextureSettings = new Map();
         let pendingUniforms = [];
         let includes = [];
         let boxedUsesKeyboard = { Value: false };
@@ -27084,8 +27084,8 @@ class BufferProvider {
         }
         // Assign pending texture settings
         for (let texture of textures) {
-            if (pendingTextureSettings.hasOwnProperty(texture.Channel)) {
-                let pendingSettings = pendingTextureSettings[texture.Channel];
+            let pendingSettings = pendingTextureSettings.get(texture.Channel);
+            if (pendingSettings !== undefined) {
                 texture.Mag = pendingSettings.Mag || Types.TextureMagFilter.Linear;
                 texture.MagLine = pendingSettings.MagLine;
                 texture.Min = pendingSettings.Min || Types.TextureMinFilter.Linear;
@@ -27171,8 +27171,8 @@ void main() {
     }
     transformCode(rootFile, file, code, lineOffset, textures, textureSettings, uniforms, includes, sharedIncludes, usesKeyboard, generateStandalone) {
         let addTextureSettingIfNew = (channel) => {
-            if (!textureSettings.hasOwnProperty(channel)) {
-                textureSettings[channel] = {};
+            if (textureSettings.get(channel) === undefined) {
+                textureSettings.set(channel, {});
             }
         };
         let parser = new shaderparser_1.ShaderParser(code);
@@ -27187,6 +27187,7 @@ void main() {
         let removeLastObject = () => {
             replaceLastObject("");
         };
+        let thisTextureSettings;
         while (!parser.eof()) {
             let nextObject = parser.next();
             if (nextObject === undefined) {
@@ -27237,26 +27238,38 @@ void main() {
                 }
                 case shaderparser_1.ObjectType.TextureMagFilter:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Mag = nextObject.Value;
-                    textureSettings[nextObject.Index].MagLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Mag = nextObject.Value;
+                        thisTextureSettings.MagLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case shaderparser_1.ObjectType.TextureMinFilter:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Min = nextObject.Value;
-                    textureSettings[nextObject.Index].MinLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Min = nextObject.Value;
+                        thisTextureSettings.MinLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case shaderparser_1.ObjectType.TextureWrapMode:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Wrap = nextObject.Value;
-                    textureSettings[nextObject.Index].WrapLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Wrap = nextObject.Value;
+                        thisTextureSettings.WrapLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case shaderparser_1.ObjectType.TextureType:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Type = nextObject.Value;
-                    textureSettings[nextObject.Index].TypeLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Type = nextObject.Value;
+                        thisTextureSettings.TypeLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case shaderparser_1.ObjectType.Include: {
@@ -27548,11 +27561,11 @@ function activate(extensionContext) {
         vscode.window.showWarningMessage('Deprecation warnings are omitted, stay safe otherwise!');
     }
     let shadertoyManager = new shadertoymanager_1.ShaderToyManager(context);
-    let reloadDelay = context.getConfig('reloadOnEditTextDelay') || 1.0;
     let timeout;
     let changeTextEvent;
     let changeEditorEvent;
     let registerCallbacks = () => {
+        clearTimeout(timeout);
         if (changeTextEvent !== undefined) {
             changeTextEvent.dispose();
         }
@@ -27560,6 +27573,7 @@ function activate(extensionContext) {
             changeEditorEvent.dispose();
         }
         if (context.getConfig('reloadOnEditText')) {
+            let reloadDelay = context.getConfig('reloadOnEditTextDelay') || 1.0;
             changeTextEvent = vscode.workspace.onDidChangeTextDocument((documentChange) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
@@ -28840,8 +28854,9 @@ buffers[${i}].UniformValues = {};
                         defaultValue[i] = defaultValue[i] * 255.0;
                     }
                 }
-                if (startingState.Values.hasOwnProperty(uniform.Name)) {
-                    defaultValue = startingState.Values[uniform.Name];
+                let startingValue = startingState.Values.get(uniform.Name);
+                if (startingValue !== undefined) {
+                    defaultValue = startingValue;
                 }
                 if (threeType === 'number') {
                     this.content += `\
@@ -30140,6 +30155,7 @@ const fs = __webpack_require__(/*! fs */ "fs");
 const path = __webpack_require__(/*! path */ "path");
 const typenames_1 = __webpack_require__(/*! ./typenames */ "./src/typenames.ts");
 const webviewcontentprovider_1 = __webpack_require__(/*! ./webviewcontentprovider */ "./src/webviewcontentprovider.ts");
+const utility_1 = __webpack_require__(/*! ./utility */ "./src/utility.ts");
 class ShaderToyManager {
     constructor(context) {
         this.startingData = new typenames_1.RenderStartingData();
@@ -30149,14 +30165,18 @@ class ShaderToyManager {
                 this.context.activeEditor = vscode.window.activeTextEditor;
             }
             if (this.webviewPanel) {
-                this.webviewPanel.dispose();
+                this.webviewPanel.Panel.dispose();
             }
-            this.webviewPanel = this.createWebview('GLSL Preview');
-            this.webviewPanel.onDidDispose(() => {
-                this.webviewPanel = undefined;
-            });
+            let newWebviewPanel = this.createWebview('GLSL Preview', undefined);
+            this.webviewPanel = {
+                Panel: newWebviewPanel,
+                OnDidDispose: () => {
+                    this.webviewPanel = undefined;
+                }
+            };
+            newWebviewPanel.onDidDispose(this.webviewPanel.OnDidDispose);
             if (this.context.activeEditor !== undefined) {
-                this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
             }
             else {
                 vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
@@ -30166,19 +30186,22 @@ class ShaderToyManager {
             if (vscode.window.activeTextEditor !== undefined) {
                 let document = vscode.window.activeTextEditor.document;
                 if (this.staticWebviews.find((webview) => { return webview.Document === document; }) === undefined) {
-                    let newWebviewPanel = this.createWebview('Static GLSL Preview');
-                    this.updateWebview(newWebviewPanel, vscode.window.activeTextEditor.document);
-                    this.staticWebviews.push({
-                        WebviewPanel: newWebviewPanel,
-                        Document: document
-                    });
-                    newWebviewPanel.onDidDispose(() => {
-                        const staticWebview = this.staticWebviews.find((webview) => { return webview.WebviewPanel === newWebviewPanel; });
+                    let newWebviewPanel = this.createWebview('Static GLSL Preview', undefined);
+                    let onDidDispose = () => {
+                        const staticWebview = this.staticWebviews.find((webview) => { return webview.Panel === newWebviewPanel; });
                         if (staticWebview !== undefined) {
                             const index = this.staticWebviews.indexOf(staticWebview);
                             this.staticWebviews.splice(index, 1);
                         }
+                    };
+                    this.staticWebviews.push({
+                        Panel: newWebviewPanel,
+                        OnDidDispose: onDidDispose,
+                        Document: document
                     });
+                    let staticWebview = this.staticWebviews[this.staticWebviews.length - 1];
+                    this.staticWebviews[this.staticWebviews.length - 1] = this.updateWebview(staticWebview, vscode.window.activeTextEditor.document);
+                    newWebviewPanel.onDidDispose(onDidDispose);
                 }
             }
         };
@@ -30197,11 +30220,9 @@ class ShaderToyManager {
             const isActiveDocument = this.context.activeEditor !== undefined && documentChange.document === this.context.activeEditor.document;
             if (isActiveDocument || staticWebview !== undefined) {
                 if (this.webviewPanel !== undefined && this.context.activeEditor !== undefined) {
-                    this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                    this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
                 }
-                for (let staticWebviewPanel of this.staticWebviews) {
-                    this.updateWebview(staticWebviewPanel.WebviewPanel, staticWebviewPanel.Document);
-                }
+                this.staticWebviews.map((staticWebview) => this.updateWebview(staticWebview, staticWebview.Document));
             }
         };
         this.onEditorChanged = (newEditor) => {
@@ -30211,17 +30232,21 @@ class ShaderToyManager {
                 }
                 this.context.activeEditor = newEditor;
                 if (this.webviewPanel !== undefined) {
-                    this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                    this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
                 }
             }
         };
         this.resetStartingData = () => {
             this.startingData = new typenames_1.RenderStartingData();
         };
-        this.createWebview = (title) => {
+        this.createWebview = (title, localResourceRoots) => {
+            if (localResourceRoots !== undefined) {
+                let extensionRoot = vscode.Uri.file(this.context.getVscodeExtensionContext().extensionPath);
+                localResourceRoots.push(extensionRoot);
+            }
             let options = {
                 enableScripts: true,
-                localResourceRoots: undefined
+                localResourceRoots: localResourceRoots
             };
             let newWebviewPanel = vscode.window.createWebviewPanel('shadertoy', title, vscode.ViewColumn.Two, options);
             newWebviewPanel.iconPath = this.context.getResourceUri('thumb.png');
@@ -30241,7 +30266,7 @@ class ShaderToyManager {
                         this.startingData.UniformsGui.Open = message.value;
                         return;
                     case 'updateUniformsGuiValue':
-                        this.startingData.UniformsGui.Values[message.name] = message.value;
+                        this.startingData.UniformsGui.Values.set(message.name, message.value);
                         return;
                     case 'showGlslDiagnostic':
                         let diagnosticBatch = message.diagnosticBatch;
@@ -30277,10 +30302,24 @@ class ShaderToyManager {
         };
         this.updateWebview = (webviewPanel, document) => {
             this.context.clearDiagnostics();
-            if (webviewPanel !== undefined) {
-                let webviewContentProvider = new webviewcontentprovider_1.WebviewContentProvider(this.context, document.getText(), document.fileName);
-                webviewPanel.webview.html = webviewContentProvider.generateWebviewConent(this.startingData, false);
+            let [html, localResources] = new webviewcontentprovider_1.WebviewContentProvider(this.context, document.getText(), document.fileName)
+                .generateWebviewConent(this.startingData, false);
+            let localResourceRoots = [];
+            for (let localResource of localResources) {
+                let localResourceRoot = path.dirname(localResource);
+                localResourceRoots.push(vscode.Uri.file(localResourceRoot));
             }
+            localResourceRoots = utility_1.removeDuplicates(localResourceRoots);
+            // Recreate webview if allowed resource roots are not part of the current resource roots
+            let previousLocalResourceRoots = webviewPanel.Panel.webview.options.localResourceRoots || [];
+            if (!localResourceRoots.every(val => previousLocalResourceRoots.includes(val))) {
+                let newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRoots);
+                webviewPanel.Panel.dispose();
+                newWebviewPanel.onDidDispose(webviewPanel.OnDidDispose);
+                webviewPanel.Panel = newWebviewPanel;
+            }
+            webviewPanel.Panel.webview.html = html;
+            return webviewPanel;
         };
         this.context = context;
     }
@@ -30322,7 +30361,7 @@ class RenderStartingData {
         this.Mouse = new Mouse();
         this.NormalizedMouse = new NormalizedMouse();
         this.Keys = [];
-        this.UniformsGui = { Open: false, Values: {} };
+        this.UniformsGui = { Open: false, Values: new Map() };
     }
 }
 exports.RenderStartingData = RenderStartingData;
@@ -30351,6 +30390,32 @@ var TextureType;
     TextureType["Texture2D"] = "Texture2D";
     TextureType["CubeMap"] = "CubeMap";
 })(TextureType = exports.TextureType || (exports.TextureType = {}));
+
+
+/***/ }),
+
+/***/ "./src/utility.ts":
+/*!************************!*\
+  !*** ./src/utility.ts ***!
+  \************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function removeDuplicates(array) {
+    var map = new Map();
+    var newArray = [];
+    for (let value of array) {
+        if (map.get(value) === undefined) {
+            newArray.push(value);
+            map.set(value);
+        }
+    }
+    return newArray;
+}
+exports.removeDuplicates = removeDuplicates;
 
 
 /***/ }),
@@ -30418,13 +30483,17 @@ class WebviewContentAssembler {
     constructor(context) {
         this.webviewContent = new webviewcontent_1.WebviewContent(context.getResourceUri('webview_base.html').fsPath);
         this.webviewModules = [];
-        this.webviewContentLineMappings = {};
+        this.webviewContentLineMappings = new Map();
         let lineNumber = 1;
         for (let line of this.webviewContent.getLines()) {
-            if (!this.webviewContentLineMappings.hasOwnProperty(line.trim())) {
-                this.webviewContentLineMappings[line.trim()] = [];
+            line = line.trim();
+            let lines = this.webviewContentLineMappings.get(line);
+            if (lines !== undefined) {
+                lines.push(lineNumber);
             }
-            this.webviewContentLineMappings[line.trim()].push(lineNumber);
+            else {
+                this.webviewContentLineMappings.set(line, [lineNumber]);
+            }
             lineNumber++;
         }
     }
@@ -30434,12 +30503,15 @@ class WebviewContentAssembler {
             Extension: extension
         };
         originalLine = originalLine.trim();
-        for (let lineNumber of this.webviewContentLineMappings[originalLine]) {
-            let webviewModule = {
-                Module: insertModule,
-                LineNumber: lineNumber
-            };
-            this.insertModule(webviewModule);
+        let lines = this.webviewContentLineMappings.get(originalLine);
+        if (lines !== undefined) {
+            for (let lineNumber of lines) {
+                let webviewModule = {
+                    Module: insertModule,
+                    LineNumber: lineNumber
+                };
+                this.insertModule(webviewModule);
+            }
         }
     }
     addReplaceModule(extension, originalLine, replaceContent) {
@@ -30449,12 +30521,15 @@ class WebviewContentAssembler {
             Extension: extension
         };
         originalLine = originalLine.trim();
-        for (let lineNumber of this.webviewContentLineMappings[originalLine]) {
-            let webviewModule = {
-                Module: replaceModule,
-                LineNumber: lineNumber
-            };
-            this.insertModule(webviewModule);
+        let lines = this.webviewContentLineMappings.get(originalLine);
+        if (lines !== undefined) {
+            for (let lineNumber of lines) {
+                let webviewModule = {
+                    Module: replaceModule,
+                    LineNumber: lineNumber
+                };
+                this.insertModule(webviewModule);
+            }
         }
     }
     insertModule(webviewModule) {
@@ -30532,6 +30607,7 @@ const audio_resume_extension_1 = __webpack_require__(/*! ./extensions/audio/audi
 const uniforms_init_extension_1 = __webpack_require__(/*! ./extensions/uniforms/uniforms_init_extension */ "./src/extensions/uniforms/uniforms_init_extension.ts");
 const uniforms_update_extension_1 = __webpack_require__(/*! ./extensions/uniforms/uniforms_update_extension */ "./src/extensions/uniforms/uniforms_update_extension.ts");
 const uniforms_preamble_extension_1 = __webpack_require__(/*! ./extensions/uniforms/uniforms_preamble_extension */ "./src/extensions/uniforms/uniforms_preamble_extension.ts");
+const utility_1 = __webpack_require__(/*! ./utility */ "./src/utility.ts");
 class WebviewContentProvider {
     constructor(context, documentContent, documentName) {
         this.context = context;
@@ -30747,8 +30823,27 @@ class WebviewContentProvider {
         }
         this.webviewAssembler.addWebviewModule(errorsExtension, '// Error Callback');
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Local Resources
+        let localResources = [];
+        for (let buffer of buffers) {
+            for (let texture of buffer.TextureInputs) {
+                if (texture.LocalTexture) {
+                    localResources.push(texture.LocalTexture);
+                }
+            }
+            for (let audio of buffer.AudioInputs) {
+                if (audio.LocalPath) {
+                    localResources.push(audio.LocalPath);
+                }
+            }
+        }
+        localResources = localResources.filter(function (elem, index, self) {
+            return index === self.indexOf(elem);
+        });
+        localResources = utility_1.removeDuplicates(localResources);
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Final Assembly
-        return this.webviewAssembler.assembleWebviewConent();
+        return [this.webviewAssembler.assembleWebviewConent(), localResources];
     }
 }
 exports.WebviewContentProvider = WebviewContentProvider;

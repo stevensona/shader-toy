@@ -55,6 +55,8 @@ import { UniformsInitExtension } from './extensions/uniforms/uniforms_init_exten
 import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_extension';
 import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
 
+import { removeDuplicates } from './utility';
+
 export class WebviewContentProvider {
     private context: Context;
     private webviewAssembler: WebviewContentAssembler;
@@ -328,17 +330,6 @@ export class WebviewContentProvider {
         localResources = localResources.filter(function(elem, index, self) {
             return index === self.indexOf(elem);
         });
-        let removeDuplicates = (array: string[]) => {
-            var m = new Map<string, void>();
-            var newArray = [];
-            for (let value of array) {
-                if (m.get(value) === undefined) {
-                    newArray.push(value);
-                    m.set(value);
-                }
-            }
-            return newArray;
-        };
         localResources = removeDuplicates(localResources);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
