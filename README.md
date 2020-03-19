@@ -167,7 +167,8 @@ Contributions of any kind are welcome and encouraged.
 * Improve error diagnostic for texture settings,
 * add a command to generate a portable file of the GLSL preview,
 * fix a bug a bug where MinFilter was not recognised as a valid setting,
-* add basic support for cubemaps.
+* add basic support for cubemaps,
+* fix an issue that would not allow arbitrary local resources from absolute paths.
 
 ### 0.10.2
 * Hotfix for infinite loop while parsing a shader.
