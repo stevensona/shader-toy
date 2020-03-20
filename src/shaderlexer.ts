@@ -84,10 +84,11 @@ export class ShaderLexer {
         'MinFilter',
         'MagFilter',
         'WrapMode',
+        'Type',
         'in'
     ];
     private is_keyword(val: string) {
-        return ShaderLexer.keywords.indexOf(val) > 0;
+        return ShaderLexer.keywords.indexOf(val) >= 0;
     }
     private static types = [
         'float',

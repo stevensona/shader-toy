@@ -55,6 +55,8 @@ import { UniformsInitExtension } from './extensions/uniforms/uniforms_init_exten
 import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_extension';
 import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
 
+import { removeDuplicates } from './utility';
+
 export class WebviewContentProvider {
     private context: Context;
     private webviewAssembler: WebviewContentAssembler;
@@ -68,10 +70,10 @@ export class WebviewContentProvider {
         this.documentName = documentName;
     }
 
-    public generateWebviewConent(startingState: Types.RenderStartingData): string {
+    public generateWebviewConent(startingState: Types.RenderStartingData, generateStandalone: boolean): [ string, string[] ] {
         let shaderName = this.documentName;
 
-        let webglLineNumbers = 105;
+        let webglPlusThreeJsLineNumbers = 107;
 
         shaderName = shaderName.replace(/\\/g, '/');
         let buffers: Types.BufferDefinition[] = [];
@@ -81,7 +83,7 @@ export class WebviewContentProvider {
         // Parse Shaders
         {
             let shader = this.documentContent;
-            new BufferProvider(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes);
+            new BufferProvider(this.context).parseShaderCode(shaderName, shader, buffers, commonIncludes, generateStandalone);
 
             // If final buffer uses feedback we need to add a last pass that renders it to the screen
             // because we can not ping-pong the screen
@@ -185,13 +187,13 @@ export class WebviewContentProvider {
             let uniformsPreambleExtension = new UniformsPreambleExtension(buffers);
             preambleExtension.addPreambleExtension(uniformsPreambleExtension);
 
-            let datGuiExtension = new DatGuiExtension(this.context);
+            let datGuiExtension = new DatGuiExtension(this.context, generateStandalone);
             this.webviewAssembler.addWebviewModule(datGuiExtension, '<!-- dat.gui -->');
         }
 
         // Fix up line offsets
         for (let buffer of buffers) {
-            buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglLineNumbers;
+            buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglPlusThreeJsLineNumbers;
             if (buffer.UsesKeyboard && keyboardShaderExtension !== undefined) {
                 buffer.LineOffset += keyboardShaderExtension.getShaderPreambleLineNumbers();
             }
@@ -216,13 +218,13 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Texture Loading
-        let textureInitExtension = new TexturesInitExtension(buffers, this.context);
+        let textureInitExtension = new TexturesInitExtension(buffers, this.context, generateStandalone);
         this.webviewAssembler.addWebviewModule(textureInitExtension, '// Texture Init');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Audio Logic
         if (useAudio) {
-            let audioInitExtension = new AudioInitExtension(buffers, this.context);
+            let audioInitExtension = new AudioInitExtension(buffers, this.context, generateStandalone);
             this.webviewAssembler.addWebviewModule(audioInitExtension, '// Audio Init');
             textureInitExtension.addTextureContent(audioInitExtension);
 
@@ -243,25 +245,27 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Packages
         {
-            let jqueryExtension = new JQueryExtension(this.context);
+            let jqueryExtension = new JQueryExtension(this.context, generateStandalone);
             this.webviewAssembler.addReplaceModule(jqueryExtension, '<script src="<!-- JQuery.js -->"></script>', '<!-- JQuery.js -->');
 
-            let threeExtension = new ThreeExtension(this.context);
+            let threeExtension = new ThreeExtension(this.context, generateStandalone);
             this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
-            let statsExtension = new StatsExtension(this.context);
+            let statsExtension = new StatsExtension(this.context, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Pause Logic
-        if (this.context.getConfig<boolean>('showPauseButton')) {
-            let pauseButtonStyleExtension = new PauseButtonStyleExtension(this.context);
-            this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
+        if (!generateStandalone) {
+            if (this.context.getConfig<boolean>('showPauseButton')) {
+                let pauseButtonStyleExtension = new PauseButtonStyleExtension(this.context);
+                this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
 
-            let pauseButtonExtension = new PauseButtonExtension();
-            this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
+                let pauseButtonExtension = new PauseButtonExtension();
+                this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
+            }
         }
 
         if (this.context.getConfig<boolean>('pauseWholeRender')) {
@@ -278,12 +282,14 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Screenshot Logic
-        if (this.context.getConfig<boolean>('showScreenshotButton')) {
-            let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(this.context);
-            this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
+        if (!generateStandalone) {
+            if (this.context.getConfig<boolean>('showScreenshotButton')) {
+                let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(this.context);
+                this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
 
-            let screenshotButtonExtension = new ScreenshotButtonExtension();
-            this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
+                let screenshotButtonExtension = new ScreenshotButtonExtension();
+                this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
+            }
         }
         let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
         if (forcedScreenshotResolution === undefined) {
@@ -291,7 +297,7 @@ export class WebviewContentProvider {
         }
         let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
-
+        
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling
         let errorsExtension: WebviewExtension;
@@ -307,7 +313,27 @@ export class WebviewContentProvider {
         this.webviewAssembler.addWebviewModule(errorsExtension, '// Error Callback');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Local Resources
+        let localResources: string[] = [];
+        for (let buffer of buffers) {
+            for (let texture of buffer.TextureInputs) {
+                if (texture.LocalTexture) {
+                    localResources.push(texture.LocalTexture);
+                }
+            }
+            for (let audio of buffer.AudioInputs) {
+                if (audio.LocalPath) {
+                    localResources.push(audio.LocalPath);
+                }
+            }
+        }
+        localResources = localResources.filter(function(elem, index, self) {
+            return index === self.indexOf(elem);
+        });
+        localResources = removeDuplicates(localResources);
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Final Assembly
-        return this.webviewAssembler.assembleWebviewConent();
+        return [ this.webviewAssembler.assembleWebviewConent(), localResources ];
     }
 }

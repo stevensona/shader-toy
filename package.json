@@ -19,9 +19,10 @@
     ],
     "activationEvents": [
         "onCommand:shader-toy.showGlslPreview",
-        "onCommand:shader-toy.showStaticGlslPreview"
+        "onCommand:shader-toy.showStaticGlslPreview",
+        "onCommand:shader-toy.createPortableGlslPreview"
     ],
-    "main": "./out/src/extension.js",
+    "main": "./dist/extension.js",
     "contributes": {
         "configuration": {
             "properties": {
@@ -150,6 +151,10 @@
             {
                 "command": "shader-toy.showStaticGlslPreview",
                 "title": "Shader Toy: Show Static GLSL Preview"
+            },
+            {
+                "command": "shader-toy.createPortableGlslPreview",
+                "title": "Shader Toy: Create Portable GLSL Preview"
             }
         ],
         "menus": {
@@ -161,30 +166,42 @@
                 {
                     "command": "shader-toy.showStaticGlslPreview",
                     "group": "ShaderToy"
+                },
+                {
+                    "command": "shader-toy.createPortableGlslPreview",
+                    "group": "ShaderToy"
                 }
             ]
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "webpack --mode production",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+        "test": "npm run compile && node ./node_modules/vscode/bin/test",
+        "webpack": "webpack --mode development",
+        "webpack-dev": "webpack --mode development --watch",
+        "test-compile": "tsc -p ./"
     },
     "dependencies": {
+        "@types/glob": "^7.1.1",
         "compare-versions": "^3.4.0",
+        "glob": "^7.1.6",
         "glslify": "^7.0.0",
         "mime": "^2.4.2"
     },
     "devDependencies": {
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^10.12.21",
         "@types/compare-versions": "^3.0.0",
         "@types/mime": "^2.0.0",
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^10.12.21",
+        "ts-loader": "^6.2.1",
         "tslint": "^5.12.1",
         "typescript": "^3.3.1",
-        "vscode": "^1.1.33"
+        "vscode": "^1.1.33",
+        "webpack": "^4.42.0",
+        "webpack-cli": "^3.3.11"
     },
     "icon": "resources/thumb.png"
 }

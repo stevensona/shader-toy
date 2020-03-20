@@ -9,13 +9,13 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
     private content: string;
     private textureContent: string;
 
-    constructor(buffers: Types.BufferDefinition[], context: Context) {
+    constructor(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
         this.content = '';
         this.textureContent = '';
-        this.processBuffers(buffers, context);
+        this.processBuffers(buffers, context, generateStandalone);
     }
 
-    private processBuffers(buffers: Types.BufferDefinition[], context: Context) {
+    private processBuffers(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
         for (let i in buffers) {
             const buffer = buffers[i];
             const audios =  buffer.AudioInputs;
@@ -30,7 +30,7 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                 let path: string | undefined;
 
                 if (localPath !== undefined) {
-                    path = context.makeWebviewResource(context.makeUri(localPath)).toString();
+                    path = generateStandalone ? localPath : context.makeWebviewResource(context.makeUri(localPath)).toString();
                 }
                 else if (remotePath !== undefined) {
                     path = remotePath;
@@ -76,17 +76,21 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                                     })
                                 })
                                 .catch(function(){
-                                    vscode.postMessage({
-                                        command: 'errorMessage',
-                                        message: 'Failed decoding audio file: ${audio.UserPath}'
-                                    });
+                                    if (vscode !== undefined) {
+                                        vscode.postMessage({
+                                            command: 'errorMessage',
+                                            message: 'Failed decoding audio file: ${audio.UserPath}'
+                                        });
+                                    }
                                 });
                         }).
                         catch(function(){
-                            vscode.postMessage({
-                                command: 'errorMessage',
-                                message: 'Failed loading audio file: ${audio.UserPath}'
-                            });
+                            if (vscode !== undefined) {
+                                vscode.postMessage({
+                                    command: 'errorMessage',
+                                    message: 'Failed loading audio file: ${audio.UserPath}'
+                                });
+                            }
                         });
                     `;
                     this.textureContent += `buffers[${i}].Shader.uniforms.iChannel0 = { type: 't', value: null };\n`;

@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as glob from 'glob';
 import { DiagnosticBatch } from './typenames';
 
 export class Context {
@@ -45,9 +46,19 @@ export class Context {
         let file = ((file: string) => {
             let fileCandidates: string[] = [];
 
+            let exists = (file: string) => {
+                if (file.indexOf('{}') < 0 && file.indexOf('*') < 0) {
+                    return fs.existsSync(file);
+                }
+                else {
+                    let fileMatches: string[] = glob.sync(file.replace('{}', '*'));
+                    return fileMatches.length > 0;
+                }
+            };
+
             // Highest priority are absolute paths
             fileCandidates.push(file);
-            if (fs.existsSync(file)) {
+            if (exists(file)) {
                 return file;
             }
 
@@ -55,7 +66,7 @@ export class Context {
             {
                 const fileCandidate = [ sourcePath, file ].join('/');
                 fileCandidates.push(fileCandidate);
-                if (fs.existsSync(fileCandidate)) {
+                if (exists(fileCandidate)) {
                     return fileCandidate;
                 }
             }
@@ -64,10 +75,11 @@ export class Context {
             if (vscode.workspace.workspaceFolders !== undefined) {
                 let workspaceFileCandidates: string[] = [];
                 for (let worspaceFolder of vscode.workspace.workspaceFolders) {
-                    let fileCandidate = worspaceFolder.uri.fsPath + '/' + file;
-                    fileCandidate = fileCandidate.replace(/\\/g, '/');
-                    fileCandidate = fileCandidate.replace(/\.\//g, '');
-                    if (fs.existsSync(fileCandidate)) {
+                    let workspacePath = worspaceFolder.uri.fsPath;
+                    workspacePath = workspacePath.replace(/\\/g, '/');
+                    workspacePath = workspacePath.replace(/\.\//g, '');
+                    let fileCandidate = [ workspacePath, file ].join('/');
+                    if (exists(fileCandidate)) {
                         workspaceFileCandidates.push(fileCandidate);
                     }
                     fileCandidates.push(fileCandidate);
@@ -83,6 +95,8 @@ export class Context {
             vscode.window.showErrorMessage(`File '${userPath}' was not found, paths that were tried were\n\t${fileCandidates.join('\n\t')}`);
             return file;
         })(userPath);
+        file = path.normalize(file);
+        file = file.replace(/\\/g, '/');
         return { file, userPath };
     }
 
@@ -143,5 +157,9 @@ export class Context {
 
     public getConfig<T>(section: string): T | undefined {
         return this.config.get<T>(section);
+    }
+
+    public getVscodeExtensionContext(): vscode.ExtensionContext {
+        return this.context;
     }
 }

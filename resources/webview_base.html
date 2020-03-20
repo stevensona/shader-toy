@@ -75,15 +75,20 @@
 <!-- Shaders -->
 
 <script type="text/javascript">
-    const vscode = acquireVsCodeApi();
+    let vscode = undefined;
+    if (typeof acquireVsCodeApi === 'function') {
+        vscode = acquireVsCodeApi();
+    }
     var compileTimePanel;
 
     let revealError = function(line, file) {
-        vscode.postMessage({
-            command: 'showGlslsError',
-            line: line,
-            file: file
-        });
+        if (vscode) {
+            vscode.postMessage({
+                command: 'showGlslsError',
+                line: line,
+                file: file
+            });
+        }
     };
 
     let currentShader = {};
@@ -367,19 +372,21 @@
         }
     }
     function updateMouse() {
-        vscode.postMessage({
-            command: 'updateMouse',
-            mouse: {
-                x: mouse.x,
-                y: mouse.y,
-                z: mouse.z,
-                w: mouse.w
-            },
-            normalizedMouse: {
-                x: normalizedMouse.x,
-                y: normalizedMouse.y
-            }
-        });
+        if (vscode !== undefined) {
+            vscode.postMessage({
+                command: 'updateMouse',
+                mouse: {
+                    x: mouse.x,
+                    y: mouse.y,
+                    z: mouse.z,
+                    w: mouse.w
+                },
+                normalizedMouse: {
+                    x: normalizedMouse.x,
+                    y: normalizedMouse.y
+                }
+            });
+        }
     }
     let dragging = false;
     function updateNormalizedMouseCoordinates(clientX, clientY) {

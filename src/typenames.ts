@@ -13,14 +13,14 @@ export class NormalizedMouse {
 export type Keys = number[];
 export type UniformsGuiStartingData = {
     Open: boolean;
-    Values: Record<string, number[]>;
+    Values: Map<string, number[]>;
 };
 export class RenderStartingData {
     Time: number = 0;
     Mouse: Mouse = new Mouse();
     NormalizedMouse: NormalizedMouse = new NormalizedMouse();
     Keys: Keys = [];
-    UniformsGui: UniformsGuiStartingData = { Open: false, Values: {} };
+    UniformsGui: UniformsGuiStartingData = { Open: false, Values: new Map<string, number[]>() };
 }
 
 export enum TextureMagFilter {
@@ -40,6 +40,10 @@ export enum TextureWrapMode {
     Clamp   = "Clamp",
     Mirror  = "Mirror",
 }
+export enum TextureType {
+    Texture2D   = "Texture2D",
+    CubeMap     = "CubeMap",
+}
 
 export type TextureDefinition = {
     Channel: number,
@@ -53,8 +57,10 @@ export type TextureDefinition = {
     MagLine?: number,
     Min?: TextureMinFilter,
     MinLine?: number,
-    Wrap?: TextureWrapMode
+    Wrap?: TextureWrapMode,
     WrapLine?: number,
+    Type?: TextureType,
+    TypeLine?: number,
 };
 export type AudioDefinition = {
     Channel: number,

@@ -10,6 +10,7 @@ export enum ObjectType {
     TextureMagFilter,
     TextureMinFilter,
     TextureWrapMode,
+    TextureType,
     Number,
     Value,
     Uniform,
@@ -40,6 +41,11 @@ type TextureWrapMode = {
     Index: number,
     Value: Types.TextureWrapMode
 };
+type TextureType = {
+    Type: ObjectType.TextureType,
+    Index: number,
+    Value: Types.TextureType
+};
 type LiteralNumber = {
     Type: ObjectType.Number,
     ValueType: string,
@@ -68,7 +74,7 @@ type ErrorObject = {
     Type: ObjectType.Error,
     Message: string
 };
-type TextureObject = Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode;
+type TextureObject = Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType;
 type Object = Include | TextureObject | Uniform | Keyboard;
 
 export class ShaderParser {
@@ -156,7 +162,7 @@ export class ShaderParser {
         return include;
     }
 
-    private getTextureObject(previous: Token): Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | ErrorObject {
+    private getTextureObject(previous: Token): Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType | ErrorObject {
         let nextToken = this.lexer.next();
         if (nextToken === undefined) {
             return this.makeError(`Expected string or "::" after "${previous.value}" but got end-of-file`);
@@ -182,14 +188,14 @@ export class ShaderParser {
         return texture;
     }
 
-    private getTextureParameter(index: number): TextureMagFilter | TextureMinFilter | TextureWrapMode | ErrorObject {
+    private getTextureParameter(index: number): TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType | ErrorObject {
         let nextToken = this.lexer.next();
         if (nextToken === undefined) {
-            return this.makeError(`Expected texture parameter keyword after "::" but got end-of-file`);
+            return this.makeError(`Expected texture parameter keyword after "::" but got end-of-file, valid options are "MinFilter", "MagFilter", "WrapMode" and "Type"`);
         }
         if (nextToken.type !== TokenType.Keyword ||
             nextToken.value === 'in') {
-            return this.makeError(`Expected texture parameter keyword after "::" but got "${nextToken.value}"`);
+            return this.makeError(`Expected texture parameter keyword after "::" but got "${nextToken.value}", valid options are "MinFilter", "MagFilter", "WrapMode" and "Type"`);
         }
 
         let textureSetting = nextToken.value as string;
@@ -240,6 +246,18 @@ export class ShaderParser {
                 }
                 else {
                     return this.makeError(`Expected one of "Clamp", "Repeat" or "Mirror" after "${textureSetting}" but got "${settingValue}"`);
+                }
+            case "Type":
+                if (Object.values(Types.TextureType).includes(settingValue as Types.TextureType)) {
+                    let textureType: TextureType = {
+                        Type: ObjectType.TextureType,
+                        Index: index,
+                        Value: settingValue as Types.TextureType
+                    };
+                    return textureType;
+                }
+                else {
+                    return this.makeError(`Expected one of "Texture2D" or "CubeMap" after "${textureSetting}" but got "${settingValue}"`);
                 }
         }
 

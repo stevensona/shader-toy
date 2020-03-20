@@ -23,6 +23,8 @@ type InputTextureSettings = {
     MinLine?: number,
     Wrap?: Types.TextureWrapMode
     WrapLine?: number,
+    Type?: Types.TextureType
+    TypeLine?: number,
 };
 
 export class BufferProvider {
@@ -33,8 +35,8 @@ export class BufferProvider {
         this.visitedFiles = [];
     }
 
-    public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[]) {
-        this.parseShaderCodeInternal(file, code, buffers, commonIncludes);
+    public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
+        this.parseShaderCodeInternal(file, file, code, buffers, commonIncludes, generateStandalone);
 
         const findByName = (bufferName: string) => {
             let strippedName = this.stripPath(bufferName);
@@ -113,7 +115,7 @@ export class BufferProvider {
         return name.substring(lastSlash + 1);
     }
 
-    private parseShaderCodeInternal(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[]) {
+    private parseShaderCodeInternal(rootFile: string, file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
         const found = this.visitedFiles.find((visitedFile: string) => visitedFile === file);
         if (found) {
             return;
@@ -122,12 +124,12 @@ export class BufferProvider {
 
         let boxedLineOffset: Types.BoxedValue<number> = { Value: 0 };
         let pendingTextures: InputTexture[] = [];
-        let pendingTextureSettings: Record<ChannelId, InputTextureSettings> = {};
+        let pendingTextureSettings = new Map<ChannelId, InputTextureSettings>();
         let pendingUniforms: Types.UniformDefinition[] = [];
         let includes: Types.IncludeDefinition[] = [];
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
 
-        code = this.transformCode(file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard);
+        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, generateStandalone);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
@@ -163,7 +165,7 @@ export class BufferProvider {
                         }
     
                         // Parse the shader
-                        this.parseShaderCodeInternal(depFile, shaderFile.bufferCode, buffers, commonIncludes);
+                        this.parseShaderCodeInternal(rootFile, depFile, shaderFile.bufferCode, buffers, commonIncludes, generateStandalone);
             
                         // Push buffers as textures
                         textures.push({
@@ -227,14 +229,16 @@ export class BufferProvider {
 
         // Assign pending texture settings
         for (let texture of textures) {
-            if (pendingTextureSettings.hasOwnProperty(texture.Channel)) {
-                let pendingSettings = pendingTextureSettings[texture.Channel];
+            let pendingSettings = pendingTextureSettings.get(texture.Channel);
+            if (pendingSettings !== undefined) {
                 texture.Mag = pendingSettings.Mag || Types.TextureMagFilter.Linear;
                 texture.MagLine = pendingSettings.MagLine;
                 texture.Min = pendingSettings.Min || Types.TextureMinFilter.Linear;
                 texture.MinLine = pendingSettings.MinLine;
                 texture.Wrap = pendingSettings.Wrap || Types.TextureWrapMode.Clamp;
                 texture.WrapLine = pendingSettings.WrapLine;
+                texture.Type = pendingSettings.Type || Types.TextureType.Texture2D;
+                texture.TypeLine = pendingSettings.TypeLine;
             }
         }
 
@@ -318,12 +322,12 @@ void main() {
         });
     }
 
-    private transformCode(file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Record<ChannelId, InputTextureSettings>, 
-                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>): string {
+    private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>, 
+                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
         
         let addTextureSettingIfNew = (channel: number) => {
-            if (!textureSettings.hasOwnProperty(channel)) {
-                textureSettings[channel] = {};
+            if (textureSettings.get(channel) === undefined) {
+                textureSettings.set(channel, {});
             }
         };
 
@@ -341,6 +345,7 @@ void main() {
             replaceLastObject("");
         };
 
+        let thisTextureSettings: InputTextureSettings | undefined;
         while (!parser.eof()) {
             let nextObject = parser.next();
             if (nextObject === undefined) {
@@ -374,6 +379,9 @@ void main() {
                         }
                         else {
                             ({ file: textureFile, userPath: userPath } = this.context.mapUserPath(userPath, file));
+                            if (generateStandalone) {
+                                textureFile = path.relative(path.dirname(rootFile), textureFile);
+                            }
                         }
                     }
                     else {
@@ -392,20 +400,38 @@ void main() {
                 }
                 case ObjectType.TextureMagFilter:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Mag = nextObject.Value;
-                    textureSettings[nextObject.Index].MagLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Mag = nextObject.Value;
+                        thisTextureSettings.MagLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.TextureMinFilter:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Min = nextObject.Value;
-                    textureSettings[nextObject.Index].MinLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Min = nextObject.Value;
+                        thisTextureSettings.MinLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.TextureWrapMode:
                     addTextureSettingIfNew(nextObject.Index);
-                    textureSettings[nextObject.Index].Wrap = nextObject.Value;
-                    textureSettings[nextObject.Index].WrapLine = parser.line();
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Wrap = nextObject.Value;
+                        thisTextureSettings.WrapLine = parser.line();
+                    }
+                    removeLastObject();
+                    break;
+                case ObjectType.TextureType:
+                    addTextureSettingIfNew(nextObject.Index);
+                    thisTextureSettings = textureSettings.get(nextObject.Index);
+                    if (thisTextureSettings !== undefined) {
+                        thisTextureSettings.Type = nextObject.Value;
+                        thisTextureSettings.TypeLine = parser.line();
+                    }
                     removeLastObject();
                     break;
                 case ObjectType.Include: {
@@ -424,8 +450,8 @@ void main() {
                         let includeCode = this.readShaderFile(includeFile);
                         if (includeCode.success) {
                             let include_line_offset: Types.BoxedValue<number> = { Value: 0 };
-                            let transformedIncludeCode = this.transformCode(includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                                                                            uniforms, includes, sharedIncludes, usesKeyboard);
+                            let transformedIncludeCode = this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
+                                                                            uniforms, includes, sharedIncludes, usesKeyboard, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
                                 Name: path.basename(includeFile),
                                 File: includeFile,

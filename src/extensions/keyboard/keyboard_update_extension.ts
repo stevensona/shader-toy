@@ -14,10 +14,12 @@ if (pressedKeys.length > 0 || releasedKeys.length > 0) {
     }
 
     if (pressedKeys.length > 0) {
-        vscode.postMessage({
-            command: 'updateKeyboard',
-            keys: toggledKeys
-        });
+        if (vscode !== undefined) {
+            vscode.postMessage({
+                command: 'updateKeyboard',
+                keys: toggledKeys
+            });
+        }
     }
     
     keyBoardTexture.needsUpdate = true;

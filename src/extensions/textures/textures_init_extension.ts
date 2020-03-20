@@ -4,16 +4,19 @@ import * as Types from '../../typenames';
 import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 import { TextureExtensionExtension } from '../textures/texture_extension_extension';
+import { DiagnosticSeverity } from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export class TexturesInitExtension implements WebviewExtension {
     private content: string;
 
-    constructor(buffers: Types.BufferDefinition[], context: Context) {
+    constructor(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
         this.content = '';
-        this.processBuffers(buffers, context);
+        this.processBuffers(buffers, context, generateStandalone);
     }
 
-    private processBuffers(buffers: Types.BufferDefinition[], context: Context) {
+    private processBuffers(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
         let textureOnLoadScript = (texture: Types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
             let magFilter: string = (() => {
                 switch(texture.Mag) {
@@ -82,11 +85,13 @@ if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
         filename: '${textureFileOrigin}',
         diagnostics: diagnostics
     };
-    vscode.postMessage({
-        command: 'showGlslDiagnostic',
-        type: 'warning',
-        diagnosticBatch: diagnosticBatch
-    });
+    if (vscode !== undefined) {
+        vscode.postMessage({
+            command: 'showGlslDiagnostic',
+            type: 'warning',
+            diagnosticBatch: diagnosticBatch
+        });
+    }
 };
 buffers[${bufferIndex}].ChannelResolution[${textureChannel}] = new THREE.Vector3(texture.image.width, texture.image.height, 1);
 buffers[${bufferIndex}].Shader.uniforms.iChannelResolution.value = buffers[${bufferIndex}].ChannelResolution;
@@ -104,10 +109,13 @@ function(texture) {
         let makeTextureLoadErrorScript = (filename: string) => { 
             return `\
 function(err) {
-    vscode.postMessage({
-        command: 'errorMessage',
-        message: 'Failed loading texture file ${filename}'
-    });
+    console.log(err);
+    if (vscode !== undefined) {
+        vscode.postMessage({
+            command: 'errorMessage',
+            message: 'Failed loading texture file ${filename}'
+        });
+    }
 }`;
         };
 
@@ -121,35 +129,96 @@ function(err) {
                 const localPath = texture.LocalTexture;
                 const remotePath = texture.RemoteTexture;
 
-                let textureLoadScript: string | undefined;
-                let textureSizeScript: string = 'null';
-                if (textureBufferIndex !== undefined) {
-                    textureLoadScript = `buffers[${textureBufferIndex}].Target.texture`;
-                    textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;
-                }
-                else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    const resolvedPath = context.makeWebviewResource(context.makeUri(localPath));
-                    const resolvedPathString = resolvedPath.toString();
-                    textureLoadScript = `texLoader.load('${resolvedPathString}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPathString)})`;
-                }
-                else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                    textureLoadScript = `texLoader.load('${remotePath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(`${remotePath}`)})`;
-                }
+                if (texture.Type !== undefined && texture.Type === Types.TextureType.CubeMap) {
+                    if (localPath === undefined || (localPath.match(/{}/g) || []).length !== 1) {
+                        let diagnosticBatch: Types.DiagnosticBatch = {
+                            filename: texture.File,
+                            diagnostics: [{
+                                line: texture.TypeLine || 0,
+                                message: 'Only local paths with a single wildcard "{}" are supported for the CubeMap texture type.'
+                            }]
+                        };
+                        context.showDiagnostics(diagnosticBatch, DiagnosticSeverity.Error);
+                        continue;
+                    }
 
-                if (textureLoadScript !== undefined) {
+                    let textureDirectory = path.dirname(localPath);
+                    let rawTextureName = path.basename(localPath);
+
+                    let getTexturesFromPrefixes = (pattern: string, prefixes: [ string, string, string, string, string, string ]) => {
+                        let textures = [];
+                        for (let dir of prefixes)
+                        {
+                            let directionFile = pattern.replace('{}', dir);
+                            if (!fs.existsSync(directionFile)) {
+                                return;
+                            }
+                            textures.push(directionFile);
+                        }
+                        return textures;
+                    };
+
+                    let textures = getTexturesFromPrefixes(localPath, [ 'e', 'w', 'u', 'd', 'n', 's' ]);
+                    if (textures === undefined) {
+                        textures = getTexturesFromPrefixes(localPath, [ 'east', 'west', 'up', 'down', 'north', 'south' ]);
+                    }
+                    if (textures === undefined) {
+                        textures = getTexturesFromPrefixes(localPath, [ 'px', 'nx', 'py', 'ny', 'pz', 'nz' ]);
+                    }
+                    if (textures === undefined) {
+                        textures = getTexturesFromPrefixes(localPath, [ 'posx', 'negx', 'posy', 'negy', 'posz', 'negz' ]);
+                    }
+
+                    if (textures === undefined) {
+                        let diagnosticBatch: Types.DiagnosticBatch = {
+                            filename: texture.File,
+                            diagnostics: [{
+                                line: texture.TypeLine || 0,
+                                message: `Could not find all cubemap files for the given path with wildcard.`
+                            }]
+                        };
+                        context.showDiagnostics(diagnosticBatch, DiagnosticSeverity.Error);
+                        continue;
+                    }
+
+                    textures = textures.map((texture: string) => { return  context.makeWebviewResource(context.makeUri(texture)).toString(); });
+                    let textureLoadScript = `new THREE.CubeTextureLoader().load([ "${textures.join('", "')}" ], ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(localPath)})`;
+                
                     this.content += `\
+buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${textureLoadScript} };`;
+                }
+                else {
+                    let textureLoadScript: string | undefined;
+                    let textureSizeScript: string = 'null';
+                    if (textureBufferIndex !== undefined) {
+                        textureLoadScript = `buffers[${textureBufferIndex}].Target.texture`;
+                        textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;
+                    }
+                    else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
+                        const resolvedPath = generateStandalone ? localPath : context.makeWebviewResource(context.makeUri(localPath)).toString();
+                        textureLoadScript = `texLoader.load('${resolvedPath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPath)})`;
+                    }
+                    else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
+                        textureLoadScript = `texLoader.load('${remotePath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(remotePath)})`;
+                    }
+
+                    if (textureLoadScript !== undefined) {
+                        this.content += `\
 buffers[${i}].ChannelResolution[${channel}] = ${textureSizeScript};
 buffers[${i}].Shader.uniforms.iChannelResolution.value = buffers[${i}].ChannelResolution;
 buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${textureLoadScript} };`;
+                    }
                 }
             }
 
             if (buffer.UsesSelf) {
-                this.content += `buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
+                this.content += `
+buffers[${i}].Shader.uniforms.iChannel${buffer.SelfChannel} = { type: 't', value: buffers[${i}].PingPongTarget.texture };\n`;
             }
 
             if (buffer.UsesKeyboard) {
-                this.content += `buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
+                this.content += `
+buffers[${i}].Shader.uniforms.iKeyboard = { type: 't', value: keyBoardTexture };\n`;
             }
         }
     }

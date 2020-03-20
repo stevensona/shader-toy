@@ -28,11 +28,13 @@ console.error = function () {
             filename: currentShader.File,
             diagnostics: diagnostics
         };
-        vscode.postMessage({
-            command: 'showGlslDiagnostic',
-            type: 'error',
-            diagnosticBatch: diagnosticBatch
-        });
+        if (vscode !== undefined) {
+            vscode.postMessage({
+                command: 'showGlslDiagnostic',
+                type: 'error',
+                diagnosticBatch: diagnosticBatch
+            });
+        }
 
         $('#message').append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
         $('#message').append('<ul>');

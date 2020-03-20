@@ -47,8 +47,10 @@ buffers[${i}].UniformValues = {};
                         defaultValue[i] = defaultValue[i] * 255.0;
                     }
                 }
-                if (startingState.Values.hasOwnProperty(uniform.Name)) {
-                    defaultValue = startingState.Values[uniform.Name];
+
+                let startingValue = startingState.Values.get(uniform.Name);
+                if (startingValue !== undefined) {
+                    defaultValue = startingValue;
                 }
 
                 if (threeType === 'number') {
@@ -75,11 +77,13 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
 {
     let controller = ${this.getRawDatGuiValueString(object, property, value)};
     controller.onFinishChange((value) => {
-        vscode.postMessage({
-            command: 'updateUniformsGuiValue',
-            name: '${value.Name}',
-            value: [ value ]
-        });
+        if (vscode !== undefined) {
+            vscode.postMessage({
+                command: 'updateUniformsGuiValue',
+                name: '${value.Name}',
+                value: [ value ]
+            });
+        }
     });
 }
 `;
@@ -89,11 +93,13 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
 {
     let controller = ${this.getRawDatGuiValueString(object, property, value)};
     controller.onFinishChange((value) => {
-        vscode.postMessage({
-            command: 'updateUniformsGuiValue',
-            name: '${value.Name}',
-            value: value
-        });
+        if (vscode !== undefined) {
+            vscode.postMessage({
+                command: 'updateUniformsGuiValue',
+                name: '${value.Name}',
+                value: value
+            });
+        }
     });
 }
 `;
@@ -117,11 +123,13 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     let controller_${i} = ${this.getRawDatGuiValueString(sub_object, sub_value.Name, sub_value)}.name('${property}.${sub_value.Name}');
     controller_${i}.onFinishChange((value) => {
         values[${i}] = value;
-        vscode.postMessage({
-            command: 'updateUniformsGuiValue',
-            name: '${value.Name}',
-            value: values
-        });
+        if (vscode !== undefined) {
+            vscode.postMessage({
+                command: 'updateUniformsGuiValue',
+                name: '${value.Name}',
+                value: values
+            });
+        }
     });
 `;
             }
