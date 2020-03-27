@@ -127,7 +127,7 @@ export class ShaderToyManager {
         let newWebviewPanel = vscode.window.createWebviewPanel(
             'shadertoy',
             title,
-            vscode.ViewColumn.Two,
+            { viewColumn: vscode.ViewColumn.Two, preserveFocus: true },
             options
         );
         newWebviewPanel.iconPath = this.context.getResourceUri('thumb.png');
@@ -194,17 +194,23 @@ export class ShaderToyManager {
         let [ html, localResources ] = new WebviewContentProvider(this.context, document.getText(), document.fileName)
             .generateWebviewConent(this.startingData, false);
 
-        let localResourceRoots: vscode.Uri[] = [];
+        let localResourceRoots: string[] = [];
         for (let localResource of localResources) {
             let localResourceRoot = path.dirname(localResource);
-            localResourceRoots.push(vscode.Uri.file(localResourceRoot));
+            localResourceRoots.push(localResourceRoot);
         }
         localResourceRoots = removeDuplicates(localResourceRoots);
 
         // Recreate webview if allowed resource roots are not part of the current resource roots
         let previousLocalResourceRoots = webviewPanel.Panel.webview.options.localResourceRoots || [];
-        if (!localResourceRoots.every(val => previousLocalResourceRoots.includes(val))) {
-            let newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRoots);
+        let previousHadLocalResourceRoot = (localResourceRootAsUri: string) => {
+            let foundElement = previousLocalResourceRoots.find(uri => uri.toString() === localResourceRootAsUri);
+            return foundElement !== undefined;
+        };
+        let previousHadAllLocalResourceRoots = localResourceRoots.every(localResourceRoot => previousHadLocalResourceRoot(vscode.Uri.file(localResourceRoot).toString()));
+        if (!previousHadAllLocalResourceRoots) {
+            let localResourceRootsUri = localResourceRoots.map(localResourceRoot => vscode.Uri.file(localResourceRoot));
+            let newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRootsUri);
             webviewPanel.Panel.dispose();
             newWebviewPanel.onDidDispose(webviewPanel.OnDidDispose);
             webviewPanel.Panel = newWebviewPanel;

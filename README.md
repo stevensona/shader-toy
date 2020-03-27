@@ -163,6 +163,10 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.4
+* Fix an issue that caused a full webview recreation on a recompile,
+* made webview not grab focus when it is being created.
+
 ### 0.10.3
 * Improve error diagnostic for texture settings,
 * add a command to generate a portable file of the GLSL preview,
