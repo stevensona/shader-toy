@@ -136,32 +136,43 @@ export class ShaderLexer {
         };
     }
 
-    private read_next(): Token | undefined {
-        if (this.stream.eof()) {
-            return undefined;
-        }
+    private skip_whitespace_and_comments() {
+        while (true) {
+            let current_pos = this.stream.pos();
 
+            // Skip whitespace
+            this.next_while(ShaderLexer.is_whitespace);
+
+            // Skip comments
+            if (this.stream.peek() === '/') {
+                if (this.stream.peek(1) === '/') {
+                    this.next_while(ShaderLexer.not(ShaderLexer.is_endline));
+                    this.stream.next();
+                }
+                else if (this.stream.peek(1) === '*') {
+                    this.stream.next();
+                    this.stream.next();
+                    do {
+                        this.next_while((val: string) => val !== '*');
+                        this.stream.next();
+                    } while (this.stream.next() !== '/');
+                }
+            }
+
+            if (current_pos == this.stream.pos())
+                return;
+        }
+    }
+
+    private read_next(): Token | undefined {
         if (this.currentPeek !== undefined) {
             return this.currentPeek;
-        }
+        }     
         
-        // Skip whitespace
-        this.next_while(ShaderLexer.is_whitespace);
+        this.skip_whitespace_and_comments();
 
-        // Skip comments
-        if (this.stream.peek() === '/') {
-            if (this.stream.peek(1) === '/') {
-                this.next_while(ShaderLexer.not(ShaderLexer.is_endline));
-                this.stream.next();
-            }
-            else if (this.stream.peek(1) === '*') {
-                this.stream.next();
-                this.stream.next();
-                do {
-                    this.next_while((val: string) => val !== '*');
-                    this.stream.next();
-                } while (this.stream.next() !== '/');
-            }
+        if (this.stream.eof()) {
+            return undefined;
         }
 
         this.currentPeekRange.Begin = this.stream.pos();
