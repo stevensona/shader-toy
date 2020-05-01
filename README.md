@@ -166,6 +166,7 @@ Contributions of any kind are welcome and encouraged.
 ### 0.10.5
 * Fix bug that caused the static preview command to open a dynamic preview,
 * fix a bug when parsing back-to-back comments
+* fix a bug with uniforms that have more than one and not exactly three components,
 * fully support floating point parsing, including exponents.
 
 ### 0.10.4
