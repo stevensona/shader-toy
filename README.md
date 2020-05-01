@@ -163,6 +163,11 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.5
+* Fix bug that caused the static preview command to open a dynamic preview,
+* fix a bug when parsing back-to-back comments
+* fully support floating point parsing, including exponents.
+
 ### 0.10.4
 * Fix an issue that caused a full webview recreation on a recompile,
 * made webview not grab focus when it is being created.
