@@ -67,7 +67,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         shadertoyManager.showDynamicPreview();
     });
     let staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {
-        shadertoyManager.showDynamicPreview();
+        shadertoyManager.showStaticPreview();
     });
     let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
         shadertoyManager.createPortablePreview();

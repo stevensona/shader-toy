@@ -106,6 +106,13 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
         }
         else {
             let datGuiString = `{
+    let flatten = (values) => {
+        let flattened_values = [];
+        for (let value of values) {
+            flattened_values.push(value.value);
+        }
+        return flattened_values;
+    };
     let values = [];
 `;
             let sub_object = `${object}.${property}`;
@@ -119,15 +126,16 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
                     Step: value.Step ? [ value.Step[i] ] : undefined,
                 };
                 datGuiString += `\
-    values.push(${sub_value.Default[0]});
-    let controller_${i} = ${this.getRawDatGuiValueString(sub_object, sub_value.Name, sub_value)}.name('${property}.${sub_value.Name}');
+    values.push({ value: ${sub_value.Default[0]} });
+    let controller_${i} = ${this.getRawDatGuiValueString(`values[${i}]`, 'value', sub_value)}.name('${property}.${sub_value.Name}');
     controller_${i}.onFinishChange((value) => {
-        values[${i}] = value;
+        values[${i}].value = value;
+        ${sub_object}[${i}] = value;
         if (vscode !== undefined) {
             vscode.postMessage({
                 command: 'updateUniformsGuiValue',
                 name: '${value.Name}',
-                value: values
+                value: flatten(values)
             });
         }
     });

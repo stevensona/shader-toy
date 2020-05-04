@@ -109,6 +109,18 @@ export class ShaderLexer {
     private static is_digit(val: string) {
         return /[0-9]/i.test(val);
     }
+    private static is_non_digit_number_element(val: string) {
+        return "-+.".indexOf(val) >= 0;
+    }
+    private static is_number_sign(val: string) {
+        return "-+".indexOf(val) >= 0;
+    }
+    private static is_number_start(val: string) {
+        return this.is_digit(val) || this.is_non_digit_number_element(val);
+    }
+    private static is_exponent_start(val: string) {
+        return "eE".indexOf(val) >= 0;
+    }
     private static is_preprocessor_start(val: string) {
         return val === "#";
     }
@@ -136,32 +148,43 @@ export class ShaderLexer {
         };
     }
 
-    private read_next(): Token | undefined {
-        if (this.stream.eof()) {
-            return undefined;
-        }
+    private skip_whitespace_and_comments() {
+        while (true) {
+            let current_pos = this.stream.pos();
 
+            // Skip whitespace
+            this.next_while(ShaderLexer.is_whitespace);
+
+            // Skip comments
+            if (this.stream.peek() === '/') {
+                if (this.stream.peek(1) === '/') {
+                    this.next_while(ShaderLexer.not(ShaderLexer.is_endline));
+                    this.stream.next();
+                }
+                else if (this.stream.peek(1) === '*') {
+                    this.stream.next();
+                    this.stream.next();
+                    do {
+                        this.next_while((val: string) => val !== '*');
+                        this.stream.next();
+                    } while (this.stream.next() !== '/');
+                }
+            }
+
+            if (current_pos == this.stream.pos())
+                return;
+        }
+    }
+
+    private read_next(): Token | undefined {
         if (this.currentPeek !== undefined) {
             return this.currentPeek;
-        }
+        }     
         
-        // Skip whitespace
-        this.next_while(ShaderLexer.is_whitespace);
+        this.skip_whitespace_and_comments();
 
-        // Skip comments
-        if (this.stream.peek() === '/') {
-            if (this.stream.peek(1) === '/') {
-                this.next_while(ShaderLexer.not(ShaderLexer.is_endline));
-                this.stream.next();
-            }
-            else if (this.stream.peek(1) === '*') {
-                this.stream.next();
-                this.stream.next();
-                do {
-                    this.next_while((val: string) => val !== '*');
-                    this.stream.next();
-                } while (this.stream.next() !== '/');
-            }
+        if (this.stream.eof()) {
+            return undefined;
         }
 
         this.currentPeekRange.Begin = this.stream.pos();
@@ -170,8 +193,23 @@ export class ShaderLexer {
         if (ShaderLexer.is_quotation(next_peek)) {
             return this.next_string(next_peek);
         }
-        if (ShaderLexer.is_digit(next_peek)) {
-            return this.next_number();
+        if (ShaderLexer.is_number_start(next_peek)) {
+            let is_valid_number_start = true;
+            {
+                let i = 1;
+                let forward_peek = next_peek;
+                while (is_valid_number_start && ShaderLexer.is_non_digit_number_element(forward_peek)) {
+                    is_valid_number_start = false;
+                    forward_peek = this.stream.peek(i);
+                    i++;
+                    if (ShaderLexer.is_number_start(forward_peek)) {
+                        is_valid_number_start = true;
+                    }
+                }
+            }
+            if (is_valid_number_start) {
+                return this.next_number();
+            }
         }
         if (ShaderLexer.is_identifier_start(next_peek)) {
             return this.next_identifier();
@@ -221,20 +259,45 @@ export class ShaderLexer {
         return str;
     }
     private next_number(): Token {
+        let has_read_any = false;
         let has_dot = false;
+        let has_exponent = false;
+        let previous_was_exponent = false;
         let number = this.next_while((val: string) => {
-            if (val === ".") {
-                if (has_dot) {
-                    return false;
+            let previously_had_exponent = false;
+            let return_val = (() => {
+                if (val === '.') {
+                    if (has_dot || has_exponent) {
+                        return false;
+                    }
+                    has_dot = true;
+                    return true;
                 }
-                has_dot = true;
-                return true;
-            }
-            return ShaderLexer.is_digit(val);
+                else if (ShaderLexer.is_number_sign(val)) {
+                    if (previous_was_exponent || !has_read_any) {
+                        return true;
+                    }
+                }
+                else if (ShaderLexer.is_exponent_start(val)) {
+                    if (has_exponent) {
+                        return false;
+                    }
+                    has_exponent = true;
+                    return true;
+                }
+                return ShaderLexer.is_digit(val);
+            })();
+            has_read_any = true;
+            previous_was_exponent = previously_had_exponent ? false : has_exponent;
+            return return_val;
         });
+        let parsedNumber = parseFloat(number);
+        if (parsedNumber === NaN) {
+            console.log(number);
+        }
         return {
             type: has_dot ? TokenType.Float : TokenType.Integer,
-            value: parseFloat(number)
+            value: parsedNumber
         };
     }
     private next_identifier(): Token {

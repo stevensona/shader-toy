@@ -27599,7 +27599,7 @@ function activate(extensionContext) {
         shadertoyManager.showDynamicPreview();
     });
     let staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {
-        shadertoyManager.showDynamicPreview();
+        shadertoyManager.showStaticPreview();
     });
     let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
         shadertoyManager.createPortablePreview();
@@ -28909,6 +28909,13 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
         }
         else {
             let datGuiString = `{
+    let flatten = (values) => {
+        let flattened_values = [];
+        for (let value of values) {
+            flattened_values.push(value.value);
+        }
+        return flattened_values;
+    };
     let values = [];
 `;
             let sub_object = `${object}.${property}`;
@@ -28922,15 +28929,16 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
                     Step: value.Step ? [value.Step[i]] : undefined,
                 };
                 datGuiString += `\
-    values.push(${sub_value.Default[0]});
-    let controller_${i} = ${this.getRawDatGuiValueString(sub_object, sub_value.Name, sub_value)}.name('${property}.${sub_value.Name}');
+    values.push({ value: ${sub_value.Default[0]} });
+    let controller_${i} = ${this.getRawDatGuiValueString(`values[${i}]`, 'value', sub_value)}.name('${property}.${sub_value.Name}');
     controller_${i}.onFinishChange((value) => {
-        values[${i}] = value;
+        values[${i}].value = value;
+        ${sub_object}[${i}] = value;
         if (vscode !== undefined) {
             vscode.postMessage({
                 command: 'updateUniformsGuiValue',
                 name: '${value.Name}',
-                value: values
+                value: flatten(values)
             });
         }
     });
@@ -29435,6 +29443,18 @@ class ShaderLexer {
     static is_digit(val) {
         return /[0-9]/i.test(val);
     }
+    static is_non_digit_number_element(val) {
+        return "-+.".indexOf(val) >= 0;
+    }
+    static is_number_sign(val) {
+        return "-+".indexOf(val) >= 0;
+    }
+    static is_number_start(val) {
+        return this.is_digit(val) || this.is_non_digit_number_element(val);
+    }
+    static is_exponent_start(val) {
+        return "eE".indexOf(val) >= 0;
+    }
     static is_preprocessor_start(val) {
         return val === "#";
     }
@@ -29461,37 +29481,60 @@ class ShaderLexer {
             return !predicate(val);
         };
     }
-    read_next() {
-        if (this.stream.eof()) {
-            return undefined;
+    skip_whitespace_and_comments() {
+        while (true) {
+            let current_pos = this.stream.pos();
+            // Skip whitespace
+            this.next_while(ShaderLexer.is_whitespace);
+            // Skip comments
+            if (this.stream.peek() === '/') {
+                if (this.stream.peek(1) === '/') {
+                    this.next_while(ShaderLexer.not(ShaderLexer.is_endline));
+                    this.stream.next();
+                }
+                else if (this.stream.peek(1) === '*') {
+                    this.stream.next();
+                    this.stream.next();
+                    do {
+                        this.next_while((val) => val !== '*');
+                        this.stream.next();
+                    } while (this.stream.next() !== '/');
+                }
+            }
+            if (current_pos == this.stream.pos())
+                return;
         }
+    }
+    read_next() {
         if (this.currentPeek !== undefined) {
             return this.currentPeek;
         }
-        // Skip whitespace
-        this.next_while(ShaderLexer.is_whitespace);
-        // Skip comments
-        if (this.stream.peek() === '/') {
-            if (this.stream.peek(1) === '/') {
-                this.next_while(ShaderLexer.not(ShaderLexer.is_endline));
-                this.stream.next();
-            }
-            else if (this.stream.peek(1) === '*') {
-                this.stream.next();
-                this.stream.next();
-                do {
-                    this.next_while((val) => val !== '*');
-                    this.stream.next();
-                } while (this.stream.next() !== '/');
-            }
+        this.skip_whitespace_and_comments();
+        if (this.stream.eof()) {
+            return undefined;
         }
         this.currentPeekRange.Begin = this.stream.pos();
         let next_peek = this.stream.peek();
         if (ShaderLexer.is_quotation(next_peek)) {
             return this.next_string(next_peek);
         }
-        if (ShaderLexer.is_digit(next_peek)) {
-            return this.next_number();
+        if (ShaderLexer.is_number_start(next_peek)) {
+            let is_valid_number_start = true;
+            {
+                let i = 1;
+                let forward_peek = next_peek;
+                while (is_valid_number_start && ShaderLexer.is_non_digit_number_element(forward_peek)) {
+                    is_valid_number_start = false;
+                    forward_peek = this.stream.peek(i);
+                    i++;
+                    if (ShaderLexer.is_number_start(forward_peek)) {
+                        is_valid_number_start = true;
+                    }
+                }
+            }
+            if (is_valid_number_start) {
+                return this.next_number();
+            }
         }
         if (ShaderLexer.is_identifier_start(next_peek)) {
             return this.next_identifier();
@@ -29538,20 +29581,45 @@ class ShaderLexer {
         return str;
     }
     next_number() {
+        let has_read_any = false;
         let has_dot = false;
+        let has_exponent = false;
+        let previous_was_exponent = false;
         let number = this.next_while((val) => {
-            if (val === ".") {
-                if (has_dot) {
-                    return false;
+            let previously_had_exponent = false;
+            let return_val = (() => {
+                if (val === '.') {
+                    if (has_dot || has_exponent) {
+                        return false;
+                    }
+                    has_dot = true;
+                    return true;
                 }
-                has_dot = true;
-                return true;
-            }
-            return ShaderLexer.is_digit(val);
+                else if (ShaderLexer.is_number_sign(val)) {
+                    if (previous_was_exponent || !has_read_any) {
+                        return true;
+                    }
+                }
+                else if (ShaderLexer.is_exponent_start(val)) {
+                    if (has_exponent) {
+                        return false;
+                    }
+                    has_exponent = true;
+                    return true;
+                }
+                return ShaderLexer.is_digit(val);
+            })();
+            has_read_any = true;
+            previous_was_exponent = previously_had_exponent ? false : has_exponent;
+            return return_val;
         });
+        let parsedNumber = parseFloat(number);
+        if (parsedNumber === NaN) {
+            console.log(number);
+        }
         return {
             type: has_dot ? TokenType.Float : TokenType.Integer,
-            value: parseFloat(number)
+            value: parsedNumber
         };
     }
     next_identifier() {
