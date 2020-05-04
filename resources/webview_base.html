@@ -134,6 +134,13 @@
         };
     }
     
+    {
+        let screenshotButton = document.getElementById("screenshot");
+        if (screenshotButton) {
+            screenshotButton.addEventListener('click', saveScreenshot);
+        }
+    }
+    
     window.addEventListener('message', event => {
         const message = event.data; // The JSON data our extension sent
         switch (message.command) {
@@ -147,15 +154,12 @@
                 else {
                     // Audio Pause
                 }
+                break;
+            case 'screenshot':
+                saveScreenshot();
+                break;
         }
     });
-    
-    {
-        let screenshotButton = document.getElementById("screenshot");
-        if (screenshotButton) {
-            screenshotButton.addEventListener('click', saveScreenshot);
-        }
-    }
 
     let canvas = document.getElementById('canvas');
     let gl = canvas.getContext('webgl2');

@@ -21,7 +21,8 @@
         "onCommand:shader-toy.showGlslPreview",
         "onCommand:shader-toy.showStaticGlslPreview",
         "onCommand:shader-toy.createPortableGlslPreview",
-        "onCommand:shader-toy.pauseGlslPreviews"
+        "onCommand:shader-toy.pauseGlslPreviews",
+        "onCommand:shader-toy.saveGlslPreviewScreenShots"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -160,6 +161,10 @@
             {
                 "command": "shader-toy.pauseGlslPreviews",
                 "title": "Shader Toy: Pause/Play GLSL Previews"
+            },
+            {
+                "command": "shader-toy.saveGlslPreviewScreenShots",
+                "title": "Shader Toy: Save GLSL Preview Screenshots"
             }
         ],
         "menus": {
@@ -178,6 +183,10 @@
                 },
                 {
                     "command": "shader-toy.pauseGlslPreviews",
+                    "group": "ShaderToy"
+                },
+                {
+                    "command": "shader-toy.saveGlslPreviewScreenShots",
                     "group": "ShaderToy"
                 }
             ]

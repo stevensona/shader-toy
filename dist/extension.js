@@ -27605,12 +27605,16 @@ function activate(extensionContext) {
         shadertoyManager.createPortablePreview();
     });
     let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
-        shadertoyManager.pausePreviews();
+        shadertoyManager.postCommand('pause');
+    });
+    let saveScreenshotCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
+        shadertoyManager.postCommand('screenshot');
     });
     extensionContext.subscriptions.push(previewCommand);
     extensionContext.subscriptions.push(staticPreviewCommand);
     extensionContext.subscriptions.push(standaloneCompileCommand);
     extensionContext.subscriptions.push(pausePreviewsCommand);
+    extensionContext.subscriptions.push(saveScreenshotCommand);
 }
 exports.activate = activate;
 function deactivate() {
@@ -30249,11 +30253,11 @@ class ShaderToyManager {
                 }
             }
         };
-        this.pausePreviews = () => {
+        this.postCommand = (command) => {
             if (this.webviewPanel !== undefined) {
-                this.webviewPanel.Panel.webview.postMessage({ command: 'pause' });
+                this.webviewPanel.Panel.webview.postMessage({ command: command });
             }
-            this.staticWebviews.map((webview) => webview.Panel.webview.postMessage({ command: 'pause' }));
+            this.staticWebviews.map((webview) => webview.Panel.webview.postMessage({ command: command }));
         };
         this.resetStartingData = () => {
             this.startingData = new typenames_1.RenderStartingData();

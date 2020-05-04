@@ -73,12 +73,16 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         shadertoyManager.createPortablePreview();
     });
     let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
-        shadertoyManager.pausePreviews();
+        shadertoyManager.postCommand('pause');
+    });
+    let saveScreenshotCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
+        shadertoyManager.postCommand('screenshot');
     });
     extensionContext.subscriptions.push(previewCommand);
     extensionContext.subscriptions.push(staticPreviewCommand);
     extensionContext.subscriptions.push(standaloneCompileCommand);
     extensionContext.subscriptions.push(pausePreviewsCommand);
+    extensionContext.subscriptions.push(saveScreenshotCommand);
 }
 
 export function deactivate() {

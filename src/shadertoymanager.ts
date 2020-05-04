@@ -111,11 +111,11 @@ export class ShaderToyManager {
         }
     }
 
-    public pausePreviews = () => {
+    public postCommand = (command : string) => {
         if (this.webviewPanel !== undefined) {
-            this.webviewPanel.Panel.webview.postMessage({command: 'pause'});
+            this.webviewPanel.Panel.webview.postMessage({command: command});
         }
-        this.staticWebviews.map((webview: StaticWebview) => webview.Panel.webview.postMessage({command: 'pause'}));
+        this.staticWebviews.map((webview: StaticWebview) => webview.Panel.webview.postMessage({command: command}));
     }
 
     private resetStartingData = () => {
