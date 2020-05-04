@@ -29225,15 +29225,6 @@ class PauseButtonExtension {
     }
 }
 exports.PauseButtonExtension = PauseButtonExtension;
-class HiddenPauseButtonExtension {
-    generateContent() {
-        return `\
-<label>
-<input id='pause-button' type='checkbox'>
-<span></span>`;
-    }
-}
-exports.HiddenPauseButtonExtension = HiddenPauseButtonExtension;
 
 
 /***/ }),
@@ -30615,7 +30606,6 @@ const stats_extension_1 = __webpack_require__(/*! ./extensions/packages/stats_ex
 const dat_gui_extension_1 = __webpack_require__(/*! ./extensions/packages/dat_gui_extension */ "./src/extensions/packages/dat_gui_extension.ts");
 const pause_button_style_extension_1 = __webpack_require__(/*! ./extensions/user_interface/pause_button_style_extension */ "./src/extensions/user_interface/pause_button_style_extension.ts");
 const pause_button_extension_1 = __webpack_require__(/*! ./extensions/user_interface/pause_button_extension */ "./src/extensions/user_interface/pause_button_extension.ts");
-const pause_button_extension_2 = __webpack_require__(/*! ./extensions/user_interface/pause_button_extension */ "./src/extensions/user_interface/pause_button_extension.ts");
 const screenshot_button_style_extension_1 = __webpack_require__(/*! ./extensions/user_interface/screenshot_button_style_extension */ "./src/extensions/user_interface/screenshot_button_style_extension.ts");
 const screenshot_button_extension_1 = __webpack_require__(/*! ./extensions/user_interface/screenshot_button_extension */ "./src/extensions/user_interface/screenshot_button_extension.ts");
 const default_errors_extension_1 = __webpack_require__(/*! ./extensions/user_interface/error_display/default_errors_extension */ "./src/extensions/user_interface/error_display/default_errors_extension.ts");
@@ -30810,10 +30800,6 @@ class WebviewContentProvider {
                 let pauseButtonStyleExtension = new pause_button_style_extension_1.PauseButtonStyleExtension(this.context);
                 this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
                 let pauseButtonExtension = new pause_button_extension_1.PauseButtonExtension();
-                this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
-            }
-            else {
-                let pauseButtonExtension = new pause_button_extension_2.HiddenPauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
         }
