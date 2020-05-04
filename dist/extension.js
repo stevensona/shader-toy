@@ -8948,10 +8948,10 @@ module.exports = eos;
 /*!*********************************************!*\
   !*** ./node_modules/escodegen/package.json ***!
   \*********************************************/
-/*! exports provided: _from, _id, _inBundle, _integrity, _location, _phantomChildren, _requested, _requiredBy, _resolved, _shasum, _spec, _where, bin, bugs, bundleDependencies, dependencies, deprecated, description, devDependencies, engines, files, homepage, license, main, maintainers, name, optionalDependencies, repository, scripts, version, default */
+/*! exports provided: _args, _from, _id, _inBundle, _integrity, _location, _phantomChildren, _requested, _requiredBy, _resolved, _spec, _where, bin, bugs, dependencies, description, devDependencies, engines, files, homepage, license, main, maintainers, name, optionalDependencies, repository, scripts, version, default */
 /***/ (function(module) {
 
-module.exports = JSON.parse("{\"_from\":\"escodegen@^1.8.1\",\"_id\":\"escodegen@1.11.1\",\"_inBundle\":false,\"_integrity\":\"sha512-JwiqFD9KdGVVpeuRa68yU3zZnBEOcPs0nKW7wZzXky8Z7tffdYUHbe11bPCV5jYlK6DVdKLWLm0f5I/QlL0Kmw==\",\"_location\":\"/escodegen\",\"_phantomChildren\":{},\"_requested\":{\"type\":\"range\",\"registry\":true,\"raw\":\"escodegen@^1.8.1\",\"name\":\"escodegen\",\"escapedName\":\"escodegen\",\"rawSpec\":\"^1.8.1\",\"saveSpec\":null,\"fetchSpec\":\"^1.8.1\"},\"_requiredBy\":[\"/static-eval\"],\"_resolved\":\"https://registry.npmjs.org/escodegen/-/escodegen-1.11.1.tgz\",\"_shasum\":\"c485ff8d6b4cdb89e27f4a856e91f118401ca510\",\"_spec\":\"escodegen@^1.8.1\",\"_where\":\"D:\\\\zollk\\\\Documents\\\\Visual Studio 2017\\\\Projects\\\\shader-toy\\\\node_modules\\\\static-eval\",\"bin\":{\"esgenerate\":\"./bin/esgenerate.js\",\"escodegen\":\"./bin/escodegen.js\"},\"bugs\":{\"url\":\"https://github.com/estools/escodegen/issues\"},\"bundleDependencies\":false,\"dependencies\":{\"esprima\":\"^3.1.3\",\"estraverse\":\"^4.2.0\",\"esutils\":\"^2.0.2\",\"optionator\":\"^0.8.1\",\"source-map\":\"~0.6.1\"},\"deprecated\":false,\"description\":\"ECMAScript code generator\",\"devDependencies\":{\"acorn\":\"^4.0.4\",\"bluebird\":\"^3.4.7\",\"bower-registry-client\":\"^1.0.0\",\"chai\":\"^3.5.0\",\"commonjs-everywhere\":\"^0.9.7\",\"gulp\":\"^3.8.10\",\"gulp-eslint\":\"^3.0.1\",\"gulp-mocha\":\"^3.0.1\",\"semver\":\"^5.1.0\"},\"engines\":{\"node\":\">=4.0\"},\"files\":[\"LICENSE.BSD\",\"README.md\",\"bin\",\"escodegen.js\",\"package.json\"],\"homepage\":\"http://github.com/estools/escodegen\",\"license\":\"BSD-2-Clause\",\"main\":\"escodegen.js\",\"maintainers\":[{\"name\":\"Yusuke Suzuki\",\"email\":\"utatane.tea@gmail.com\",\"url\":\"http://github.com/Constellation\"}],\"name\":\"escodegen\",\"optionalDependencies\":{\"source-map\":\"~0.6.1\"},\"repository\":{\"type\":\"git\",\"url\":\"git+ssh://git@github.com/estools/escodegen.git\"},\"scripts\":{\"build\":\"cjsify -a path: tools/entry-point.js > escodegen.browser.js\",\"build-min\":\"cjsify -ma path: tools/entry-point.js > escodegen.browser.min.js\",\"lint\":\"gulp lint\",\"release\":\"node tools/release.js\",\"test\":\"gulp travis\",\"unit-test\":\"gulp test\"},\"version\":\"1.11.1\"}");
+module.exports = JSON.parse("{\"_args\":[[\"escodegen@1.11.1\",\"D:\\\\Studio\\\\Shaders\\\\shader-toy\"]],\"_from\":\"escodegen@1.11.1\",\"_id\":\"escodegen@1.11.1\",\"_inBundle\":false,\"_integrity\":\"sha512-JwiqFD9KdGVVpeuRa68yU3zZnBEOcPs0nKW7wZzXky8Z7tffdYUHbe11bPCV5jYlK6DVdKLWLm0f5I/QlL0Kmw==\",\"_location\":\"/escodegen\",\"_phantomChildren\":{},\"_requested\":{\"type\":\"version\",\"registry\":true,\"raw\":\"escodegen@1.11.1\",\"name\":\"escodegen\",\"escapedName\":\"escodegen\",\"rawSpec\":\"1.11.1\",\"saveSpec\":null,\"fetchSpec\":\"1.11.1\"},\"_requiredBy\":[\"/static-eval\"],\"_resolved\":\"https://registry.npmjs.org/escodegen/-/escodegen-1.11.1.tgz\",\"_spec\":\"1.11.1\",\"_where\":\"D:\\\\Studio\\\\Shaders\\\\shader-toy\",\"bin\":{\"esgenerate\":\"./bin/esgenerate.js\",\"escodegen\":\"./bin/escodegen.js\"},\"bugs\":{\"url\":\"https://github.com/estools/escodegen/issues\"},\"dependencies\":{\"esprima\":\"^3.1.3\",\"estraverse\":\"^4.2.0\",\"esutils\":\"^2.0.2\",\"optionator\":\"^0.8.1\",\"source-map\":\"~0.6.1\"},\"description\":\"ECMAScript code generator\",\"devDependencies\":{\"acorn\":\"^4.0.4\",\"bluebird\":\"^3.4.7\",\"bower-registry-client\":\"^1.0.0\",\"chai\":\"^3.5.0\",\"commonjs-everywhere\":\"^0.9.7\",\"gulp\":\"^3.8.10\",\"gulp-eslint\":\"^3.0.1\",\"gulp-mocha\":\"^3.0.1\",\"semver\":\"^5.1.0\"},\"engines\":{\"node\":\">=4.0\"},\"files\":[\"LICENSE.BSD\",\"README.md\",\"bin\",\"escodegen.js\",\"package.json\"],\"homepage\":\"http://github.com/estools/escodegen\",\"license\":\"BSD-2-Clause\",\"main\":\"escodegen.js\",\"maintainers\":[{\"name\":\"Yusuke Suzuki\",\"email\":\"utatane.tea@gmail.com\",\"url\":\"http://github.com/Constellation\"}],\"name\":\"escodegen\",\"optionalDependencies\":{\"source-map\":\"~0.6.1\"},\"repository\":{\"type\":\"git\",\"url\":\"git+ssh://git@github.com/estools/escodegen.git\"},\"scripts\":{\"build\":\"cjsify -a path: tools/entry-point.js > escodegen.browser.js\",\"build-min\":\"cjsify -ma path: tools/entry-point.js > escodegen.browser.min.js\",\"lint\":\"gulp lint\",\"release\":\"node tools/release.js\",\"test\":\"gulp travis\",\"unit-test\":\"gulp test\"},\"version\":\"1.11.1\"}");
 
 /***/ }),
 
@@ -9819,10 +9819,10 @@ module.exports = JSON.parse("{\"_from\":\"escodegen@^1.8.1\",\"_id\":\"escodegen
 /*!**********************************************!*\
   !*** ./node_modules/estraverse/package.json ***!
   \**********************************************/
-/*! exports provided: _from, _id, _inBundle, _integrity, _location, _phantomChildren, _requested, _requiredBy, _resolved, _shasum, _spec, _where, bugs, bundleDependencies, deprecated, description, devDependencies, engines, homepage, license, main, maintainers, name, repository, scripts, version, default */
+/*! exports provided: _args, _from, _id, _inBundle, _integrity, _location, _phantomChildren, _requested, _requiredBy, _resolved, _spec, _where, bugs, description, devDependencies, engines, homepage, license, main, maintainers, name, repository, scripts, version, default */
 /***/ (function(module) {
 
-module.exports = JSON.parse("{\"_from\":\"estraverse@^4.2.0\",\"_id\":\"estraverse@4.2.0\",\"_inBundle\":false,\"_integrity\":\"sha1-De4/7TH81GlhjOc0IJn8GvoL2xM=\",\"_location\":\"/estraverse\",\"_phantomChildren\":{},\"_requested\":{\"type\":\"range\",\"registry\":true,\"raw\":\"estraverse@^4.2.0\",\"name\":\"estraverse\",\"escapedName\":\"estraverse\",\"rawSpec\":\"^4.2.0\",\"saveSpec\":null,\"fetchSpec\":\"^4.2.0\"},\"_requiredBy\":[\"/escodegen\"],\"_resolved\":\"https://registry.npmjs.org/estraverse/-/estraverse-4.2.0.tgz\",\"_shasum\":\"0dee3fed31fcd469618ce7342099fc1afa0bdb13\",\"_spec\":\"estraverse@^4.2.0\",\"_where\":\"D:\\\\zollk\\\\Documents\\\\Visual Studio 2017\\\\Projects\\\\shader-toy\\\\node_modules\\\\escodegen\",\"bugs\":{\"url\":\"https://github.com/estools/estraverse/issues\"},\"bundleDependencies\":false,\"deprecated\":false,\"description\":\"ECMAScript JS AST traversal functions\",\"devDependencies\":{\"babel-preset-es2015\":\"^6.3.13\",\"babel-register\":\"^6.3.13\",\"chai\":\"^2.1.1\",\"espree\":\"^1.11.0\",\"gulp\":\"^3.8.10\",\"gulp-bump\":\"^0.2.2\",\"gulp-filter\":\"^2.0.0\",\"gulp-git\":\"^1.0.1\",\"gulp-tag-version\":\"^1.2.1\",\"jshint\":\"^2.5.6\",\"mocha\":\"^2.1.0\"},\"engines\":{\"node\":\">=0.10.0\"},\"homepage\":\"https://github.com/estools/estraverse\",\"license\":\"BSD-2-Clause\",\"main\":\"estraverse.js\",\"maintainers\":[{\"name\":\"Yusuke Suzuki\",\"email\":\"utatane.tea@gmail.com\",\"url\":\"http://github.com/Constellation\"}],\"name\":\"estraverse\",\"repository\":{\"type\":\"git\",\"url\":\"git+ssh://git@github.com/estools/estraverse.git\"},\"scripts\":{\"lint\":\"jshint estraverse.js\",\"test\":\"npm run-script lint && npm run-script unit-test\",\"unit-test\":\"mocha --compilers js:babel-register\"},\"version\":\"4.2.0\"}");
+module.exports = JSON.parse("{\"_args\":[[\"estraverse@4.2.0\",\"D:\\\\Studio\\\\Shaders\\\\shader-toy\"]],\"_from\":\"estraverse@4.2.0\",\"_id\":\"estraverse@4.2.0\",\"_inBundle\":false,\"_integrity\":\"sha1-De4/7TH81GlhjOc0IJn8GvoL2xM=\",\"_location\":\"/estraverse\",\"_phantomChildren\":{},\"_requested\":{\"type\":\"version\",\"registry\":true,\"raw\":\"estraverse@4.2.0\",\"name\":\"estraverse\",\"escapedName\":\"estraverse\",\"rawSpec\":\"4.2.0\",\"saveSpec\":null,\"fetchSpec\":\"4.2.0\"},\"_requiredBy\":[\"/escodegen\",\"/eslint-scope\",\"/esrecurse\"],\"_resolved\":\"https://registry.npmjs.org/estraverse/-/estraverse-4.2.0.tgz\",\"_spec\":\"4.2.0\",\"_where\":\"D:\\\\Studio\\\\Shaders\\\\shader-toy\",\"bugs\":{\"url\":\"https://github.com/estools/estraverse/issues\"},\"description\":\"ECMAScript JS AST traversal functions\",\"devDependencies\":{\"babel-preset-es2015\":\"^6.3.13\",\"babel-register\":\"^6.3.13\",\"chai\":\"^2.1.1\",\"espree\":\"^1.11.0\",\"gulp\":\"^3.8.10\",\"gulp-bump\":\"^0.2.2\",\"gulp-filter\":\"^2.0.0\",\"gulp-git\":\"^1.0.1\",\"gulp-tag-version\":\"^1.2.1\",\"jshint\":\"^2.5.6\",\"mocha\":\"^2.1.0\"},\"engines\":{\"node\":\">=0.10.0\"},\"homepage\":\"https://github.com/estools/estraverse\",\"license\":\"BSD-2-Clause\",\"main\":\"estraverse.js\",\"maintainers\":[{\"name\":\"Yusuke Suzuki\",\"email\":\"utatane.tea@gmail.com\",\"url\":\"http://github.com/Constellation\"}],\"name\":\"estraverse\",\"repository\":{\"type\":\"git\",\"url\":\"git+ssh://git@github.com/estools/estraverse.git\"},\"scripts\":{\"lint\":\"jshint estraverse.js\",\"test\":\"npm run-script lint && npm run-script unit-test\",\"unit-test\":\"mocha --compilers js:babel-register\"},\"version\":\"4.2.0\"}");
 
 /***/ }),
 
@@ -27604,9 +27604,13 @@ function activate(extensionContext) {
     let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
         shadertoyManager.createPortablePreview();
     });
+    let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
+        shadertoyManager.pausePreviews();
+    });
     extensionContext.subscriptions.push(previewCommand);
     extensionContext.subscriptions.push(staticPreviewCommand);
     extensionContext.subscriptions.push(standaloneCompileCommand);
+    extensionContext.subscriptions.push(pausePreviewsCommand);
 }
 exports.activate = activate;
 function deactivate() {
@@ -29217,6 +29221,15 @@ class PauseButtonExtension {
     }
 }
 exports.PauseButtonExtension = PauseButtonExtension;
+class HiddenPauseButtonExtension {
+    generateContent() {
+        return `\
+<label>
+<input id='pause-button' type='checkbox'>
+<span></span>`;
+    }
+}
+exports.HiddenPauseButtonExtension = HiddenPauseButtonExtension;
 
 
 /***/ }),
@@ -30236,6 +30249,12 @@ class ShaderToyManager {
                 }
             }
         };
+        this.pausePreviews = () => {
+            if (this.webviewPanel !== undefined) {
+                this.webviewPanel.Panel.webview.postMessage({ command: 'pause' });
+            }
+            this.staticWebviews.map((webview) => webview.Panel.webview.postMessage({ command: 'pause' }));
+        };
         this.resetStartingData = () => {
             this.startingData = new typenames_1.RenderStartingData();
         };
@@ -30592,6 +30611,7 @@ const stats_extension_1 = __webpack_require__(/*! ./extensions/packages/stats_ex
 const dat_gui_extension_1 = __webpack_require__(/*! ./extensions/packages/dat_gui_extension */ "./src/extensions/packages/dat_gui_extension.ts");
 const pause_button_style_extension_1 = __webpack_require__(/*! ./extensions/user_interface/pause_button_style_extension */ "./src/extensions/user_interface/pause_button_style_extension.ts");
 const pause_button_extension_1 = __webpack_require__(/*! ./extensions/user_interface/pause_button_extension */ "./src/extensions/user_interface/pause_button_extension.ts");
+const pause_button_extension_2 = __webpack_require__(/*! ./extensions/user_interface/pause_button_extension */ "./src/extensions/user_interface/pause_button_extension.ts");
 const screenshot_button_style_extension_1 = __webpack_require__(/*! ./extensions/user_interface/screenshot_button_style_extension */ "./src/extensions/user_interface/screenshot_button_style_extension.ts");
 const screenshot_button_extension_1 = __webpack_require__(/*! ./extensions/user_interface/screenshot_button_extension */ "./src/extensions/user_interface/screenshot_button_extension.ts");
 const default_errors_extension_1 = __webpack_require__(/*! ./extensions/user_interface/error_display/default_errors_extension */ "./src/extensions/user_interface/error_display/default_errors_extension.ts");
@@ -30786,6 +30806,10 @@ class WebviewContentProvider {
                 let pauseButtonStyleExtension = new pause_button_style_extension_1.PauseButtonStyleExtension(this.context);
                 this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
                 let pauseButtonExtension = new pause_button_extension_1.PauseButtonExtension();
+                this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
+            }
+            else {
+                let pauseButtonExtension = new pause_button_extension_2.HiddenPauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
         }

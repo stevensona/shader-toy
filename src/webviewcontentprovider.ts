@@ -27,6 +27,7 @@ import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 
 import { PauseButtonStyleExtension } from './extensions/user_interface/pause_button_style_extension';
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
+import { HiddenPauseButtonExtension } from './extensions/user_interface/pause_button_extension';
 import { ScreenshotButtonStyleExtension } from './extensions/user_interface/screenshot_button_style_extension';
 import { ScreenshotButtonExtension } from './extensions/user_interface/screenshot_button_extension';
 
@@ -264,6 +265,9 @@ export class WebviewContentProvider {
                 this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
 
                 let pauseButtonExtension = new PauseButtonExtension();
+                this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
+            } else {
+                let pauseButtonExtension = new HiddenPauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
         }

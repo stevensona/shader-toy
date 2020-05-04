@@ -134,6 +134,22 @@
         };
     }
     
+    window.addEventListener('message', event => {
+        const message = event.data; // The JSON data our extension sent
+        switch (message.command) {
+            case 'pause':
+                pauseButton.checked = !pauseButton.checked;
+                paused = pauseButton.checked;
+                if (!paused) {
+                    // Audio Resume
+                    pausedTime += clock.getDelta();
+                }
+                else {
+                    // Audio Pause
+                }
+        }
+    });
+    
     {
         let screenshotButton = document.getElementById("screenshot");
         if (screenshotButton) {

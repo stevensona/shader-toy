@@ -10,3 +10,12 @@ export class PauseButtonExtension implements WebviewExtension {
 <span class='pause-play'></span>`;
     }
 }
+
+export class HiddenPauseButtonExtension implements WebviewExtension {
+    public generateContent(): string {
+        return `\
+<label>
+<input id='pause-button' type='checkbox'>
+<span></span>`;
+    }
+}
