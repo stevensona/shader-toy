@@ -20,9 +20,7 @@
     "activationEvents": [
         "onCommand:shader-toy.showGlslPreview",
         "onCommand:shader-toy.showStaticGlslPreview",
-        "onCommand:shader-toy.createPortableGlslPreview",
-        "onCommand:shader-toy.pauseGlslPreviews",
-        "onCommand:shader-toy.saveGlslPreviewScreenShots"
+        "onCommand:shader-toy.createPortableGlslPreview"
     ],
     "main": "./dist/extension.js",
     "contributes": {

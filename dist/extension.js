@@ -27607,14 +27607,14 @@ function activate(extensionContext) {
     let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
         shadertoyManager.postCommand('pause');
     });
-    let saveScreenshotCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
+    let saveScreenshotsCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
         shadertoyManager.postCommand('screenshot');
     });
     extensionContext.subscriptions.push(previewCommand);
     extensionContext.subscriptions.push(staticPreviewCommand);
     extensionContext.subscriptions.push(standaloneCompileCommand);
     extensionContext.subscriptions.push(pausePreviewsCommand);
-    extensionContext.subscriptions.push(saveScreenshotCommand);
+    extensionContext.subscriptions.push(saveScreenshotsCommand);
 }
 exports.activate = activate;
 function deactivate() {
@@ -30248,7 +30248,7 @@ class ShaderToyManager {
             if (this.webviewPanel !== undefined) {
                 this.webviewPanel.Panel.webview.postMessage({ command: command });
             }
-            this.staticWebviews.map((webview) => webview.Panel.webview.postMessage({ command: command }));
+            this.staticWebviews.forEach((webview) => webview.Panel.webview.postMessage({ command: command }));
         };
         this.resetStartingData = () => {
             this.startingData = new typenames_1.RenderStartingData();

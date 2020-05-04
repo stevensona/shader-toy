@@ -115,7 +115,7 @@ export class ShaderToyManager {
         if (this.webviewPanel !== undefined) {
             this.webviewPanel.Panel.webview.postMessage({command: command});
         }
-        this.staticWebviews.map((webview: StaticWebview) => webview.Panel.webview.postMessage({command: command}));
+        this.staticWebviews.forEach((webview: StaticWebview) => webview.Panel.webview.postMessage({command: command}));
     }
 
     private resetStartingData = () => {
