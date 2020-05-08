@@ -163,6 +163,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.6
+* Add commands corresponding to UI buttons to allow custom keybindings. Thank you @Ayassaka
+
 ### 0.10.5
 * Fix bug that caused the static preview command to open a dynamic preview,
 * fix a bug when parsing back-to-back comments
