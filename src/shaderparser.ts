@@ -297,8 +297,8 @@ export class ShaderParser {
                 return nextValue;
             }
             defaultvalue = nextValue;
-            if (defaultvalue.ValueType !== type) {
-                return this.makeError(`Expected initializer of type "${type}" but got "${defaultvalue.LiteralString}" which is of type "${defaultvalue.ValueType}"`);
+            if (!ShaderParser.testAssignable(type, defaultvalue.ValueType)) {
+                return this.makeError(`Expected initializer of type assignable to "${type}" but got "${defaultvalue.LiteralString}" which is of type "${defaultvalue.ValueType}"`);
             }
             nextToken = this.lexer.peek();
         }
@@ -314,10 +314,10 @@ export class ShaderParser {
             }
 
             [ minValue, maxValue ] = rangeArray.Value;
-            if (!this.testAssignable(type, minValue.ValueType)) {
+            if (!ShaderParser.testAssignable(type, minValue.ValueType)) {
                 return this.makeError(`Expected initializer of type "${type}" but got "${minValue.LiteralString}" which is of type ${minValue.ValueType}`);
             }
-            if (!this.testAssignable(type, maxValue.ValueType)) {
+            if (!ShaderParser.testAssignable(type, maxValue.ValueType)) {
                 return this.makeError(`Expected initializer of type "${type}" but got "${maxValue.LiteralString}" which is of type ${maxValue.ValueType}`);
             }
         }
@@ -401,7 +401,7 @@ export class ShaderParser {
             if (firstValue.Type === ObjectType.Error) {
                 return firstValue;
             }
-            if (!this.testAssignable(expectedType, firstValue.ValueType)) {
+            if (!ShaderParser.testAssignable(expectedType, firstValue.ValueType)) {
                 return this.makeError(`Expected value assignable to type ${expectedType} but got ${firstValue.LiteralString} which is of type ${firstValue.Type}`);
             }
 
@@ -420,7 +420,7 @@ export class ShaderParser {
                 if (nextValue.Type === ObjectType.Error) {
                     return nextValue;
                 }
-                if (!this.testAssignable(expectedType, nextValue.ValueType)) {
+                if (!ShaderParser.testAssignable(expectedType, nextValue.ValueType)) {
                     return this.makeError(`Expected value assignable to type ${firstValue.ValueType} but got ${nextValue.LiteralString} which is of type ${nextValue.ValueType}`);
                 }
 
@@ -491,7 +491,7 @@ export class ShaderParser {
             if (currentValue.Type === ObjectType.Error) {
                 return currentValue;
             }
-            if (!this.testAssignable(type, currentValue.ValueType)) {
+            if (!ShaderParser.testAssignable(type, currentValue.ValueType)) {
                 return this.makeError(`Expected value assignable to type ${type} but got "${currentValue.LiteralString}" which is of type ${currentValue.ValueType}`);
             }
 
@@ -522,7 +522,25 @@ export class ShaderParser {
         return error;
     }
 
-    private testAssignable(leftType: string, rightType: string) {
+    private static mapVecTypesToArrayTypes(type: string) {
+        if (type.indexOf('vec') === 0) {
+            return `float[${type[type.length - 1]}]`;
+        }
+        else if (type === 'color3') {
+            return `float[3]`;
+        }
+        else if (type.indexOf('ivec') === 0) {
+            return `int[${type[type.length - 1]}]`;
+        }
+        return type;
+    }
+
+    private static getArrayElementType(type: string) {
+        let first_bracket = type.indexOf('[');
+        return first_bracket >= 0 ? type.substring(0, first_bracket) : undefined;
+    }
+
+    private static testAssignable(leftType: string, rightType: string) {
         if (leftType === rightType) {
             return true;
         }
@@ -531,8 +549,27 @@ export class ShaderParser {
             return true;
         }
 
+        leftType = this.mapVecTypesToArrayTypes(leftType);
+        rightType = this.mapVecTypesToArrayTypes(rightType);
+
+        {
+            let leftArrayElementType = this.getArrayElementType(leftType) || leftType;
+            let rightArrayElementType = this.getArrayElementType(rightType) || rightType;
+            let leftIsArrayType = leftArrayElementType !== leftType;
+            let rightIsArrayType = rightArrayElementType !== rightType;
+            if (leftIsArrayType || rightIsArrayType) {
+                let arrayElementTypesAssignable = this.testAssignable(leftArrayElementType, rightArrayElementType);
+                if (!arrayElementTypesAssignable) {
+                    return false;
+                }
+                else if (leftIsArrayType !== rightIsArrayType) {
+                    return true;
+                }
+            }
+        }
+
         let lPos = 0;
-        while (leftType[lPos] === rightType[lPos] && leftType[lPos] !== '[') {}
+        while (leftType[lPos] === rightType[lPos] && leftType[lPos] !== '[') { lPos++; }
 
         let isFirst = true;
 
