@@ -2,8 +2,9 @@ import * as assert from 'assert';
 
 import { ShaderLexer, TokenType } from '../src/shaderlexer';
 import { ShaderStream } from '../src/shaderstream';
+import { ShaderParser, ObjectType } from '../src/shaderparser';
 
-suite("Parsing Tests", () => {
+suite("Lexing Tests", () => {
     {
         let typesContent = `\
 int float vec2 /* a random comment */ ivec2 vec3 ivec3 vec4 ivec4
@@ -11,7 +12,7 @@ color3// an eof comment`;
         let stream = new ShaderStream(typesContent);
         let lexer = new ShaderLexer(stream);
         
-        test("Parse Type", () => {
+        test("Lex Type", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'int' });
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'float' });
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'vec2' });
@@ -36,7 +37,7 @@ color3// an eof comment`;
         let stream = new ShaderStream(stringsContents);
         let lexer = new ShaderLexer(stream);
         
-        test("Parse String", () => {
+        test("Lex String", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.String, value: 'a string' });
             assert.deepEqual(lexer.next(), { type: TokenType.String, value: 'a "string"' });
             assert.deepEqual(lexer.next(), { type: TokenType.String, value: 'a \'string\'' });
@@ -55,60 +56,60 @@ color3// an eof comment`;
         let stream = new ShaderStream(numbersContent);
         let lexer = new ShaderLexer(stream);
         
-        test("Parse Integers", () => {
+        test("Lex Integers", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 999999999999999999999999999999999 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e-6 });
         });
 
-        test("Parse Floats", () => {
+        test("Lex Floats", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 999999999999999.999999999999999999 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1. });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: .1 });
         });
 
-        test("Parse Floats with Exponents", () => {
+        test("Lex Floats with Exponents", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1.e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1.e-6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: .1e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: .1e-6 });
         });
 
-        test("Parse Integers with explicit Plus", () => {
+        test("Lex Integers with explicit Plus", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 999999999999999999999999999999999 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e-6 });
         });
 
-        test("Parse Floats with explicit Plus", () => {
+        test("Lex Floats with explicit Plus", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 999999999999999.999999999999999999 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1. });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: .1 });
         });
 
-        test("Parse Floats with explicit Plus with Exponents", () => {
+        test("Lex Floats with explicit Plus with Exponents", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1.e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1.e-6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: .1e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: .1e-6 });
         });
 
-        test("Parse negative Integers", () => {
+        test("Lex negative Integers", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -1 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -999999999999999999999999999999999 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -1e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -1e-6 });
         });
 
-        test("Parse negative Floats", () => {
+        test("Lex negative Floats", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -999999999999999.999999999999999999 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -1. });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -.1 });
         });
 
-        test("Parse negative Floats with Exponents", () => {
+        test("Lex negative Floats with Exponents", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -1.e6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -1.e-6 });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -.1e6 });
@@ -123,7 +124,7 @@ aFineVariable aFineVariable_1 a_fine_1_variable __a_fine_var__ 1_a_fine_var_`;
         let stream = new ShaderStream(identifiersContent);
         let lexer = new ShaderLexer(stream);
         
-        test("Parse Identifiers", () => {
+        test("Lex Identifiers", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'aFineVariable' });
             assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'aFineVariable_1' });
             assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'a_fine_1_variable' });
@@ -131,6 +132,78 @@ aFineVariable aFineVariable_1 a_fine_1_variable __a_fine_var__ 1_a_fine_var_`;
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: '1' });
             assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: '_a_fine_var_' });
             assert.equal(lexer.next(), undefined);
+        });
+    }
+});
+
+suite("Parsing Tests", () => {
+    {
+        let uniformsContents = `\
+#iUniform float test_float = 1
+#iUniform float test_float_with_range = 1 in { -1, 1 }
+#iUniform vec4 test_vec4 = vec4(1, 1, 1, 1)
+#iUniform vec4 test_vec4_with_range = vec4(1, 1, 1, 1) in { vec4(0, 1, 2, 3), vec4(99, 98, 97, 96) }
+#iUniform vec4 test_vec4_with_mismatched_range = vec4(1, 1, 1, 1) in { 0, 99 }
+#iUniform color3 test_color = color3(0.5, 0.5, 0.5)
+`;
+        let parser = new ShaderParser(uniformsContents);
+        
+        test("Parse Uniforms", () => {
+            assert.deepEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_float',
+                Typename: 'float',
+                Default: [ 1.0 ],
+                Min: undefined,
+                Max: undefined,
+                Step: undefined
+            });
+            assert.deepEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_float_with_range',
+                Typename: 'float',
+                Default: [ 1.0 ],
+                Min: [ -1.0 ],
+                Max: [ 1.0 ],
+                Step: undefined
+            });
+            assert.deepEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_vec4',
+                Typename: 'vec4',
+                Default: [ 1.0, 1.0, 1.0, 1.0 ],
+                Min: undefined,
+                Max: undefined,
+                Step: undefined
+            });
+            assert.deepEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_vec4_with_range',
+                Typename: 'vec4',
+                Default: [ 1.0, 1.0, 1.0, 1.0 ],
+                Min: [ 0.0, 1.0, 2.0, 3.0 ],
+                Max: [ 99.0, 98.0, 97.0, 96.0 ],
+                Step: undefined
+            });
+            assert.deepEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_vec4_with_mismatched_range',
+                Typename: 'vec4',
+                Default: [ 1.0, 1.0, 1.0, 1.0 ],
+                Min: [ 0.0 ],
+                Max: [ 99.0 ],
+                Step: undefined
+            });
+            assert.deepEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_color',
+                Typename: 'color3',
+                Default: [ 0.0, 0.0, 0.0 ],
+                Min: undefined,
+                Max: undefined,
+                Step: undefined
+            });
+            assert.equal(parser.next(), undefined);
         });
     }
 });
