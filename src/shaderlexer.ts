@@ -85,7 +85,8 @@ export class ShaderLexer {
         'MagFilter',
         'WrapMode',
         'Type',
-        'in'
+        'in',
+        'step'
     ];
     private is_keyword(val: string) {
         return ShaderLexer.keywords.indexOf(val) >= 0;

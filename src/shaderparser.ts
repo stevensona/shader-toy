@@ -288,6 +288,7 @@ export class ShaderParser {
         let defaultvalue: LiteralNumber | LiteralValue | undefined;
         let minValue: LiteralNumber | LiteralValue | undefined;
         let maxValue: LiteralNumber | LiteralValue | undefined;
+        let stepValue: LiteralNumber | LiteralValue | undefined;
 
         nextToken = this.lexer.peek();
         if (nextToken !== undefined && nextToken.value === "=") {
@@ -320,6 +321,21 @@ export class ShaderParser {
             if (!ShaderParser.testAssignable(type, maxValue.ValueType)) {
                 return this.makeError(`Expected initializer of type "${type}" but got "${maxValue.LiteralString}" which is of type ${maxValue.ValueType}`);
             }
+            nextToken = this.lexer.peek();
+        }
+        if (nextToken !== undefined && nextToken.value === "step") {
+            this.lexer.next();
+            let step = this.getValue();
+            
+            if (step.Type === ObjectType.Error) {
+                return step;
+            }
+
+            if (!ShaderParser.testAssignable(type, step.ValueType)) {
+                return this.makeError(`Expected initializer of type "${type}" but got "${step.LiteralString}" which is of type ${step.ValueType}`);
+            }
+
+            stepValue = step;
         }
 
         let isIntegerType = [ "int", "ivec2", "ivec3", "ivec4" ].findIndex((value: string) => value === type) >= 0; 
@@ -345,6 +361,7 @@ export class ShaderParser {
         let defaultAsNumber = flattenLiteral(defaultvalue);
         let minValueAsNumber = flattenLiteral(minValue);
         let maxValueAsNumber = flattenLiteral(maxValue);
+        let stepValueAsNumber = flattenLiteral(stepValue) || (isIntegerType ? [ 1.0 ] : undefined);
         
         let uniform: Uniform = {
             Type: ObjectType.Uniform,
@@ -353,7 +370,7 @@ export class ShaderParser {
             Default: defaultAsNumber,
             Min: minValueAsNumber,
             Max: maxValueAsNumber,
-            Step: isIntegerType ? [ 1.0 ] : undefined
+            Step: stepValueAsNumber
         };
         return uniform;
     }
