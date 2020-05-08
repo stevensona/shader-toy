@@ -2,3 +2,5 @@ out
 node_modules
 *.browse.VC.db*
 .vscode-test
+dist
+*.vsix
