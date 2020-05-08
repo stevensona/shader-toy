@@ -111,6 +111,13 @@ export class ShaderToyManager {
         }
     }
 
+    public postCommand = (command : string) => {
+        if (this.webviewPanel !== undefined) {
+            this.webviewPanel.Panel.webview.postMessage({command: command});
+        }
+        this.staticWebviews.forEach((webview: StaticWebview) => webview.Panel.webview.postMessage({command: command}));
+    }
+
     private resetStartingData = () => {
         this.startingData = new RenderStartingData();
     }
