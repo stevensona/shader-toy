@@ -6,7 +6,8 @@ import { ShaderStream } from '../src/shaderstream';
 suite("Parsing Tests", () => {
     {
         let typesContent = `\
-int float vec2 /* a random comment */ ivec2 vec3 ivec3 vec4 ivec4 // an eof comment`;
+int float vec2 /* a random comment */ ivec2 vec3 ivec3 vec4 ivec4
+color3// an eof comment`;
         let stream = new ShaderStream(typesContent);
         let lexer = new ShaderLexer(stream);
         
@@ -19,6 +20,7 @@ int float vec2 /* a random comment */ ivec2 vec3 ivec3 vec4 ivec4 // an eof comm
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'ivec3' });
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'vec4' });
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'ivec4' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'color3' });
             assert.equal(lexer.next(), undefined);
         });
     }

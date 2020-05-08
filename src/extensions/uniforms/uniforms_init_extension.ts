@@ -42,7 +42,7 @@ buffers[${i}].UniformValues = {};
                 let threeType = this.mapArrayToThreeType(uniform.Default);
 
                 let defaultValue = uniform.Default;
-                if (defaultValue.length === 3) {
+                if (uniform.Typename === 'color3') {
                     for (let i in defaultValue) {
                         defaultValue[i] = defaultValue[i] * 255.0;
                     }
@@ -88,7 +88,7 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
 }
 `;
         }
-        else if (value.Default.length === 3 && !value.Min && !value.Max && !value.Step) {
+        else if (value.Typename === 'color3') {
             return `\
 {
     let controller = ${this.getRawDatGuiValueString(object, property, value)};

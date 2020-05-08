@@ -98,7 +98,8 @@ export class ShaderLexer {
         'int',
         'ivec2',
         'ivec3',
-        'ivec4'
+        'ivec4',
+        'color3'
     ];
     private static is_type(val: string) {
         return ShaderLexer.types.indexOf(val) >= 0;
@@ -171,8 +172,9 @@ export class ShaderLexer {
                 }
             }
 
-            if (current_pos == this.stream.pos())
+            if (current_pos === this.stream.pos()) {
                 return;
+            }
         }
     }
 
