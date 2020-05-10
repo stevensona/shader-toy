@@ -11,12 +11,21 @@ export class UniformsPreambleExtension implements WebviewExtension {
         this.processBuffers(buffers);
     }
 
+    private static mapTypenameToGlslType(typename: string) {
+        if (typename === 'color3') {
+            return 'vec3';
+        }
+        else {
+            return typename;
+        }
+    }
+
     private processBuffers(buffers: Types.BufferDefinition[]) {
         for (let buffer of buffers) {
             let uniforms = buffer.CustomUniforms;
             for (let uniform of uniforms) {
                 this.content += `\
-uniform ${uniform.Typename} ${uniform.Name};
+uniform ${UniformsPreambleExtension.mapTypenameToGlslType(uniform.Typename)} ${uniform.Name};
 `;
             }
         }

@@ -37,8 +37,12 @@ export class ShaderLexer {
         this.currentRange = { Begin: 0, End: 0 };
     }
     
-    public reset(content: string, position: number) {
-        this.stream.reset(content, position);
+    public mutate(destRange: LineRange, source: string) {
+        return this.stream.mutate(destRange.Begin, destRange.End, source);
+    }
+
+    public reset(position: number) {
+        this.stream.reset(position);
         this.currentPeek = undefined;
     }
 
@@ -85,7 +89,8 @@ export class ShaderLexer {
         'MagFilter',
         'WrapMode',
         'Type',
-        'in'
+        'in',
+        'step'
     ];
     private is_keyword(val: string) {
         return ShaderLexer.keywords.indexOf(val) >= 0;
@@ -98,7 +103,8 @@ export class ShaderLexer {
         'int',
         'ivec2',
         'ivec3',
-        'ivec4'
+        'ivec4',
+        'color3'
     ];
     private static is_type(val: string) {
         return ShaderLexer.types.indexOf(val) >= 0;
@@ -171,8 +177,9 @@ export class ShaderLexer {
                 }
             }
 
-            if (current_pos == this.stream.pos())
+            if (current_pos === this.stream.pos()) {
                 return;
+            }
         }
     }
 
