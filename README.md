@@ -68,6 +68,7 @@ You may also include other files into your shader via a standard C-like syntax:
 ```
 #include "some/shared/code.glsl"
 #include "other/local/shader_code.glsl"
+#include "d:/some/global/code.glsl"
 ```
 These shaders may not define a `void main()` function and as such can be used only for utility functions, constant definitions etc.
 
@@ -75,8 +76,10 @@ These shaders may not define a `void main()` function and as such can be used on
 To use custom uniforms define those directly in your shader, giving an initial value as well as an optional range for the uniform.
 ```glsl
 #iUniform float my_scalar = 1.0 in { 0.0, 5.0 } // This will expose a slider to edit the value
+#iUniform float my_discreet_scalar = 1.0 in { 0.0, 5.0 } step 0.2 // This will expose a slider incrementing at 0.2
 #iUniform float other_scalar = 5.0 // This will expose a text field to give an arbitrary value
-#iUniform vec3 my_color = vec3(1.0) // This will be editable as a color picker
+#iUniform color3 my_color = color3(1.0) // This will be editable as a color picker
+#iUniform vec2 position_in_2d = vec2(1.0) // This will expose two text fields
 #iUniform vec4 other_color = vec4(1.0) in { 0.0, 1.0 } // This will expose four sliders
 ```
 
@@ -162,6 +165,13 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.10.7
+* Make all uniform vector types use separate UI for editing them at runtime,
+* add a color3 uniform type when the user explicitly wants a color edit field,
+* fix an error where using uniforms could cause the extension to become unresponsive when mixing unexpected types,
+* introduce the step keyword to allow setting an increment for uniform values,
+* improve error reporting for parsing errors when files are included early in a shader.
 
 ### 0.10.6
 * Add commands corresponding to UI buttons to allow custom keybindings. Thank you @Ayassaka
