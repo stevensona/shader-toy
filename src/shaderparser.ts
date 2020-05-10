@@ -87,9 +87,13 @@ export class ShaderParser {
         this.lexer = new ShaderLexer(this.stream);
         this.lastObjectRange = undefined;
     }
+    
+    public mutate(destRange: LineRange, source: string) {
+        return this.lexer.mutate(destRange, source);
+    }
 
-    public reset(content: string, position: number) {
-        this.lexer.reset(content, position);
+    public reset(position: number) {
+        this.lexer.reset(position);
     }
 
     public eof(): boolean {
@@ -97,7 +101,7 @@ export class ShaderParser {
     }
 
     public line(): number {
-        return this.stream.line();
+        return this.stream.originalLine();
     }
 
     public getLastObjectRange(): LineRange | undefined {
@@ -532,9 +536,13 @@ export class ShaderParser {
 
     private makeError(message: string): ErrorObject {
         let lastRange = this.lexer.getLastRange();
+        let lastRangeSize = lastRange.End - lastRange.Begin;
+        let currentColumn = this.stream.column();
+        let lastRangeColumn = currentColumn - lastRangeSize;
+        let lastRangeHighlight = `${' '.repeat(lastRangeColumn - 1)}^${'~'.repeat(lastRangeSize)}^`;
         let error: ErrorObject = {
             Type: ObjectType.Error,
-            Message: message + `\n${this.lexer.getCurrentLine()}\n  ${' '.repeat(this.stream.column() - lastRange.End + lastRange.Begin)}^^^`
+            Message: message + `\n${this.lexer.getCurrentLine()}\n${lastRangeHighlight}`
         };
         return error;
     }

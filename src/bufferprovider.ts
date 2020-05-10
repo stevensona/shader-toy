@@ -336,9 +336,8 @@ void main() {
         let replaceLastObject = (source: string) => {
             let lastRange = parser.getLastObjectRange();
             if (lastRange !== undefined) {
-                let replacedObject = code.substring(lastRange.Begin, lastRange.End);
-                code = code.substring(0, lastRange.Begin) + source + code.substring(lastRange.End);
-                parser.reset(code, lastRange.Begin + source.length);
+                code = parser.mutate(lastRange, source);
+                parser.reset(lastRange.Begin + source.length);
             }
         };
         let removeLastObject = () => {

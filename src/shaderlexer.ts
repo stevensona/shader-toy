@@ -37,8 +37,12 @@ export class ShaderLexer {
         this.currentRange = { Begin: 0, End: 0 };
     }
     
-    public reset(content: string, position: number) {
-        this.stream.reset(content, position);
+    public mutate(destRange: LineRange, source: string) {
+        return this.stream.mutate(destRange.Begin, destRange.End, source);
+    }
+
+    public reset(position: number) {
+        this.stream.reset(position);
         this.currentPeek = undefined;
     }
 
