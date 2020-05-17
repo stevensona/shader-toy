@@ -11,12 +11,12 @@ import * as fs from 'fs';
 export class TexturesInitExtension implements WebviewExtension {
     private content: string;
 
-    constructor(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
+    constructor(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
         this.content = '';
-        this.processBuffers(buffers, context, generateStandalone);
+        this.processBuffers(buffers, context, makeAvailableResource);
     }
 
-    private processBuffers(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
+    private processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
         let textureOnLoadScript = (texture: Types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
             let magFilter: string = (() => {
                 switch(texture.Mag) {
@@ -181,7 +181,7 @@ function(err) {
                         continue;
                     }
 
-                    textures = textures.map((texture: string) => { return  context.makeWebviewResource(context.makeUri(texture)).toString(); });
+                    textures = textures.map((texture: string) => { return  makeAvailableResource(texture); });
                     let textureLoadScript = `new THREE.CubeTextureLoader().load([ "${textures.join('", "')}" ], ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(localPath)})`;
                 
                     this.content += `\
@@ -195,7 +195,7 @@ buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${texture
                         textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;
                     }
                     else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
-                        const resolvedPath = generateStandalone ? localPath : context.makeWebviewResource(context.makeUri(localPath)).toString();
+                        const resolvedPath = makeAvailableResource(localPath);
                         textureLoadScript = `texLoader.load('${resolvedPath}', ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(resolvedPath)})`;
                     }
                     else if (remotePath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {

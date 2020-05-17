@@ -1,14 +1,13 @@
 'use strict';
 
-import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 
 export class StatsExtension implements WebviewExtension {
-    private context: Context;
+    private getWebviewResourcePath: (relativePath: string) => string;
     private generateStandalone: boolean;
 
-    constructor(context: Context, generateStandalone: boolean) {
-        this.context = context;
+    constructor(getWebviewResourcePath: (relativePath: string) => string, generateStandalone: boolean) {
+        this.getWebviewResourcePath = getWebviewResourcePath;
         this.generateStandalone = generateStandalone;
     }
 
@@ -18,7 +17,7 @@ export class StatsExtension implements WebviewExtension {
             codeOrigin = 'https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js';
         }
         else {
-            codeOrigin = this.context.getWebviewResourcePath('stats.min.js');
+            codeOrigin = this.getWebviewResourcePath('stats.min.js');
         }
         return `\
 <script src='${codeOrigin}' onload='

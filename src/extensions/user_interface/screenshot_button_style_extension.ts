@@ -1,13 +1,12 @@
 'use strict';
 
-import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 
 export class ScreenshotButtonStyleExtension implements WebviewExtension {
-    private context: Context;
+    private screenResourcePath: string;
 
-    constructor(context: Context) {
-        this.context = context;
+    constructor(getWebviewResourcePath: (relativePath: string) => string) {
+        this.screenResourcePath = getWebviewResourcePath('screen.png');
     }
 
     public generateContent(): string {
@@ -23,7 +22,7 @@ export class ScreenshotButtonStyleExtension implements WebviewExtension {
     border-radius: 8px;
     margin: 8px;
     transform: translateX(0%);
-    background: url('${this.context.getWebviewResourcePath('screen.png')}');
+    background: url('${this.screenResourcePath}');
     background-size: 26px;
     background-repeat: no-repeat;
     background-position: center;

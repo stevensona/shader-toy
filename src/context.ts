@@ -30,12 +30,12 @@ export class Context {
             path.join(this.context.extensionPath, 'resources', file)
         );
     }
-    public makeWebviewResource(resourceUri: vscode.Uri): vscode.Uri {
-        return resourceUri.with({ scheme: 'vscode-resource' });
+    public makeWebviewResource(webview: vscode.Webview, resourceUri: vscode.Uri): vscode.Uri {
+        return webview.asWebviewUri(resourceUri);
     }
-    public getWebviewResourcePath(file: string): string {
+    public getWebviewResourcePath(webview: vscode.Webview, file: string): string {
         const resourceUri = this.getResourceUri(file);
-        const webviewResourceUri = this.makeWebviewResource(resourceUri);
+        const webviewResourceUri = this.makeWebviewResource(webview, resourceUri);
         return webviewResourceUri.toString();
     }
     

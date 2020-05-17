@@ -1,14 +1,13 @@
 'use strict';
 
-import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 
 export class DatGuiExtension implements WebviewExtension {
-    private context: Context;
+    private getWebviewResourcePath: (relativePath: string) => string;
     private generateStandalone: boolean;
 
-    constructor(context: Context, generateStandalone: boolean) {
-        this.context = context;
+    constructor(getWebviewResourcePath: (relativePath: string) => string, generateStandalone: boolean) {
+        this.getWebviewResourcePath = getWebviewResourcePath;
         this.generateStandalone = generateStandalone;
     }
 
@@ -18,6 +17,6 @@ export class DatGuiExtension implements WebviewExtension {
 <script src='https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js'></script>`;
         }
         return `\
-<script src='${this.context.getWebviewResourcePath('dat.gui.min.js')}'></script>`;
+<script src='${this.getWebviewResourcePath('dat.gui.min.js')}'></script>`;
     }
 }
