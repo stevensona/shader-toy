@@ -1,14 +1,13 @@
 'use strict';
 
-import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 
 export class ThreeExtension implements WebviewExtension {
-    private context: Context;
+    private getWebviewResourcePath: (relativePath: string) => string;
     private generateStandalone: boolean;
 
-    constructor(context: Context, generateStandalone: boolean) {
-        this.context = context;
+    constructor(getWebviewResourcePath: (relativePath: string) => string, generateStandalone: boolean) {
+        this.getWebviewResourcePath = getWebviewResourcePath;
         this.generateStandalone = generateStandalone;
     }
 
@@ -16,6 +15,6 @@ export class ThreeExtension implements WebviewExtension {
         if (this.generateStandalone) {
             return 'https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js';
         }
-        return this.context.getWebviewResourcePath('three.min.js');
+        return this.getWebviewResourcePath('three.min.js');
     }
 }

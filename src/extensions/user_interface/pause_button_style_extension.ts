@@ -1,13 +1,14 @@
 'use strict';
 
-import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 
 export class PauseButtonStyleExtension implements WebviewExtension {
-    private context: Context;
+    private pauseResourcePath: string;
+    private playResourcePath: string;
 
-    constructor(context: Context) {
-        this.context = context;
+    constructor(getWebviewResourcePath: (relativePath: string) => string) {
+        this.pauseResourcePath = getWebviewResourcePath('pause.png');
+        this.playResourcePath = getWebviewResourcePath('play.png');
     }
 
     public generateContent(): string {
@@ -41,7 +42,7 @@ export class PauseButtonStyleExtension implements WebviewExtension {
     border-radius: 8px;
     margin: auto;
     transform: translateX(-50%);
-    background: url('${this.context.getWebviewResourcePath('pause.png')}');
+    background: url('${this.pauseResourcePath}');
     background-size: 40px;
     background-repeat: no-repeat;
     background-position: center;
@@ -57,7 +58,7 @@ export class PauseButtonStyleExtension implements WebviewExtension {
     transition-duration: 0.2s;
 }
 .button-container input:checked ~ .pause-play {
-    background: url('${this.context.getWebviewResourcePath('play.png')}');
+    background: url('${this.playResourcePath}');
     background-size: 40px;
     background-repeat: no-repeat;
     background-position: center;

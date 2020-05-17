@@ -9,13 +9,13 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
     private content: string;
     private textureContent: string;
 
-    constructor(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
+    constructor(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
         this.content = '';
         this.textureContent = '';
-        this.processBuffers(buffers, context, generateStandalone);
+        this.processBuffers(buffers, context, makeAvailableResource);
     }
 
-    private processBuffers(buffers: Types.BufferDefinition[], context: Context, generateStandalone: boolean) {
+    private processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
         for (let i in buffers) {
             const buffer = buffers[i];
             const audios =  buffer.AudioInputs;
@@ -30,7 +30,7 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
                 let path: string | undefined;
 
                 if (localPath !== undefined) {
-                    path = generateStandalone ? localPath : context.makeWebviewResource(context.makeUri(localPath)).toString();
+                    path = makeAvailableResource(localPath);
                 }
                 else if (remotePath !== undefined) {
                     path = remotePath;

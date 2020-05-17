@@ -169,11 +169,11 @@
             "editor/context": [
                 {
                     "command": "shader-toy.showGlslPreview",
-                    "group": "ShaderToy"
+                    "group": "ShaderToy-Core"
                 },
                 {
                     "command": "shader-toy.showStaticGlslPreview",
-                    "group": "ShaderToy"
+                    "group": "ShaderToy-Core"
                 },
                 {
                     "command": "shader-toy.createPortableGlslPreview",

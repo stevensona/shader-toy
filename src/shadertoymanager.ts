@@ -80,7 +80,8 @@ export class ShaderToyManager {
         if (vscode.window.activeTextEditor !== undefined) {
             let document = vscode.window.activeTextEditor.document;
             let webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
-            let htmlContent = webviewContentProvider.generateWebviewConent(this.startingData, true);
+            webviewContentProvider.parseShaderTree(false);
+            let htmlContent = webviewContentProvider.generateWebviewContent(undefined, this.startingData);
             let originalFileExt = path.extname(document.fileName);
             let previewFilePath = document.fileName.replace(originalFileExt, '.html');
             fs.writeFileSync(previewFilePath, htmlContent);
@@ -198,8 +199,8 @@ export class ShaderToyManager {
     
     private updateWebview = <T extends Webview | StaticWebview>(webviewPanel: T, document: vscode.TextDocument): T => {
         this.context.clearDiagnostics();
-        let [ html, localResources ] = new WebviewContentProvider(this.context, document.getText(), document.fileName)
-            .generateWebviewConent(this.startingData, false);
+        let webviewContantProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
+        let localResources = webviewContantProvider.parseShaderTree(false);
 
         let localResourceRoots: string[] = [];
         for (let localResource of localResources) {
@@ -223,7 +224,7 @@ export class ShaderToyManager {
             webviewPanel.Panel = newWebviewPanel;
         }
 
-        webviewPanel.Panel.webview.html = html;
+        webviewPanel.Panel.webview.html = webviewContantProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
         return webviewPanel;
     }
 }
