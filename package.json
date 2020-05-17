@@ -12,7 +12,7 @@
         "url": "https://github.com/stevensona/shader-toy/issues"
     },
     "engines": {
-        "vscode": "^1.32.0"
+        "vscode": "^1.40.0"
     },
     "categories": [
         "Other"
@@ -202,21 +202,21 @@
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
-        "compare-versions": "^3.4.0",
+        "compare-versions": "^3.6.0",
         "glob": "^7.1.6",
         "glslify": "^7.0.0",
-        "mime": "^2.4.2"
+        "mime": "^2.4.5"
     },
     "devDependencies": {
-        "@types/compare-versions": "^3.0.0",
-        "@types/mime": "^2.0.0",
+        "@types/compare-versions": "^3.3.0",
+        "@types/mime": "^2.0.2",
         "@types/mocha": "^2.2.42",
-        "@types/node": "^10.12.21",
-        "ts-loader": "^6.2.1",
-        "tslint": "^5.12.1",
-        "typescript": "^3.3.1",
-        "vscode": "^1.1.33",
-        "webpack": "^4.42.0",
+        "@types/node": "^10.17.21",
+        "@types/vscode": "^1.40.0",
+        "ts-loader": "^6.2.2",
+        "tslint": "^5.20.1",
+        "typescript": "^3.9.2",
+        "webpack": "^4.43.0",
         "webpack-cli": "^3.3.11"
     },
     "icon": "resources/thumb.png"
