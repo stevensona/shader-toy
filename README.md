@@ -166,6 +166,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.8
+* Hotfix to make the extension work with the web version of VSCode.
+
 ### 0.10.7
 * Make all uniform vector types use separate UI for editing them at runtime,
 * add a color3 uniform type when the user explicitly wants a color edit field,
