@@ -24,9 +24,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     steps:
-    - uses: actions/checkout@v2
-      
-    - uses: actions/setup-node@v1.4.2
+    - name: Checkout
+      uses: actions/checkout@v2.2.0
+
+    - name: Install Node.js
+      uses: actions/setup-node@v1.4.2
       with:
         node-version: 10.x
       
