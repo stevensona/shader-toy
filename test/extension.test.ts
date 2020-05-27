@@ -33,8 +33,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
             assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ')' });
             assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '{' });
             assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'fragColor' });
-            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '=' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Operator, value: '=' });
             assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'vec4' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '(' });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: '0.0' });
             assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ',' });
             assert.deepEqual(lexer.next(), { type: TokenType.Float, value: '0.0' });
