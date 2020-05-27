@@ -5,6 +5,50 @@ import { ShaderStream } from '../src/shaderstream';
 import { ShaderParser, ObjectType } from '../src/shaderparser';
 
 suite("Lexing Tests", () => {
+    
+    {
+        let shaderContent = `\
+/******************************************************************************
+*   Multiline Comment
+******************************************************************************/
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    // Output to screen
+    fragColor = vec4(0.0, 0.0, 1.0, 1.0);
+ }`;
+        let stream = new ShaderStream(shaderContent);
+        let lexer = new ShaderLexer(stream);
+        
+        test("Lex Whole Shader", () => {
+            assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'void' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'mainImage' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '(' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Keyword, value: 'out' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'vec4' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'fragColor' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ',' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Keyword, value: 'in' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'vec2' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'fragCoord' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ')' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '{' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Identifier, value: 'fragColor' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '=' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Type, value: 'vec4' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: '0.0' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ',' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: '0.0' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ',' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: '1.0' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ',' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: '1.0' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ')' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: ';' });
+            assert.deepEqual(lexer.next(), { type: TokenType.Punctuation, value: '}' });
+            assert.equal(lexer.next(), undefined);
+        });
+    }
+
     {
         let typesContent = `\
 int float vec2 /* a random comment */ ivec2 vec3 ivec3 vec4 ivec4
