@@ -194,10 +194,10 @@
         "vscode:prepublish": "webpack --mode production",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "test": "npm run compile && node ./node_modules/vscode/bin/test",
         "webpack": "webpack --mode development",
         "webpack-dev": "webpack --mode development --watch",
-        "test-compile": "tsc -p ./"
+		"pretest": "npm run compile",
+		"test": "node ./out/test/run_tests.js"
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
@@ -212,11 +212,13 @@
         "@types/mocha": "^2.2.42",
         "@types/node": "^10.17.21",
         "@types/vscode": "^1.40.0",
+        "mocha": "^7.2.0",
         "ts-loader": "^6.2.2",
         "tslint": "^5.20.1",
         "typescript": "^3.9.2",
         "webpack": "^4.43.0",
-        "webpack-cli": "^3.3.11"
+        "webpack-cli": "^3.3.11",
+        "vscode-test": "^1.4.0"
     },
     "icon": "resources/thumb.png"
 }
