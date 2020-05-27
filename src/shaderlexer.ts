@@ -90,6 +90,8 @@ export class ShaderLexer {
         'WrapMode',
         'Type',
         'in',
+        'out',
+        'inout',
         'step'
     ];
     private is_keyword(val: string) {
@@ -171,9 +173,9 @@ export class ShaderLexer {
                     this.stream.next();
                     this.stream.next();
                     do {
-                        this.next_while((val: string) => val !== '*');
+                        this.next_while((val: string) => val !== undefined && val !== '/');
                         this.stream.next();
-                    } while (this.stream.next() !== '/');
+                    } while (!this.stream.eof() && this.stream.peek(-2) !== '*');
                 }
             }
 
