@@ -198,7 +198,7 @@ suite("Parsing Tests", () => {
                 Type: ObjectType.Uniform,
                 Name: 'test_color',
                 Typename: 'color3',
-                Default: [ 0.0, 0.0, 0.0 ],
+                Default: [ 0.5, 0.5, 0.5 ],
                 Min: undefined,
                 Max: undefined,
                 Step: undefined
