@@ -166,6 +166,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.9
+* Hotfix a freeze when parsing some multiline c-style comments.
+
 ### 0.10.8
 * Hotfix to make the extension work with the web version of VSCode.
 
