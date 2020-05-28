@@ -196,8 +196,8 @@
         "watch": "tsc -watch -p ./",
         "webpack": "webpack --mode development",
         "webpack-dev": "webpack --mode development --watch",
-		"pretest": "npm run compile",
-		"test": "node ./out/test/run_tests.js"
+        "pretest": "npm run compile",
+        "test": "node ./out/test/run_tests.js"
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
