@@ -28,6 +28,16 @@ export class ShaderToyManager {
         this.context = context;
     }
 
+    public migrateToNewContext = (context: Context) => {
+        this.context = context;
+        if (this.webviewPanel && this.context.activeEditor) {
+            this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+        }
+        for (let staticWebview of this.staticWebviews) {
+            this.updateWebview(staticWebview, staticWebview.Document);
+        }
+    } 
+
     public showDynamicPreview = () => {
         if (this.context.getConfig<boolean>('reloadOnChangeEditor') !== true) {
             this.context.activeEditor = vscode.window.activeTextEditor;
