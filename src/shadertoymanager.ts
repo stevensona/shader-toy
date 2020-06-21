@@ -199,8 +199,8 @@ export class ShaderToyManager {
     
     private updateWebview = <T extends Webview | StaticWebview>(webviewPanel: T, document: vscode.TextDocument): T => {
         this.context.clearDiagnostics();
-        let webviewContantProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
-        let localResources = webviewContantProvider.parseShaderTree(false);
+        let webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
+        let localResources = webviewContentProvider.parseShaderTree(false);
 
         let localResourceRoots: string[] = [];
         for (let localResource of localResources) {
@@ -224,7 +224,7 @@ export class ShaderToyManager {
             webviewPanel.Panel = newWebviewPanel;
         }
 
-        webviewPanel.Panel.webview.html = webviewContantProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
+        webviewPanel.Panel.webview.html = webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
         return webviewPanel;
     }
 }

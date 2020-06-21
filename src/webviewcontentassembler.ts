@@ -96,7 +96,7 @@ export class WebviewContentAssembler {
         }
     }
 
-    public assembleWebviewConent() {
+    public assembleWebviewContent() {
         for (let webviewModule of this.webviewModules) {
             if (webviewModule.Module.Type === ModuleType.Insert) {
                 this.webviewContent.insertAfterLine(webviewModule.Module.Extension.generateContent(), webviewModule.LineNumber);

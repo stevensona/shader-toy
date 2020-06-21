@@ -356,6 +356,6 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Final Assembly
-        return this.webviewAssembler.assembleWebviewConent();
+        return this.webviewAssembler.assembleWebviewContent();
     }
 }
