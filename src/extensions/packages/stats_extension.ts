@@ -19,16 +19,26 @@ export class StatsExtension implements WebviewExtension {
         else {
             codeOrigin = this.getWebviewResourcePath('stats.min.js');
         }
+
+        // Note: Workaround for a broken r17 on cdnjs and an incompatible r16 that we're forced to use
+        let domElement;
+        if (this.generateStandalone) {
+            domElement = 'domElement';
+        }
+        else {
+            domElement = 'dom';
+        }
+
         return `\
-<script src='${codeOrigin}' onload='
+<script src='${codeOrigin}' onload="
 let stats = new Stats();
 compileTimePanel = stats.addPanel(new Stats.Panel('CT MS', '#ff8', '#221'));
 stats.showPanel(1);
-document.body.appendChild(stats.dom);
+document.body.appendChild(stats.${domElement});
 requestAnimationFrame(function loop() {
     stats.update();
     requestAnimationFrame(loop);
 });
-'></script>`;
+"></script>`;
     }
 }
