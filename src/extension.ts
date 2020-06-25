@@ -57,9 +57,12 @@ export function activate(extensionContext: vscode.ExtensionContext) {
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
         if (e.affectsConfiguration('shader-toy')) {
+            let lastActiveEditor = context.activeEditor;
             context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
-            shadertoyManager = new ShaderToyManager(context);
-            registerCallbacks();
+            if (context.activeEditor === undefined) {
+                context.activeEditor = lastActiveEditor;
+            }
+            shadertoyManager.migrateToNewContext(context);
         }
     });
     

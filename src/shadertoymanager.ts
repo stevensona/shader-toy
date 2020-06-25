@@ -28,6 +28,16 @@ export class ShaderToyManager {
         this.context = context;
     }
 
+    public migrateToNewContext = (context: Context) => {
+        this.context = context;
+        if (this.webviewPanel && this.context.activeEditor) {
+            this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+        }
+        for (let staticWebview of this.staticWebviews) {
+            this.updateWebview(staticWebview, staticWebview.Document);
+        }
+    } 
+
     public showDynamicPreview = () => {
         if (this.context.getConfig<boolean>('reloadOnChangeEditor') !== true) {
             this.context.activeEditor = vscode.window.activeTextEditor;
@@ -199,8 +209,8 @@ export class ShaderToyManager {
     
     private updateWebview = <T extends Webview | StaticWebview>(webviewPanel: T, document: vscode.TextDocument): T => {
         this.context.clearDiagnostics();
-        let webviewContantProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
-        let localResources = webviewContantProvider.parseShaderTree(false);
+        let webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
+        let localResources = webviewContentProvider.parseShaderTree(false);
 
         let localResourceRoots: string[] = [];
         for (let localResource of localResources) {
@@ -224,7 +234,7 @@ export class ShaderToyManager {
             webviewPanel.Panel = newWebviewPanel;
         }
 
-        webviewPanel.Panel.webview.html = webviewContantProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
+        webviewPanel.Panel.webview.html = webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
         return webviewPanel;
     }
 }

@@ -1,8 +1,8 @@
-#include "common/blobby-common.glsl"
+#include "common/blobby.glsl"
 
 float blob(vec2 pos, vec2 center, float power)
 {
-    vec2 d = saturate01(pow(pos - center, vec2(power)));
+    vec2 d = saturate(pow(pos - center, vec2(power)));
     return 1. / abs(d.x + d.y);
 }
 
@@ -40,5 +40,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     
     fragColor = vec4((1. - vec3(pow(length(uv * 0.4), 1.5))) * vec3(0.9, 1.0, 0.9),
-                     1.) * saturate01(pow(fragColor, vec4(2.7)));
+                     1.) * saturate(pow(fragColor, vec4(2.7)));
 }

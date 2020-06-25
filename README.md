@@ -166,6 +166,11 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.10
+* Fix stats display,
+* fix includes and shader names resolving on only their filename,
+* fix shader reloading on extension settings changing.
+
 ### 0.10.9
 * Hotfix a freeze when parsing some multiline c-style comments.
 

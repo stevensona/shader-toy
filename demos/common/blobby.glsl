@@ -1,6 +1,8 @@
 #include "math-common.glsl"
 
-#define saturate01(x) (clamp(x, 0., 1.))
+#ifndef saturate
+#define saturate(x) (clamp(x, 0., 1.))
+#endif
 
 vec2 rotate(vec2 p, float t)
 {

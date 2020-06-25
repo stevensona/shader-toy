@@ -38,10 +38,10 @@ export class BufferProvider {
     public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
         this.parseShaderCodeInternal(file, file, code, buffers, commonIncludes, generateStandalone);
 
-        const findByName = (bufferName: string) => {
-            let strippedName = this.stripPath(bufferName);
+        const findByName = (path: string) => {
+            let name = this.makeName(path);
             return (value: any) => {
-                if (value.Name === strippedName) {
+                if (value.Name === name) {
                     return true;
                 }
                 return false;
@@ -110,9 +110,13 @@ export class BufferProvider {
 
         return { success, error, bufferCode };
     }
-    private stripPath(name: string): string{
-        let lastSlash = name.lastIndexOf('/');
-        return name.substring(lastSlash + 1);
+
+    private makeName(path: string): string{
+        let name = JSON.stringify(path);
+        let trim = (name: string) => {
+            return name.replace(/^["]+|["]+$/g, '');
+        };
+        return trim(name);
     }
 
     private parseShaderCodeInternal(rootFile: string, file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
@@ -171,7 +175,7 @@ export class BufferProvider {
                         textures.push({
                             Channel: channel,
                             File: file,
-                            Buffer: this.stripPath(depFile),
+                            Buffer: this.makeName(depFile),
                         });
                     }
                     break;
@@ -307,7 +311,7 @@ void main() {
 
         // Push yourself after all your dependencies
         buffers.push({
-            Name: this.stripPath(file),
+            Name: this.makeName(file),
             File: file,
             Code: code,
             Includes: includes,
@@ -452,7 +456,7 @@ void main() {
                             let transformedIncludeCode = this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
                                                                             uniforms, includes, sharedIncludes, usesKeyboard, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
-                                Name: path.basename(includeFile),
+                                Name: this.makeName(includeFile),
                                 File: includeFile,
                                 Code: transformedIncludeCode,
                                 LineCount: transformedIncludeCode.split(/\r\n|\n/).length
