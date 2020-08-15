@@ -188,7 +188,7 @@ export class BufferProvider {
                             LocalTexture: depFile,
                             Mag: Types.TextureMagFilter.Linear,
                             Min: Types.TextureMinFilter.Linear,
-                            Wrap: Types.TextureWrapMode.Clamp
+                            Wrap: Types.TextureWrapMode.Repeat
                         });
                     }
                     else {
@@ -198,7 +198,7 @@ export class BufferProvider {
                             RemoteTexture: depFile,
                             Mag: Types.TextureMagFilter.Linear,
                             Min: Types.TextureMinFilter.Linear,
-                            Wrap: Types.TextureWrapMode.Clamp
+                            Wrap: Types.TextureWrapMode.Repeat
                         });
                     }
                     break;
@@ -239,7 +239,7 @@ export class BufferProvider {
                 texture.MagLine = pendingSettings.MagLine;
                 texture.Min = pendingSettings.Min || Types.TextureMinFilter.Linear;
                 texture.MinLine = pendingSettings.MinLine;
-                texture.Wrap = pendingSettings.Wrap || Types.TextureWrapMode.Clamp;
+                texture.Wrap = pendingSettings.Wrap || Types.TextureWrapMode.Repeat;
                 texture.WrapLine = pendingSettings.WrapLine;
                 texture.Type = pendingSettings.Type || Types.TextureType.Texture2D;
                 texture.TypeLine = pendingSettings.TypeLine;
