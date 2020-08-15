@@ -1,3 +1,6 @@
+// Created by FlyGuy - https://www.shadertoy.com/view/MtdcDn
+// Adapted for VS Code Shadertoy
+
 #include "volume_points_common.glsl"
 
 vec3 iVResolution = vec3(0);

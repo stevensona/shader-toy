@@ -1,3 +1,6 @@
+// Created by mu6k - https://www.shadertoy.com/view/Mss3WN
+// Adapted for VS Code Shadertoy
+
 /*by mu6k, Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 
  I have no idea how I ended up here, but it demosceneish enough to publish.

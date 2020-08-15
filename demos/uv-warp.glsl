@@ -1,3 +1,5 @@
+// Example shader created for VS Code ShaderToy extension
+
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
  

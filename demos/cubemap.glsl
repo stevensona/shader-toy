@@ -1,9 +1,9 @@
+// Created by Klems - https://www.shadertoy.com/view/4dj3zV
+// Adapted for VS Code Shadertoy
+
 #iChannel0 "file://cubemap/yokohama_{}.jpg"
 #iChannel0::Type "CubeMap"
 #iChannel0::MinFilter "LinearMipMapLinear"
-
-// Created by Klems - https://www.shadertoy.com/view/4dj3zV
-// Adapted for VS Code Shadertoy
 
 #define PI 					3.14159265359
 #define METABALLS 			7

@@ -1,3 +1,5 @@
+// Example shader created for VS Code ShaderToy extension
+
 #iChannel0 "https://cdn-images-1.medium.com/max/1200/1*eFjpoz8lhNKyd8XcSWv2OA.jpeg"
 #iChannel0::WrapMode "Repeat"
 

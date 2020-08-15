@@ -1,3 +1,6 @@
+// Created by liamboone - https://www.shadertoy.com/view/ldBBRV
+// Adapted for VS Code Shadertoy
+
 #include "common/blobby.glsl"
 
 float blob(vec2 pos, vec2 center, float power)

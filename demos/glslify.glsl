@@ -1,3 +1,5 @@
+// Example shader created for VS Code ShaderToy extension
+
 #pragma glslify: snoise = require('glsl-noise/simplex/2d')
 
 float noise(in vec2 pt) {

@@ -1,5 +1,5 @@
-// Shader by Flyguy
-// Adapted for shadertoy VS-Code from: https://www.shadertoy.com/view/MtdcDn
+// Created by FlyGuy - https://www.shadertoy.com/view/MtdcDn
+// Adapted for VS Code Shadertoy
 
 #iChannel0 "volume_points_0.glsl"
 

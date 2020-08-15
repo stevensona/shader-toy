@@ -1,11 +1,12 @@
+// Created by TekF - https://www.shadertoy.com/view/XdS3RV
+// Adapted for VS Code Shadertoy
+
 #iKeyboard
 #iChannel0 "https://i.imgur.com/lX8OAQV.jpg"
 #iChannel1 "https://farm5.static.flickr.com/4541/38604095012_ab7a81b807_b.jpg"
 
 // Ben Quantock 2014
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-
-// Adapted for shadertoy VS-Code from: https://www.shadertoy.com/view/XdS3RV
 
 // fit a coordinate system to xx
 vec4 screen; // coord*screen.z+screen.xy, coord e [-screen.w,screen.w

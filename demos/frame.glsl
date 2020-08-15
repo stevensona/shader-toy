@@ -1,3 +1,5 @@
+// Example shader created for VS Code ShaderToy extension
+
 #define BRANCHLESS
 
 void main() {

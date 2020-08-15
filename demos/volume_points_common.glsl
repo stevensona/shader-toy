@@ -1,3 +1,6 @@
+// Created by FlyGuy - https://www.shadertoy.com/view/MtdcDn
+// Adapted for VS Code Shadertoy
+
 const float pi = atan(1.0) * 4.0;
 const float tau = atan(1.0) * 8.0;
  
