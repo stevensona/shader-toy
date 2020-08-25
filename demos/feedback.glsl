@@ -1,3 +1,5 @@
+// Example shader created for VS Code ShaderToy extension
+
 #iChannel0 "file://self"
 
 void main() {

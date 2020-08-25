@@ -1,3 +1,6 @@
+// Created by klk - https://www.shadertoy.com/view/XsVSzW
+// Adapted for VS Code Shadertoy
+
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 // Created by S.Guillitte 
 void main()

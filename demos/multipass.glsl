@@ -1,3 +1,5 @@
+// Example shader created for VS Code ShaderToy extension
+
 #iChannel0 "file://horizon.jpg"
 #iChannel1 "file://uv-warp.glsl"
 

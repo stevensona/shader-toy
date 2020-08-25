@@ -166,6 +166,13 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.12
+* Fix attributions of several demo shaders,
+* align default wrap mode with what is default on shader-toy.com
+
+### 0.10.11
+* Automatic dependency updates.
+
 ### 0.10.10
 * Fix stats display,
 * fix includes and shader names resolving on only their filename,

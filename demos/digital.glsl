@@ -1,4 +1,4 @@
-// Created by tayloia at https://www.shadertoy.com/view/MdVcRd
+// Created by tayloia - https://www.shadertoy.com/view/MdVcRd
 // Adapted for VS Code Shadertoy
 
 // See https://www.shadertoy.com/view/ldKGRR

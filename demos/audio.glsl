@@ -1,3 +1,6 @@
+// Created by inantop - https://www.shadertoy.com/view/XltSDX
+// Adapted for VS Code Shadertoy
+
 #iChannel0 "file://./outfoxing.mp3"
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )

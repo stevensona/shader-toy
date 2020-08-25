@@ -1,7 +1,7 @@
-#iKeyboard
-
-// Created by inigo quilez - iq/2013
+// Created by iq - https://www.shadertoy.com/view/lsXGzf
 // Adapted for VS Code Shadertoy
+
+#iKeyboard
 
 // An example showing how to use the keyboard input.
 //

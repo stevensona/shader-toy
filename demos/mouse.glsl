@@ -1,4 +1,4 @@
-// Created by foodini - 2018
+// Created by foodini - https://www.shadertoy.com/view/XlyBzt
 // Adapted for VS Code Shadertoy
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
