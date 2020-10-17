@@ -30,6 +30,8 @@ import { PauseButtonStyleExtension } from './extensions/user_interface/pause_but
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
 import { ScreenshotButtonStyleExtension } from './extensions/user_interface/screenshot_button_style_extension';
 import { ScreenshotButtonExtension } from './extensions/user_interface/screenshot_button_extension';
+import { ReloadButtonStyleExtension } from './extensions/user_interface/reload_button_style_extension';
+import { ReloadButtonExtension } from './extensions/user_interface/reload_button_extension';
 
 import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
@@ -327,7 +329,7 @@ export class WebviewContentProvider {
         if (!generateStandalone) {
             if (this.context.getConfig<boolean>('showScreenshotButton')) {
                 let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(getWebviewResourcePath);
-                this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
+                this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */ ');
 
                 let screenshotButtonExtension = new ScreenshotButtonExtension();
                 this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
@@ -339,6 +341,18 @@ export class WebviewContentProvider {
         }
         let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Reload Logic
+        if (!generateStandalone) {
+            if (!this.context.getConfig<boolean>('reloadAutomatically')) {
+                let reloadButtonStyleExtension = new ReloadButtonStyleExtension(getWebviewResourcePath);
+                this.webviewAssembler.addWebviewModule(reloadButtonStyleExtension, '/* Reload Button Style */');
+
+                let reloadButtonExtension = new ReloadButtonExtension();
+                this.webviewAssembler.addWebviewModule(reloadButtonExtension, '<!-- Reload Element -->');
+            }
+        }
         
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling

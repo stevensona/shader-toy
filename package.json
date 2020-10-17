@@ -57,6 +57,11 @@
                     "default": false,
                     "description": "Enable support for glslify, which will transform shader code after all transformations this extension does. Line numbers for errors are currently disable when this option is enabled."
                 },
+                "shader-toy.reloadAutomatically": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch for all automatic reloads."
+                },
                 "shader-toy.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,

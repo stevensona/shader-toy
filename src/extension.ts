@@ -46,11 +46,9 @@ export function activate(extensionContext: vscode.ExtensionContext) {
             });
         }
         
-        if (context.getConfig<boolean>('reloadOnChangeEditor')) {
-            changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
-                shadertoyManager.onEditorChanged(newEditor);
-            });
-        }
+        changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
+            shadertoyManager.onEditorChanged(newEditor);
+        });
     };
 
     registerCallbacks();

@@ -99,25 +99,30 @@ export class ShaderToyManager {
     }
 
     public onDocumentChanged = (documentChange: vscode.TextDocumentChangeEvent) => {
-        const staticWebview = this.staticWebviews.find((webview: StaticWebview) => { return webview.Document === documentChange.document; });
-        const isActiveDocument = this.context.activeEditor !== undefined && documentChange.document === this.context.activeEditor.document;
-        if (isActiveDocument || staticWebview !== undefined) {
-            if (this.webviewPanel !== undefined && this.context.activeEditor !== undefined) {
-                this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
-            }
+        if (this.context.getConfig<boolean>('reloadAutomatically')) {
+            const staticWebview = this.staticWebviews.find((webview: StaticWebview) => { return webview.Document === documentChange.document; });
+            const isActiveDocument = this.context.activeEditor !== undefined && documentChange.document === this.context.activeEditor.document;
+            if (isActiveDocument || staticWebview !== undefined) {
+                if (this.webviewPanel !== undefined && this.context.activeEditor !== undefined) {
+                    this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                }
 
-            this.staticWebviews.map((staticWebview: StaticWebview) => this.updateWebview(staticWebview, staticWebview.Document));
+                this.staticWebviews.map((staticWebview: StaticWebview) => this.updateWebview(staticWebview, staticWebview.Document));
+            }
         }
     }
 
     public onEditorChanged = (newEditor: vscode.TextEditor | undefined) => {
         if (newEditor !== undefined && newEditor.document.getText() !== '' && newEditor !== this.context.activeEditor) {
-            if (this.context.getConfig<boolean>('resetStateOnChangeEditor')) {
-                this.resetStartingData();
-            }
             this.context.activeEditor = newEditor;
-            if (this.webviewPanel !== undefined) {
-                this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+
+            if (this.context.getConfig<boolean>('reloadAutomatically') && this.context.getConfig<boolean>('reloadOnChangeEditor')) {
+                if (this.context.getConfig<boolean>('resetStateOnChangeEditor')) {
+                    this.resetStartingData();
+                }
+                if (this.webviewPanel !== undefined) {
+                    this.webviewPanel = this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                }
             }
         }
     }
@@ -152,6 +157,18 @@ export class ShaderToyManager {
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => {
               switch (message.command) {
+                case 'reloadWebview':
+                    if (this.webviewPanel !== undefined && this.webviewPanel.Panel === newWebviewPanel && this.context.activeEditor !== undefined) {
+                        this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+                    }
+                    else {
+                        this.staticWebviews.forEach((staticWebview: StaticWebview) => {
+                            if (staticWebview.Panel === newWebviewPanel) {
+                                this.updateWebview(staticWebview, staticWebview.Document);
+                            }
+                        });
+                    }
+                    return;
                 case 'updateTime':
                     this.startingData.Time = message.time;
                     return;
