@@ -3,6 +3,9 @@
 #iChannel0 "file://horizon.jpg"
 #iChannel1 "file://uv-warp.glsl"
 
+#iChannel1::MinFilter "Nearest"
+#iChannel1::MagFilter "Nearest"
+
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
     

@@ -17,46 +17,48 @@ export class TexturesInitExtension implements WebviewExtension {
     }
 
     private processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
+        let convertMagFilter = (mag: Types.TextureMagFilter | undefined) => {
+            switch(mag) {
+            case Types.TextureMagFilter.Nearest:
+                return 'THREE.NearestFilter';
+            case Types.TextureMagFilter.Linear:
+            default:
+                return 'THREE.LinearFilter';
+            }
+        };
+        let convertMinFilter = (min: Types.TextureMinFilter | undefined) => {
+            switch(min) {
+                case Types.TextureMinFilter.Nearest:
+                    return'THREE.NearestFilter';
+                case Types.TextureMinFilter.NearestMipMapNearest:
+                    return'THREE.NearestMipmapNearestFilter';
+                case Types.TextureMinFilter.NearestMipMapLinear:
+                    return'THREE.NearestMipmapLinearFilter';
+                case Types.TextureMinFilter.Linear:
+                default:
+                    return'THREE.LinearFilter';
+                case Types.TextureMinFilter.LinearMipMapNearest:
+                    return'THREE.LinearMipmapNearestFilter';
+                case Types.TextureMinFilter.LinearMipMapLinear:
+                    return'THREE.LinearMipmapLinearFilter';
+            }
+        };
+        let convertWrapMode = (wrap: Types.TextureWrapMode | undefined) => {
+            switch(wrap) {
+            case Types.TextureWrapMode.Clamp:
+                return 'THREE.ClampToEdgeWrapping';
+            case Types.TextureWrapMode.Repeat:
+            default:
+                return 'THREE.RepeatWrapping';
+            case Types.TextureWrapMode.Mirror:
+                return 'THREE.MirroredRepeatWrapping';
+            }
+        };
+
         let textureOnLoadScript = (texture: Types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
-            let magFilter: string = (() => {
-                switch(texture.Mag) {
-                case Types.TextureMagFilter.Nearest:
-                    return 'THREE.NearestFilter';
-                case Types.TextureMagFilter.Linear:
-                default:
-                    return 'THREE.LinearFilter';
-                }
-            })();
-
-            let minFilter: string = (() => {
-                switch(texture.Min) {
-                    case Types.TextureMinFilter.Nearest:
-                        return'THREE.NearestFilter';
-                    case Types.TextureMinFilter.NearestMipMapNearest:
-                        return'THREE.NearestMipmapNearestFilter';
-                    case Types.TextureMinFilter.NearestMipMapLinear:
-                        return'THREE.NearestMipmapLinearFilter';
-                    case Types.TextureMinFilter.Linear:
-                    default:
-                        return'THREE.LinearFilter';
-                    case Types.TextureMinFilter.LinearMipMapNearest:
-                        return'THREE.LinearMipmapNearestFilter';
-                    case Types.TextureMinFilter.LinearMipMapLinear:
-                        return'THREE.LinearMipmapLinearFilter';
-                }
-            })();
-
-            let wrapMode: string = (() => {
-                switch(texture.Wrap) {
-                case Types.TextureWrapMode.Clamp:
-                    return 'THREE.ClampToEdgeWrapping';
-                case Types.TextureWrapMode.Repeat:
-                default:
-                    return 'THREE.RepeatWrapping';
-                case Types.TextureWrapMode.Mirror:
-                    return 'THREE.MirroredRepeatWrapping';
-                }
-            })();
+            let magFilter = convertMagFilter(texture.Mag);
+            let minFilter = convertMinFilter(texture.Min);
+            let wrapMode = convertWrapMode(texture.Wrap);
 
             let textureFileOrigin = texture.File;
             let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
@@ -142,9 +144,6 @@ function(err) {
                         continue;
                     }
 
-                    let textureDirectory = path.dirname(localPath);
-                    let rawTextureName = path.basename(localPath);
-
                     let getTexturesFromPrefixes = (pattern: string, prefixes: [ string, string, string, string, string, string ]) => {
                         let textures = [];
                         for (let dir of prefixes)
@@ -191,7 +190,19 @@ buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${texture
                     let textureLoadScript: string | undefined;
                     let textureSizeScript: string = 'null';
                     if (textureBufferIndex !== undefined) {
-                        textureLoadScript = `buffers[${textureBufferIndex}].Target.texture`;
+                        let magFilter = convertMagFilter(texture.Mag);
+                        let minFilter = convertMinFilter(texture.Min);
+                        let wrapMode = convertWrapMode(texture.Wrap);
+            
+                        textureLoadScript = `\
+(() => {
+    let texture = buffers[${textureBufferIndex}].Target.texture;
+    texture.magFilter = ${magFilter};
+    texture.minFilter = ${minFilter};
+    texture.wrapS = ${wrapMode};
+    texture.wrapT = ${wrapMode};
+    return texture;
+})()`;
                         textureSizeScript = `new THREE.Vector3(buffers[${textureBufferIndex}].Target.width, buffers[${textureBufferIndex}].Target.height, 1)`;
                     }
                     else if (localPath !== undefined && texture.Mag !== undefined && texture.Min !== undefined && texture.Wrap !== undefined) {
