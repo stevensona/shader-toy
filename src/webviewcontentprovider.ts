@@ -329,7 +329,7 @@ export class WebviewContentProvider {
         if (!generateStandalone) {
             if (this.context.getConfig<boolean>('showScreenshotButton')) {
                 let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(getWebviewResourcePath);
-                this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */ ');
+                this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
 
                 let screenshotButtonExtension = new ScreenshotButtonExtension();
                 this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
