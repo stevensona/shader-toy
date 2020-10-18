@@ -113,7 +113,8 @@ void main() {
   gl_FragColor = vec4(r, g, b, 1.0);
 }
 ```
-Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function. The definition of `void main()` is found by matching the regex `/void\s+main\s*\(\s*\)\s*\{/g`, thus if you require to define `void main()` in addition to the extension generating a definition you may define it as `void main(void)`. This might be necessary, for example, if your main definition would be processed away by the preprocessor and should thus not be picked up by the extension. 
+Note that compared to *shadertoy.com* `gl_FragCoord` replaces `fragCoord` and `gl_FragColor` replaces `fragColor` in the original demo. There is however a rudimentary support for inserting a trivial `void main()` which will delegate to a `void mainImage(out vec4, in vec2)` function. The definition of `void main()` is found by matching the regex `/void\s+main\s*\(\s*\)\s*\{/g`, thus if you require to define `void main()` in addition to the extension generating a definition you may define it as `void main(void)`. This might be necessary, for example, if your main definition would be processed away by the preprocessor and should thus not be picked up by the extension.
+Since compatibility is achieved with a simple regex match it is only semi-reliable. If you only use shaders from *shadertoy.com* that do things such as defining `mainImage` via macros you may want to enable the "Shader Toy Online Compatibility" setting, which disables the ability to use shaders that define `void main()` and only allows shaders that define `mainImage` in some way.
 
 ### Integration of _glslify_
 You can enable support for _glslify_ in the settings, but because _glslify_ does not support line mappings pre and post its transform, line numbers on errors will unfortunately be disabled as long as you have the setting enabled. Using _glslify_ allows using a node.js-style module system for your shaders:
@@ -168,7 +169,9 @@ Contributions of any kind are welcome and encouraged.
 
 ### 0.10.12
 * Fix attributions of several demo shaders,
-* align default wrap mode with what is default on shader-toy.com
+* align default wrap mode with what is default on shadertoy.com,
+* allow control of filter and wrap mode for sampling other shaders,
+* add a strict compatibility mode for shadertoy.com
 
 ### 0.10.11
 * Automatic dependency updates.
