@@ -22,7 +22,7 @@
         "onCommand:shader-toy.showStaticGlslPreview",
         "onCommand:shader-toy.createPortableGlslPreview"
     ],
-    "main": "./dist/extension.js",
+    "main": "./out/src/extension.js",
     "contributes": {
         "configuration": {
             "properties": {
