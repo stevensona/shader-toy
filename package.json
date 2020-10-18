@@ -132,19 +132,6 @@
                     "type": "number",
                     "default": 512,
                     "description": "Size of the domain used for four transformation when using audio as an input."
-                },
-                "shader-toy.useInShaderTextures": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "This setting is deprecated. Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
-                },
-                "shader-toy.textures": {
-                    "type": "object",
-                    "default": {
-                        "0": "https://www.example.my/cool.png",
-                        "1": "file://./relative.jpg"
-                    },
-                    "description": "These settings are deprecated. The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
                 }
             }
         },
