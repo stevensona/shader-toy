@@ -194,7 +194,8 @@
         "webpack": "webpack --mode development",
         "webpack-dev": "webpack --mode development --watch",
         "pretest": "npm run compile",
-        "test": "node ./out/test/run_tests.js"
+        "test": "node ./out/test/run_tests.js",
+        "deploy": "vsce publish"
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
@@ -213,9 +214,10 @@
         "ts-loader": "^6.2.2",
         "tslint": "^5.20.1",
         "typescript": "^3.9.2",
+        "vsce": "^1.81.1",
+        "vscode-test": "^1.4.0",
         "webpack": "^4.43.0",
-        "webpack-cli": "^3.3.11",
-        "vscode-test": "^1.4.0"
+        "webpack-cli": "^3.3.11"
     },
     "icon": "resources/thumb.png"
 }
