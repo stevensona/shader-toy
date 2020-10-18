@@ -133,7 +133,7 @@
                     "default": 512,
                     "description": "Size of the domain used for four transformation when using audio as an input."
                 },
-                "shader-toy.shaderToyOnlineCompatibility": {
+                "shader-toy.shaderToyStrictCompatibility": {
                     "type": "boolean",
                     "default": false,
                     "description": "This setting will assume your shaders follow the standards set on the online version of ShaderToy, e.g. you have a mainImage function defined. Use this if you have issues with shaders from shadertoy.com in the VSCode extension, but not if you regularly use shaders defining a regular main function."

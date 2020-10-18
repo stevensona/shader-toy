@@ -132,8 +132,9 @@ export class BufferProvider {
         let pendingUniforms: Types.UniformDefinition[] = [];
         let includes: Types.IncludeDefinition[] = [];
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
+        let strictComp: Types.BoxedValue<boolean> = { Value: false };
 
-        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, generateStandalone);
+        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, strictComp, generateStandalone);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
@@ -272,7 +273,7 @@ void main() {
 }`;
             };
 
-            if (this.context.getConfig<boolean>('shaderToyOnlineCompatibility')) {
+            if (this.context.getConfig<boolean>('shaderToyStrictCompatibility')  || strictComp.Value) {
                 insertMainImageCode();
             }
             else {
@@ -337,7 +338,7 @@ void main() {
     }
 
     private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>, 
-                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
+                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>,  strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
         
         let addTextureSettingIfNew = (channel: number) => {
             if (textureSettings.get(channel) === undefined) {
@@ -464,7 +465,7 @@ void main() {
                         if (includeCode.success) {
                             let include_line_offset: Types.BoxedValue<number> = { Value: 0 };
                             let transformedIncludeCode = this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                                                                            uniforms, includes, sharedIncludes, usesKeyboard, generateStandalone);
+                                                                            uniforms, includes, sharedIncludes, usesKeyboard, strictComp, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
                                 Name: this.makeName(includeFile),
                                 File: includeFile,
@@ -535,6 +536,11 @@ void main() {
                 case ObjectType.Keyboard:
                     usesKeyboard.Value = true;
                     removeLastObject();
+                    break;
+                case ObjectType.StrictCompatibility:
+                    strictComp.Value = true;
+                    removeLastObject();
+                    break;
                 default:
                     break;
             }
