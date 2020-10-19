@@ -15,6 +15,7 @@ export enum ObjectType {
     Value,
     Uniform,
     Keyboard,
+    StrictCompatibility,
     Error
 }
 type Include = {
@@ -70,12 +71,15 @@ type Uniform = {
 type Keyboard = {
     Type: ObjectType.Keyboard
 };
+type StrictCompatibility = {
+    Type: ObjectType.StrictCompatibility
+};
 type ErrorObject = {
     Type: ObjectType.Error,
     Message: string
 };
 type TextureObject = Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType;
-type Object = Include | TextureObject | Uniform | Keyboard;
+type Object = Include | TextureObject | Uniform | Keyboard | StrictCompatibility;
 
 export class ShaderParser {
     private stream: ShaderStream;
@@ -126,10 +130,10 @@ export class ShaderParser {
                 returnObject = this.getInclude();
                 break;
             case 'iKeyboard':
-                let keyboard: Keyboard = {
-                    Type: ObjectType.Keyboard
-                };
-                returnObject = keyboard;
+                returnObject = { Type: ObjectType.Keyboard };
+                break;
+            case 'StrictCompatibility':
+                returnObject = { Type: ObjectType.StrictCompatibility };
                 break;
             case 'iUniform':
                 returnObject = this.getUniformObject();

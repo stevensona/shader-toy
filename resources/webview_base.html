@@ -55,6 +55,8 @@
         /* Pause Button Style */
         
         /* Screenshot Button Style */
+
+        /* Reload Button Style */
     </style>
 </head>
 <body>
@@ -64,6 +66,7 @@
         <!-- Pause Element -->
     </div>
     <!-- Screenshot Element -->
+    <!-- Reload Element -->
 </body>
 <script src="<!-- JQuery.js -->"></script>
 <script src="<!-- Three.js -->"></script>
@@ -138,6 +141,13 @@
         let screenshotButton = document.getElementById("screenshot");
         if (screenshotButton) {
             screenshotButton.addEventListener('click', saveScreenshot);
+        }
+    }
+    
+    {
+        let reloadButton = document.getElementById("reload");
+        if (reloadButton) {
+            reloadButton.addEventListener('click', reloadWebview);
         }
     }
     
@@ -391,6 +401,11 @@
 
             doSaveScreenshot();
             renderer.setSize(resolution.x, resolution.y, false);
+        }
+    }
+    function reloadWebview() {
+        if (vscode !== undefined) {
+            vscode.postMessage({ command: 'reloadWebview' });
         }
     }
     function updateMouse() {

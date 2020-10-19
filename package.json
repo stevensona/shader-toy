@@ -22,7 +22,7 @@
         "onCommand:shader-toy.showStaticGlslPreview",
         "onCommand:shader-toy.createPortableGlslPreview"
     ],
-    "main": "./dist/extension.js",
+    "main": "./out/src/extension.js",
     "contributes": {
         "configuration": {
             "properties": {
@@ -56,6 +56,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable support for glslify, which will transform shader code after all transformations this extension does. Line numbers for errors are currently disable when this option is enabled."
+                },
+                "shader-toy.reloadAutomatically": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch for all automatic reloads."
                 },
                 "shader-toy.reloadOnEditText": {
                     "type": "boolean",
@@ -128,18 +133,10 @@
                     "default": 512,
                     "description": "Size of the domain used for four transformation when using audio as an input."
                 },
-                "shader-toy.useInShaderTextures": {
+                "shader-toy.shaderToyStrictCompatibility": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "This setting is deprecated. Allow texture channel resources to be defined in shader source (e.g. #iChannel0 file://./duck.png)."
-                },
-                "shader-toy.textures": {
-                    "type": "object",
-                    "default": {
-                        "0": "https://www.example.my/cool.png",
-                        "1": "file://./relative.jpg"
-                    },
-                    "description": "These settings are deprecated. The texture channels (iChannel0, iChannel1, ...) using http:// or file:// protocol or buf:// to reference another shader. To use relative paths open a workspace."
+                    "default": false,
+                    "description": "This setting will assume your shaders follow the standards set on the online version of ShaderToy, e.g. you have a mainImage function defined. Use this if you have issues with shaders from shadertoy.com in the VSCode extension, but not if you regularly use shaders defining a regular main function."
                 }
             }
         },
@@ -197,7 +194,8 @@
         "webpack": "webpack --mode development",
         "webpack-dev": "webpack --mode development --watch",
         "pretest": "npm run compile",
-        "test": "node ./out/test/run_tests.js"
+        "test": "node ./out/test/run_tests.js",
+        "deploy": "vsce publish"
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
@@ -216,9 +214,10 @@
         "ts-loader": "^6.2.2",
         "tslint": "^5.20.1",
         "typescript": "^3.9.2",
+        "vsce": "^1.81.1",
+        "vscode-test": "^1.4.0",
         "webpack": "^4.43.0",
-        "webpack-cli": "^3.3.11",
-        "vscode-test": "^1.4.0"
+        "webpack-cli": "^3.3.11"
     },
     "icon": "resources/thumb.png"
 }

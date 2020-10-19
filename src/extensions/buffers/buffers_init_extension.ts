@@ -17,10 +17,10 @@ export class BuffersInitExtension implements WebviewExtension {
             let target = 'null';
             let pingPongTarget = 'null';
             if (buffer !== buffers[buffers.length - 1]) {
-                target = 'new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })';
+                target = 'new THREE.WebGLRenderTarget(resolution.x, resolution.y, { type: framebufferType })';
             }
             if (buffer.UsesSelf) {
-                pingPongTarget = 'new THREE.WebGLRenderTarget(resolution.x, resolution.y, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type: framebufferType })';
+                pingPongTarget = 'new THREE.WebGLRenderTarget(resolution.x, resolution.y, { type: framebufferType })';
             }
 
             this.content += `\

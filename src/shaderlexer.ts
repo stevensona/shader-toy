@@ -75,7 +75,8 @@ export class ShaderLexer {
     private static preprocessor_keywords = [
         'include',
         'iKeyboard',
-        'iUniform'
+        'iUniform',
+        'StrictCompatibility'
     ];
     private is_preprocessor_keyword(val: string) {
         let idx = ShaderLexer.preprocessor_keywords.indexOf(val);
