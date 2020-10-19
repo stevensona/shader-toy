@@ -167,7 +167,7 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
-### 0.10.12
+### 0.10.13
 * Fix attributions of several demo shaders,
 * align default wrap mode with what is default on shadertoy.com,
 * allow control of filter and wrap mode for sampling other shaders,
