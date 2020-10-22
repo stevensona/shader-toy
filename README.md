@@ -167,6 +167,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.10.14
+* Hotfix, extension was trying to run a non-existant file.
+
 ### 0.10.13
 * Fix attributions of several demo shaders,
 * align default wrap mode with what is default on shadertoy.com,
