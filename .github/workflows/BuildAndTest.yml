@@ -1,4 +1,4 @@
-name: CI
+name: Build and Test
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
     types: [ created ]
 
 jobs:
-  build:
+  build_and_test:
     name: ${{ matrix.name }}
     
     strategy:
@@ -44,8 +44,3 @@ jobs:
       uses: GabrielBB/xvfb-action@v1.0
       with:
         run: npm test
-    - name: Publish
-      if: success() && startsWith(github.ref, 'refs/tags/releases/') && matrix.os == 'ubuntu-latest'
-      run: npm run deploy
-      env:
-        VSCE_PAT: ${{ secrets.VSCE_PAT }}
