@@ -279,7 +279,7 @@ void main() {
             else {
                 // If there is no void main() in the shader we assume it is a shader-toy style shader
                 let mainPos = code.search(/void\s+main\s*\(\s*\)\s*\{/g);
-                let mainImagePos = code.search(/void\s+mainImage\s*\(\s*out\s+vec4\s+\w+,\s*(in\s)?\s*vec2\s+\w+\s*\)\s*\{/g);
+                let mainImagePos = code.search(/void\s+mainImage\s*\(\s*out\s+vec4\s+\w+,\s*(in\s)?\s*vec2\s+\w+\s*\)(\s*\{|\/\/.*?\n)/g);
                 if (mainPos === -1 && mainImagePos >= 0) {
                     insertMainImageCode();
                 }
