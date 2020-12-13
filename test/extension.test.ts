@@ -104,8 +104,8 @@ color3// an eof comment`;
         test("Lex Integers", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 999999999999999999999999999999999 });
-            assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e6 });
-            assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e-6 });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1e6 });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1e-6 });
         });
 
         test("Lex Floats", () => {
@@ -124,8 +124,8 @@ color3// an eof comment`;
         test("Lex Integers with explicit Plus", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 999999999999999999999999999999999 });
-            assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e6 });
-            assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: 1e-6 });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1e6 });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: 1e-6 });
         });
 
         test("Lex Floats with explicit Plus", () => {
@@ -144,8 +144,8 @@ color3// an eof comment`;
         test("Lex negative Integers", () => {
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -1 });
             assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -999999999999999999999999999999999 });
-            assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -1e6 });
-            assert.deepEqual(lexer.next(), { type: TokenType.Integer, value: -1e-6 });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -1e6 });
+            assert.deepEqual(lexer.next(), { type: TokenType.Float, value: -1e-6 });
         });
 
         test("Lex negative Floats", () => {
