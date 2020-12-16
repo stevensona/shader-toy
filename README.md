@@ -1,4 +1,12 @@
 # Visual Studio Code - Shader Toy
+<p align="center">
+  <a href="https://github.com/stevensona/shader-toy/actions">
+      <img src="https://github.com/stevensona/shader-toy/workflows/Build%20and%20Test/badge.svg">
+  </a>
+  <a href="https://opensource.org/licenses/MIT" >
+      <img src="https://img.shields.io/apm/l/vim-mode.svg">
+  </a>
+</p>
 
 With this extension, view a live WebGL preview of GLSL shaders within VSCode, similar to [shadertoy.com](https://www.shadertoy.com/) by providing a "Show GLSL Preview" command.
 
