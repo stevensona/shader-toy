@@ -302,11 +302,8 @@ export class ShaderLexer {
             return return_val;
         });
         let parsedNumber = parseFloat(number);
-        if (parsedNumber === NaN) {
-            console.log(number);
-        }
         return {
-            type: has_dot ? TokenType.Float : TokenType.Integer,
+            type: has_dot || has_exponent ? TokenType.Float : TokenType.Integer,
             value: parsedNumber
         };
     }

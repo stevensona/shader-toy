@@ -1,0 +1,44 @@
+name: Publish
+
+on:
+  release:
+    types: [ created ]
+
+jobs:
+  publish:
+    name: Publish
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2.2.0
+
+    - name: Install Node.js
+      uses: actions/setup-node@v1.4.4
+      with:
+        node-version: 10.x
+
+    - name: Wait on tests
+      uses: lewagon/wait-on-check-action@v0.1
+      with:
+        ref: test_publish
+        check-name: Ubuntu
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 20 # seconds
+      
+    - name: Install
+      run: npm install
+      
+    - name: Build
+      run: npm run webpack
+      
+    - name: Publish
+      if: success()
+      run: npm run deploy
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}

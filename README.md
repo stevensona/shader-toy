@@ -1,4 +1,12 @@
 # Visual Studio Code - Shader Toy
+<p align="center">
+  <a href="https://github.com/stevensona/shader-toy/actions">
+      <img src="https://github.com/stevensona/shader-toy/workflows/Build%20and%20Test/badge.svg">
+  </a>
+  <a href="https://opensource.org/licenses/MIT" >
+      <img src="https://img.shields.io/apm/l/vim-mode.svg">
+  </a>
+</p>
 
 With this extension, view a live WebGL preview of GLSL shaders within VSCode, similar to [shadertoy.com](https://www.shadertoy.com/) by providing a "Show GLSL Preview" command.
 
@@ -50,7 +58,7 @@ If any of the six files can not be found, the next set is tried, starting from t
 
 ### Audio Input (experimental)
 _Note: By default audio input is disabled, change the setting "Enable Audio Input" to use it._\
-Audio input is only supported from within _Visual Studio Code_, since _ffmpeg_ is not shipped with _Visual Studio Code_
+Audio input is not supported from within _Visual Studio Code_, since _ffmpeg_ is not shipped with _Visual Studio Code_, so you will have to generate a standalone version and host a local server to be able to load local files (or fiddle with your browsers security settings) if you want to use audio in your shaders.
 If your channel defines audio input, it will be inferred from the file extension. The channel will be a `2` pixels high and `512` pixels wide texture, where the width can be adjusted by the "Audio Domain Size" setting. The first row containing the audios frequency spectrum and the second row containing its waveform.
 
 ### Keyboard Input
@@ -166,6 +174,10 @@ Contributions of any kind are welcome and encouraged.
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.10.15
+* Lex numbers with exponents as floating point, not integer,
+* make assignability testing more robust.
 
 ### 0.10.14
 * Hotfix, extension was trying to run a non-existant file.
