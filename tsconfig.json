@@ -3,7 +3,9 @@
 		"module": "commonjs",
 		"target": "es6",
 		"outDir": "out",
-		"lib": ["es2019"],
+		"lib": [
+			"es6"
+		],
 		"sourceMap": true,
 		"rootDir": ".",
 		"strict": true   /* enable all strict type-checking options */
