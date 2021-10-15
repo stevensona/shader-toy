@@ -17,14 +17,11 @@ const webConfig = /** @type WebpackConfig */ {
     path: path.join(__dirname, "./dist"),
     libraryTarget: "commonjs",
   },
-  node: {
-    fs: 'empty'
-  },
   resolve: {
     mainFields: ["browser", "module", "main"], // look for `browser` entry point in imported node modules
     extensions: [".ts", ".js"], // support ts-files and js-files
     alias: {
-      // provides alternate implementation for node module and source files
+      fs: path.resolve(__dirname, "src/@web/fs.js")
     },
   },
   module: {
@@ -38,6 +35,14 @@ const webConfig = /** @type WebpackConfig */ {
           },
         ],
       },
+      {
+        test: /\.html$/,
+        use: [
+          {
+            loader: "raw-loader",
+          },
+        ]
+      }
     ],
   },
   plugins: [

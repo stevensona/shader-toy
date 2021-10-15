@@ -22,6 +22,7 @@
         "onCommand:shader-toy.showStaticGlslPreview",
         "onCommand:shader-toy.createPortableGlslPreview"
     ],
+    "main": "./dist/extension.js",
     "browser": "./dist/extension-web.js",
     "contributes": {
         "configuration": {
@@ -211,6 +212,7 @@
         "@types/node": "^10.17.21",
         "@types/vscode": "^1.40.0",
         "mocha": "^7.2.0",
+        "raw-loader": "^4.0.2",
         "ts-loader": "^6.2.2",
         "tslint": "^5.20.1",
         "typescript": "^3.9.2",
