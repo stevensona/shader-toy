@@ -26,9 +26,7 @@ export class Context {
         return vscode.Uri.file(file);
     }
     public getResourceUri(file: string): vscode.Uri {
-        return this.makeUri(
-            path.join(this.context.extensionPath, 'resources', file)
-        );
+        return vscode.Uri.joinPath(this.context.extensionUri, 'resources', file);
     }
     public makeWebviewResource(webview: vscode.Webview, resourceUri: vscode.Uri): vscode.Uri {
         return webview.asWebviewUri(resourceUri);
