@@ -164,45 +164,63 @@
         "commands": [
             {
                 "command": "shader-toy-web.showGlslPreview",
-                "title": "Shader Toy: Show GLSL Preview"
+                "when": "editorLangId == glsl",
+                "title": "Shader Toy: Show GLSL Preview",
+                "icon": "$(open-preview)"
             },
             {
                 "command": "shader-toy-web.showStaticGlslPreview",
+                "when": "editorLangId == glsl",
                 "title": "Shader Toy: Show Static GLSL Preview"
             },
             {
                 "command": "shader-toy-web.createPortableGlslPreview",
+                "when": "editorLangId == glsl",
                 "title": "Shader Toy: Create Portable GLSL Preview"
             },
             {
                 "command": "shader-toy-web.pauseGlslPreviews",
+                "when": "editorLangId == glsl",
                 "title": "Shader Toy: Pause/Play GLSL Previews"
             },
             {
                 "command": "shader-toy-web.saveGlslPreviewScreenShots",
+                "when": "editorLangId == glsl",
                 "title": "Shader Toy: Save GLSL Preview Screenshots"
             }
         ],
         "menus": {
+            "editor/title": [
+                {
+                    "command": "shader-toy-web.showGlslPreview",
+                    "when": "editorLangId == glsl",
+                    "group": "navigation"
+                }
+            ],
             "editor/context": [
                 {
                     "command": "shader-toy-web.showGlslPreview",
+                    "when": "editorLangId == glsl",
                     "group": "ShaderToy-Core"
                 },
                 {
                     "command": "shader-toy-web.showStaticGlslPreview",
+                    "when": "editorLangId == glsl",
                     "group": "ShaderToy-Core"
                 },
                 {
                     "command": "shader-toy-web.createPortableGlslPreview",
+                    "when": "editorLangId == glsl",
                     "group": "ShaderToy"
                 },
                 {
                     "command": "shader-toy-web.pauseGlslPreviews",
+                    "when": "editorLangId == glsl",
                     "group": "ShaderToy"
                 },
                 {
                     "command": "shader-toy-web.saveGlslPreviewScreenShots",
+                    "when": "editorLangId == glsl",
                     "group": "ShaderToy"
                 }
             ]
