@@ -24,6 +24,27 @@
     ],
     "browser": "./dist/extension-web.js",
     "contributes": {
+        "languages": [
+            {
+                "id": "glsl",
+                "aliases": [
+                    "GLSL",
+                    "OpenGL Shading Language",
+                    "glsl"
+                ],
+                "extensions": [
+                    ".glsl"
+                ],
+                "configuration": "./glsl.configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "glsl",
+                "scopeName": "source.glsl",
+                "path": "./syntaxes/glsl.tmLanguage"
+            }
+        ],
         "configuration": {
             "properties": {
                 "shader-toy-web.forceAspectRatio": {

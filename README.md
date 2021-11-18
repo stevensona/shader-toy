@@ -23,6 +23,10 @@ An alternative command "Shader Toy: Show Static GLSL Preview" is available, whic
 
 ## Features
 
+### GLSL Lanugage features
+
+Syntax hilighting and basic language features for .glsl files, thanks to sources from https://github.com/stef-levesque/vscode-shader.
+
 ### Uniforms
 At the moment, `iResolution`, `iGlobalTime` (also as `iTime`), `iTimeDelta`, `iFrame`, `iMouse`, `iMouseButton`, `iDate`, `iSampleRate`, `iChannelN` with `N in [0, 9]` and `iChannelResolution[]` are available uniforms.
 
