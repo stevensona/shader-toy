@@ -2,7 +2,7 @@
     "name": "shader-toy-web",
     "displayName": "Shader Toy (Web)",
     "description": "Live preview of GLSL shaders similar to shadertoy.",
-    "version": "0.10.15",
+    "version": "0.10.16",
     "publisher": "jakearl",
     "license": "MIT",
     "repository": {
