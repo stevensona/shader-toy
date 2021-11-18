@@ -36,11 +36,11 @@ vec2 rotateUV(vec2 uv, vec2 pivot, float rotation) {
 }
 
 // radians to rotate per frame.
-float rotationSpeed = 1.0 / 1000.0;
+float rotationSpeed = 1.0 / 100.0;
 // steps of newtons formula to apply per frame.
-float newtonStepRate = 1.0 / 40.0;
+float newtonStepRate = 1.0 / 10.0;
 // amount to shrink viewport each frame
-float zoomRate = 0.994;
+float zoomRate = 0.99;
 // initial window bounds
 float startWindowSize = 4.0;
 // final window bounds
