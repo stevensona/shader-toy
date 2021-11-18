@@ -12,13 +12,13 @@ export class Context {
 
     private diagnosticCollection: vscode.DiagnosticCollection;
     private collectedDiagnostics: { [id: string]: vscode.Diagnostic[]; } = {};
-    
+
     public activeEditor: vscode.TextEditor | undefined;
-    
+
     constructor(context: vscode.ExtensionContext, config: vscode.WorkspaceConfiguration) {
         this.context = context;
         this.config = config;
-        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('shader-toy.errors');
+        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('shader-toy-web.errors');
         this.activeEditor = vscode.window.activeTextEditor;
     }
 
@@ -36,7 +36,7 @@ export class Context {
         const webviewResourceUri = this.makeWebviewResource(webview, resourceUri);
         return webviewResourceUri.toString();
     }
-    
+
     public mapUserPath(userPath: string, sourcePath: string): { file: string, userPath: string } {
         userPath = userPath.replace(/\\/g, '/');
         sourcePath = path.dirname(sourcePath);
@@ -62,7 +62,7 @@ export class Context {
 
             // Second priority are relative to sourcePath
             {
-                const fileCandidate = [ sourcePath, file ].join('/');
+                const fileCandidate = [sourcePath, file].join('/');
                 fileCandidates.push(fileCandidate);
                 if (exists(fileCandidate)) {
                     return fileCandidate;
@@ -76,7 +76,7 @@ export class Context {
                     let workspacePath = worspaceFolder.uri.fsPath;
                     workspacePath = workspacePath.replace(/\\/g, '/');
                     workspacePath = workspacePath.replace(/\.\//g, '');
-                    let fileCandidate = [ workspacePath, file ].join('/');
+                    let fileCandidate = [workspacePath, file].join('/');
                     if (exists(fileCandidate)) {
                         workspaceFileCandidates.push(fileCandidate);
                     }
@@ -113,7 +113,7 @@ export class Context {
             if (this.collectedDiagnostics[file] === undefined) {
                 this.collectedDiagnostics[file] = [];
             }
-            
+
             for (let diagnostic of diagnosticBatch.diagnostics) {
                 let line = Math.min(Math.max(1, diagnostic.line), document.lineCount) - 1;
                 let range = document.lineAt(line).range;

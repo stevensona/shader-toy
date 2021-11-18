@@ -1,15 +1,15 @@
 {
-    "name": "shader-toy",
-    "displayName": "Shader Toy",
-    "description": "Live preview of GLSL shaders similar to shadertoy",
+    "name": "shader-toy-web",
+    "displayName": "Shader Toy (Web)",
+    "description": "Live preview of GLSL shaders similar to shadertoy.",
     "version": "0.10.15",
-    "publisher": "stevensona",
+    "publisher": "jakearl",
     "license": "MIT",
     "repository": {
-        "url": "https://github.com/stevensona/shader-toy.git"
+        "url": "https://github.com/jacksonkearl/shader-toy.git"
     },
     "bugs": {
-        "url": "https://github.com/stevensona/shader-toy/issues"
+        "url": "https://github.com/jacksonkearl/shader-toy/issues"
     },
     "engines": {
         "vscode": "^1.40.0"
@@ -18,16 +18,15 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:shader-toy.showGlslPreview",
-        "onCommand:shader-toy.showStaticGlslPreview",
-        "onCommand:shader-toy.createPortableGlslPreview"
+        "onCommand:shader-toy-web.showGlslPreview",
+        "onCommand:shader-toy-web.showStaticGlslPreview",
+        "onCommand:shader-toy-web.createPortableGlslPreview"
     ],
-    "main": "./dist/extension.js",
     "browser": "./dist/extension-web.js",
     "contributes": {
         "configuration": {
             "properties": {
-                "shader-toy.forceAspectRatio": {
+                "shader-toy-web.forceAspectRatio": {
                     "type": "array",
                     "items": [
                         {
@@ -43,52 +42,52 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
-                "shader-toy.showCompileErrorsAsDiagnostics": {
+                "shader-toy-web.showCompileErrorsAsDiagnostics": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show all compile errors directly in the editor as diagnostics."
                 },
-                "shader-toy.omitDeprecationWarnings": {
+                "shader-toy-web.omitDeprecationWarnings": {
                     "type": "boolean",
                     "default": false,
                     "description": "Omit warnings when using a deprecated feature, replacing those with a single warning on activating the extension. Be careful with this setting, as shaders might break unpredictably in future updates."
                 },
-                "shader-toy.enableGlslifySupport": {
+                "shader-toy-web.enableGlslifySupport": {
                     "type": "boolean",
                     "default": false,
                     "description": "Enable support for glslify, which will transform shader code after all transformations this extension does. Line numbers for errors are currently disable when this option is enabled."
                 },
-                "shader-toy.reloadAutomatically": {
+                "shader-toy-web.reloadAutomatically": {
                     "type": "boolean",
                     "default": true,
                     "description": "Master switch for all automatic reloads."
                 },
-                "shader-toy.reloadOnEditText": {
+                "shader-toy-web.reloadOnEditText": {
                     "type": "boolean",
                     "default": true,
                     "description": "Reload OpenGL viewport when the opened file contents are changed."
                 },
-                "shader-toy.reloadOnEditTextDelay": {
+                "shader-toy-web.reloadOnEditTextDelay": {
                     "type": "number",
                     "default": 1,
                     "description": "Delay in seconds between an edit of the opened file and the reload of OpenGL viewport."
                 },
-                "shader-toy.reloadOnChangeEditor": {
+                "shader-toy-web.reloadOnChangeEditor": {
                     "type": "boolean",
                     "default": false,
                     "description": "Reload OpenGL viewport when editor changes."
                 },
-                "shader-toy.resetStateOnChangeEditor": {
+                "shader-toy-web.resetStateOnChangeEditor": {
                     "type": "boolean",
                     "default": true,
                     "description": "Reset state of time, mouse and keyboard when reloading OpenGL viewport through an editor change."
                 },
-                "shader-toy.showScreenshotButton": {
+                "shader-toy-web.showScreenshotButton": {
                     "type": "boolean",
                     "default": true,
                     "description": "Shows a screenshot button in the OpenGL viewport which allows to save the current frame as a png file."
                 },
-                "shader-toy.screenshotResolution": {
+                "shader-toy-web.screenshotResolution": {
                     "type": "array",
                     "items": [
                         {
@@ -104,37 +103,37 @@
                     ],
                     "description": "Manually set the resolution of a screenshot. Set either to zero or negative to use the viewports resolution."
                 },
-                "shader-toy.showPauseButton": {
+                "shader-toy-web.showPauseButton": {
                     "type": "boolean",
                     "default": true,
                     "description": "Shows a pause button in the OpenGL viewport which allows to pause the rendering."
                 },
-                "shader-toy.pauseWholeRender": {
+                "shader-toy-web.pauseWholeRender": {
                     "type": "boolean",
                     "default": true,
                     "description": "Determines whether pausing will pause only time thus still render and allow input, or pause everything."
                 },
-                "shader-toy.printShaderFrameTime": {
+                "shader-toy-web.printShaderFrameTime": {
                     "type": "boolean",
                     "default": true,
                     "description": "Display shader frame time graph in corner of display."
                 },
-                "shader-toy.warnOnUndefinedTextures": {
+                "shader-toy-web.warnOnUndefinedTextures": {
                     "type": "boolean",
                     "default": true,
                     "description": "If enabled the user is warned when a channel is used in code but there is no definition for said channel, likely resulting in a bug in the shader."
                 },
-                "shader-toy.enabledAudioInput": {
+                "shader-toy-web.enabledAudioInput": {
                     "type": "boolean",
                     "default": false,
                     "description": "Allow using media files as inputs in shaders. Note that the feature is experimental and should be used with caution."
                 },
-                "shader-toy.audioDomainSize": {
+                "shader-toy-web.audioDomainSize": {
                     "type": "number",
                     "default": 512,
                     "description": "Size of the domain used for four transformation when using audio as an input."
                 },
-                "shader-toy.shaderToyStrictCompatibility": {
+                "shader-toy-web.shaderToyStrictCompatibility": {
                     "type": "boolean",
                     "default": false,
                     "description": "This setting will assume your shaders follow the standards set on the online version of ShaderToy, e.g. you have a mainImage function defined. Use this if you have issues with shaders from shadertoy.com in the VSCode extension, but not if you regularly use shaders defining a regular main function."
@@ -143,46 +142,46 @@
         },
         "commands": [
             {
-                "command": "shader-toy.showGlslPreview",
+                "command": "shader-toy-web.showGlslPreview",
                 "title": "Shader Toy: Show GLSL Preview"
             },
             {
-                "command": "shader-toy.showStaticGlslPreview",
+                "command": "shader-toy-web.showStaticGlslPreview",
                 "title": "Shader Toy: Show Static GLSL Preview"
             },
             {
-                "command": "shader-toy.createPortableGlslPreview",
+                "command": "shader-toy-web.createPortableGlslPreview",
                 "title": "Shader Toy: Create Portable GLSL Preview"
             },
             {
-                "command": "shader-toy.pauseGlslPreviews",
+                "command": "shader-toy-web.pauseGlslPreviews",
                 "title": "Shader Toy: Pause/Play GLSL Previews"
             },
             {
-                "command": "shader-toy.saveGlslPreviewScreenShots",
+                "command": "shader-toy-web.saveGlslPreviewScreenShots",
                 "title": "Shader Toy: Save GLSL Preview Screenshots"
             }
         ],
         "menus": {
             "editor/context": [
                 {
-                    "command": "shader-toy.showGlslPreview",
+                    "command": "shader-toy-web.showGlslPreview",
                     "group": "ShaderToy-Core"
                 },
                 {
-                    "command": "shader-toy.showStaticGlslPreview",
+                    "command": "shader-toy-web.showStaticGlslPreview",
                     "group": "ShaderToy-Core"
                 },
                 {
-                    "command": "shader-toy.createPortableGlslPreview",
+                    "command": "shader-toy-web.createPortableGlslPreview",
                     "group": "ShaderToy"
                 },
                 {
-                    "command": "shader-toy.pauseGlslPreviews",
+                    "command": "shader-toy-web.pauseGlslPreviews",
                     "group": "ShaderToy"
                 },
                 {
-                    "command": "shader-toy.saveGlslPreviewScreenShots",
+                    "command": "shader-toy-web.saveGlslPreviewScreenShots",
                     "group": "ShaderToy"
                 }
             ]

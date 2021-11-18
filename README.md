@@ -1,4 +1,7 @@
 # Visual Studio Code - Shader Toy
+
+Forked from https://github.com/stevensona/shader-toy to support web use.
+
 <p align="center">
   <a href="https://github.com/stevensona/shader-toy/actions">
       <img src="https://github.com/stevensona/shader-toy/workflows/Build%20and%20Test/badge.svg">
@@ -16,7 +19,7 @@ To run the command, either open the "Command Palette" and type "Shader Toy: Show
 
 Running the command splits the view and displays a fullscreen quad with your shader applied. Your fragment shader's entry point is `void main()` or if that is unavailable `void mainImage(out vec4, in vec2)` where the first parameter is the output color and the second parameter is the fragments screen position.
 
-An alternative command "Shader Toy: Show Static GLSL Preview" is available, which will open a preview that does not react to changing editors. An arbitrary amount of those views can be opened at one time, which enables a unique workflow to edit shaders that rely on multiple passes. 
+An alternative command "Shader Toy: Show Static GLSL Preview" is available, which will open a preview that does not react to changing editors. An arbitrary amount of those views can be opened at one time, which enables a unique workflow to edit shaders that rely on multiple passes.
 
 ## Features
 
@@ -54,7 +57,7 @@ The wildcard will be resolved by replacement with values from any of the followi
 * [ 'px', 'nx', 'py', 'ny', 'pz', 'nz' ] or
 * [ 'posx', 'negx', 'posy', 'negy', 'posz', 'negz' ].
 
-If any of the six files can not be found, the next set is tried, starting from the first. 
+If any of the six files can not be found, the next set is tried, starting from the first.
 
 ### Audio Input (experimental)
 _Note: By default audio input is disabled, change the setting "Enable Audio Input" to use it._\
@@ -300,7 +303,7 @@ Contributions of any kind are welcome and encouraged.
 * fixed a bug that broke line highlighting from GLSL compile errors,
 * added experimental ability use audio as input to shaders,
 * added iSampleRate uniform, which holds the sample rate of the audio context,
-* deprecated input definitions using different "protocols", instead the type of input is inferred from the extension, 
+* deprecated input definitions using different "protocols", instead the type of input is inferred from the extension,
 * deprecated requirement of using a "protocol" for includes,
 * added iDate uniform, which holds year, month, day and seconds in day in its components,
 * fixed a bug that caused shaders defining void mainImage(out vec4, in vec2) without in qualifier to not compile,

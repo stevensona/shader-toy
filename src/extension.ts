@@ -1,23 +1,18 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as compare_versions from 'compare-versions';
 import { Context } from './context';
 import { ShaderToyManager } from './shadertoymanager';
 
 export function activate(extensionContext: vscode.ExtensionContext) {
-    let shadertoyExtension = vscode.extensions.getExtension('stevensona.shader-toy');
 
-    if (shadertoyExtension) {
-        let lastVersion = extensionContext.globalState.get<string>('version') || '0.0.0';
-        let currentVersion = <string | undefined>shadertoyExtension.packageJSON.version || '9.9.9';
-        if (compare_versions(currentVersion, lastVersion) > 0) {
-            vscode.window.showInformationMessage('Your ShaderToy version just got updated, check out the readme to see what\'s new.');
-            extensionContext.globalState.update('version', currentVersion);
-        }
+    let mainShadertoyExtension = vscode.extensions.getExtension('stevensona.shader-toy');
+    if (mainShadertoyExtension) {
+        console.log('Web version of Shader toy (jakearl.shader-toy) disabled due to `stevensona.shader-toy` being installed.');
+        return;
     }
 
-    let context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
+    let context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy-web'));
     if (context.getConfig<boolean>('omitDeprecationWarnings') === true) {
         vscode.window.showWarningMessage('Deprecation warnings are omitted, stay safe otherwise!');
     }
@@ -45,7 +40,7 @@ export function activate(extensionContext: vscode.ExtensionContext) {
                 }, reloadDelay * 1000);
             });
         }
-        
+
         changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
             shadertoyManager.onEditorChanged(newEditor);
         });
@@ -54,29 +49,29 @@ export function activate(extensionContext: vscode.ExtensionContext) {
     registerCallbacks();
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration('shader-toy')) {
+        if (e.affectsConfiguration('shader-toy-web')) {
             let lastActiveEditor = context.activeEditor;
-            context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
+            context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy-web'));
             if (context.activeEditor === undefined) {
                 context.activeEditor = lastActiveEditor;
             }
             shadertoyManager.migrateToNewContext(context);
         }
     });
-    
-    let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
+
+    let previewCommand = vscode.commands.registerCommand('shader-toy-web.showGlslPreview', () => {
         shadertoyManager.showDynamicPreview();
     });
-    let staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {
+    let staticPreviewCommand = vscode.commands.registerCommand('shader-toy-web.showStaticGlslPreview', () => {
         shadertoyManager.showStaticPreview();
     });
-    let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
+    let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy-web.createPortableGlslPreview', () => {
         shadertoyManager.createPortablePreview();
     });
-    let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
+    let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy-web.pauseGlslPreviews', () => {
         shadertoyManager.postCommand('pause');
     });
-    let saveScreenshotsCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
+    let saveScreenshotsCommand = vscode.commands.registerCommand('shader-toy-web.saveGlslPreviewScreenShots', () => {
         shadertoyManager.postCommand('screenshot');
     });
     extensionContext.subscriptions.push(previewCommand);
