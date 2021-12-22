@@ -24,6 +24,7 @@ import { KeyboardShaderExtension } from './extensions/keyboard/keyboard_shader_e
 import { JQueryExtension } from './extensions/packages/jquery_extension';
 import { ThreeExtension } from './extensions/packages/three_extension';
 import { ThreeModuleExtension } from './extensions/packages/three_module_extension';
+import { ThreeFlyControlsExtension } from './extensions/packages/three_flycontrols';
 import { StatsExtension } from './extensions/packages/stats_extension';
 import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 
@@ -265,6 +266,11 @@ export class WebviewContentProvider {
         // Shader Scripts
         let shadersExtension = new ShadersExtension(this.buffers, preambleExtension, keyboardShaderExtension);
         this.webviewAssembler.addWebviewModule(shadersExtension, '<!-- Shaders -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Misc Scripts
+        let flycontrolsExtension = new ThreeFlyControlsExtension(getWebviewResourcePath);
+        this.webviewAssembler.addWebviewModule(flycontrolsExtension, '<!-- FlyControls -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Include Scripts

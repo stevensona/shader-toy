@@ -78,6 +78,8 @@
 
 <!-- Shaders -->
 
+<!-- FlyControls -->
+
 <script type="text/javascript">
     let vscode = undefined;
     if (typeof acquireVsCodeApi === 'function') {
@@ -109,7 +111,6 @@
     let startingTime = <!-- Start Time -->;
     let time = startingTime;
 
-    let controlState = new THREE.Object3D();
     let date = new THREE.Vector4();
 
     let updateDate = function() {
@@ -221,7 +222,20 @@
         null
     );
     scene.add(quad);
-    
+
+    let controlState = new THREE.Camera();
+    scene.add(controlState);
+
+    let flyControls = undefined;
+    if (typeof FlyControls === 'function') {
+        flyControls = new FlyControls(controlState, renderer.domElement);
+        flyControls.movementSpeed = 1;
+        flyControls.domElement = renderer.domElement;
+        flyControls.rollSpeed = Math.PI / 24;
+        flyControls.autoForward = false;
+        flyControls.dragToLook = true;
+    }
+
     let camera = new THREE.OrthographicCamera(-resolution.x / 2.0, resolution.x / 2.0, resolution.y / 2.0, -resolution.y / 2.0, 1, 1000);
     camera.position.set(0, 0, 10);
 
@@ -289,19 +303,25 @@
 
         // Advance Time
         updateDate();
-
-        controlState.position.z = frameCounter%255;
+        
+        if(flyControls)
+        {
+            flyControls.update(0.1);
+        }
 
         // Audio Update
 
-        for (let buffer of buffers) {
+        for (let buffer of buffers) { 
             buffer.Shader.uniforms['iResolution'].value = resolution;
             buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
             buffer.Shader.uniforms['iTime'].value = time;
             buffer.Shader.uniforms['iFrame'].value = frameCounter;
             buffer.Shader.uniforms['iMouse'].value = mouse;
             buffer.Shader.uniforms['iMouseButton'].value = mouseButton;
-            buffer.Shader.uniforms['iViewMatrix'].value = controlState.matrix;
+
+            //var m = new THREE.Matrix4();
+            //m.getInverse( controlState.matrixWorld );
+            buffer.Shader.uniforms['iViewMatrix'].value = controlState.matrixWorld;
 
             buffer.Shader.uniforms['resolution'].value = resolution;
             buffer.Shader.uniforms['time'].value = time;
