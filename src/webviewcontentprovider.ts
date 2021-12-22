@@ -160,11 +160,16 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Feature Check
         let useKeyboard = false;
+        let useFirstPersonControls = false;
         let useAudio = false;
         let useUniforms = false;
         for (const buffer of this.buffers) {
             if (buffer.UsesKeyboard) {
                 useKeyboard = true;
+            }
+
+            if (buffer.UsesFirstPersonControls) {
+                useFirstPersonControls = true;
             }
 
             const audios =  buffer.AudioInputs;
@@ -195,6 +200,13 @@ export class WebviewContentProvider {
         }
         let forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
         this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // First Person Camera
+        if(useFirstPersonControls)
+        {
+            vscode.window.showInformationMessage('Hello world');
+        }    
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard

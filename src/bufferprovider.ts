@@ -132,15 +132,17 @@ export class BufferProvider {
         let pendingUniforms: Types.UniformDefinition[] = [];
         let includes: Types.IncludeDefinition[] = [];
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
+        let boxedFirstPersonControls: Types.BoxedValue<boolean> = { Value: false };
         let strictComp: Types.BoxedValue<boolean> = { Value: false };
 
-        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, strictComp, generateStandalone);
+        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
         let audios: Types.AudioDefinition[] = [];
         let uniforms: Types.UniformDefinition[] = [];
         let usesKeyboard = boxedUsesKeyboard.Value;
+        let usesFirstPersonControls = boxedFirstPersonControls.Value;
 
         // Resolve textures
         for (let pendingTexture of pendingTextures) {
@@ -333,12 +335,13 @@ void main() {
             SelfChannel: -1,
             Dependents: [],
             UsesKeyboard: usesKeyboard,
+            UsesFirstPersonControls: usesFirstPersonControls,
             LineOffset: lineOffset
         });
     }
 
     private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>, 
-                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>,  strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
+                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, usesFirstPersonControls: Types.BoxedValue<boolean>,  strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
         
         let addTextureSettingIfNew = (channel: number) => {
             if (textureSettings.get(channel) === undefined) {
@@ -465,7 +468,7 @@ void main() {
                         if (includeCode.success) {
                             let include_line_offset: Types.BoxedValue<number> = { Value: 0 };
                             let transformedIncludeCode = this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                                                                            uniforms, includes, sharedIncludes, usesKeyboard, strictComp, generateStandalone);
+                                                                            uniforms, includes, sharedIncludes, usesKeyboard, usesFirstPersonControls, strictComp, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
                                 Name: this.makeName(includeFile),
                                 File: includeFile,
@@ -537,6 +540,10 @@ void main() {
                     usesKeyboard.Value = true;
                     removeLastObject();
                     break;
+                case ObjectType.FirstPersonControls:
+                        usesFirstPersonControls.Value = true;
+                        removeLastObject();
+                        break;
                 case ObjectType.StrictCompatibility:
                     strictComp.Value = true;
                     removeLastObject();

@@ -99,6 +99,7 @@ export type BufferDefinition = {
     LineOffset: number
     Includes: IncludeDefinition[],
     UsesKeyboard?: boolean,
+    UsesFirstPersonControls?: boolean,
 };
 
 export type Diagnostic = {
