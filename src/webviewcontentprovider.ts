@@ -23,6 +23,7 @@ import { KeyboardShaderExtension } from './extensions/keyboard/keyboard_shader_e
 
 import { JQueryExtension } from './extensions/packages/jquery_extension';
 import { ThreeExtension } from './extensions/packages/three_extension';
+import { ThreeModuleExtension } from './extensions/packages/three_module_extension';
 import { StatsExtension } from './extensions/packages/stats_extension';
 import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 
@@ -306,6 +307,10 @@ export class WebviewContentProvider {
 
             let threeExtension = new ThreeExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
+            
+            let threeModuleExtension = new ThreeModuleExtension(getWebviewResourcePath, generateStandalone);
+            this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.Module.js -->"></script>', '<!-- Three.Module.js -->');
+            
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             let statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
