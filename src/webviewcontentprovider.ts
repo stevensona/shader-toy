@@ -201,14 +201,7 @@ export class WebviewContentProvider {
             forcedAspect = [ -1, -1 ];
         }
         let forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
-        this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
-
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // First Person Camera
-        if(useFirstPersonControls)
-        {
-            vscode.window.showInformationMessage('Hello world');
-        }    
+        this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');  
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard
@@ -269,8 +262,13 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Misc Scripts
-        let flycontrolsExtension = new ThreeFlyControlsExtension(getWebviewResourcePath);
-        this.webviewAssembler.addWebviewModule(flycontrolsExtension, '<!-- FlyControls -->');
+
+        // First Person Camera
+        if(useFirstPersonControls)
+        {
+            let flycontrolsExtension = new ThreeFlyControlsExtension(getWebviewResourcePath);
+            this.webviewAssembler.addWebviewModule(flycontrolsExtension, '<!-- FlyControls -->');
+        }  
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Include Scripts
