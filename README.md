@@ -1,3 +1,13 @@
+<Remove before land>
+Instructions to test `iFirstPersonControls` locally: 
+1. pull and switch to directory `shader-toy`
+2. run `npm install`
+3. Open shader-toy folder in vscode and 'run extension'. It likely will fail
+4. If 3 failed, make a symlink from 'shader-toy/out' to 'shader-toy/dist/src'
+5. try to run again. Open the shader `demos/fly_controls.glsl`
+6. with the shader window in focus, get the command window and select `ShaderToy Mod: Show GLSL Preview`
+7. Focus the shader window and use controls: <b>WASD</b> move, <b>R|F</b> up | down, <b>Q|E</b> roll, <b>up|down</b> pitch, <b>left|right</b> yaw
+</Remove before land>
 # Visual Studio Code - Shader Toy
 <p align="center">
   <a href="https://github.com/stevensona/shader-toy/actions">
