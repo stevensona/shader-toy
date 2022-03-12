@@ -12,9 +12,9 @@ export class Context {
 
     private diagnosticCollection: vscode.DiagnosticCollection;
     private collectedDiagnostics: { [id: string]: vscode.Diagnostic[]; } = {};
-    
+
     public activeEditor: vscode.TextEditor | undefined;
-    
+
     constructor(context: vscode.ExtensionContext, config: vscode.WorkspaceConfiguration) {
         this.context = context;
         this.config = config;
@@ -38,17 +38,24 @@ export class Context {
         const webviewResourceUri = this.makeWebviewResource(webview, resourceUri);
         return webviewResourceUri.toString();
     }
-    
-    public mapUserPath(userPath: string, sourcePath: string): { file: string, userPath: string } {
+
+    public async mapUserPath(userPath: string, sourcePath: string): Promise<{ file: string, userPath: string }> {
         userPath = userPath.replace(/\\/g, '/');
         sourcePath = path.dirname(sourcePath);
 
-        let file = ((file: string) => {
+        let file = await (async (file: string) => {
             let fileCandidates: string[] = [];
 
-            let exists = (file: string) => {
+            let exists = async (file: string) => {
                 if (file.indexOf('{}') < 0 && file.indexOf('*') < 0) {
-                    return fs.existsSync(file);
+                    try {
+                        await fs.promises.access(file);
+                        return true;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
                 }
                 else {
                     let fileMatches: string[] = glob.sync(file.replace('{}', '*'));
@@ -58,15 +65,15 @@ export class Context {
 
             // Highest priority are absolute paths
             fileCandidates.push(file);
-            if (exists(file)) {
+            if (await exists(file)) {
                 return file;
             }
 
             // Second priority are relative to sourcePath
             {
-                const fileCandidate = [ sourcePath, file ].join('/');
+                const fileCandidate = [sourcePath, file].join('/');
                 fileCandidates.push(fileCandidate);
-                if (exists(fileCandidate)) {
+                if (await exists(fileCandidate)) {
                     return fileCandidate;
                 }
             }
@@ -78,8 +85,8 @@ export class Context {
                     let workspacePath = worspaceFolder.uri.fsPath;
                     workspacePath = workspacePath.replace(/\\/g, '/');
                     workspacePath = workspacePath.replace(/\.\//g, '');
-                    let fileCandidate = [ workspacePath, file ].join('/');
-                    if (exists(fileCandidate)) {
+                    let fileCandidate = [workspacePath, file].join('/');
+                    if (await exists(fileCandidate)) {
                         workspaceFileCandidates.push(fileCandidate);
                     }
                     fileCandidates.push(fileCandidate);
@@ -95,6 +102,7 @@ export class Context {
             vscode.window.showErrorMessage(`File '${userPath}' was not found, paths that were tried were\n\t${fileCandidates.join('\n\t')}`);
             return file;
         })(userPath);
+
         file = path.normalize(file);
         file = file.replace(/\\/g, '/');
         return { file, userPath };
@@ -115,7 +123,7 @@ export class Context {
             if (this.collectedDiagnostics[file] === undefined) {
                 this.collectedDiagnostics[file] = [];
             }
-            
+
             for (let diagnostic of diagnosticBatch.diagnostics) {
                 let line = Math.min(Math.max(1, diagnostic.line), document.lineCount) - 1;
                 let range = document.lineAt(line).range;

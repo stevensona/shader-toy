@@ -79,7 +79,7 @@ export class WebviewContentProvider {
         this.commonIncludes = [];
     }
 
-    public parseShaderTree(generateStandalone: boolean): string[] {
+    public async parseShaderTree(generateStandalone: boolean): Promise<string[]> {
         let shaderName = this.documentName;
         shaderName = shaderName.replace(/\\/g, '/');
 
@@ -87,7 +87,10 @@ export class WebviewContentProvider {
         // Parse Shaders
         {
             let shader = this.documentContent;
-            new BufferProvider(this.context).parseShaderCode(shaderName, shader, this.buffers, this.commonIncludes, generateStandalone);
+            {
+                let buffer_provider = new BufferProvider(this.context);
+                await buffer_provider.parseShaderCode(shaderName, shader, this.buffers, this.commonIncludes, generateStandalone);
+            }
 
             // If final buffer uses feedback we need to add a last pass that renders it to the screen
             // because we can not ping-pong the screen
@@ -144,7 +147,7 @@ export class WebviewContentProvider {
         return localResources;
     }
 
-    public generateWebviewContent(webview: vscode.Webview | undefined, startingState: Types.RenderStartingData): string {
+    public async generateWebviewContent(webview: vscode.Webview | undefined, startingState: Types.RenderStartingData): Promise<string> {
 
         let generateStandalone = webview === undefined;
 
@@ -262,7 +265,8 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Texture Loading
-        let textureInitExtension = new TexturesInitExtension(this.buffers, this.context, makeWebviewResource);
+        let textureInitExtension = new TexturesInitExtension();
+        await textureInitExtension.init(this.buffers, this.context, makeWebviewResource);
         this.webviewAssembler.addWebviewModule(textureInitExtension, '// Texture Init');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import * as mime from 'mime';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as Types from'./typenames';
+import * as Types from './typenames';
 import { Context } from './context';
 import { ShaderParser, ObjectType } from './shaderparser';
 import { URL } from 'url';
@@ -35,8 +35,8 @@ export class BufferProvider {
         this.visitedFiles = [];
     }
 
-    public parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
-        this.parseShaderCodeInternal(file, file, code, buffers, commonIncludes, generateStandalone);
+    public async parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
+        await this.parseShaderCodeInternal(file, file, code, buffers, commonIncludes, generateStandalone);
 
         const findByName = (path: string) => {
             let name = this.makeName(path);
@@ -87,7 +87,7 @@ export class BufferProvider {
         }
     }
 
-    private readShaderFile(file: string): { success: boolean, error: any, bufferCode: string } {
+    private async readShaderFile(file: string): Promise<{ success: boolean, error: any, bufferCode: string }> {
         for (let editor of vscode.window.visibleTextEditors) {
             let editorFile = editor.document.fileName;
             editorFile = editorFile.replace(/\\/g, '/');
@@ -101,7 +101,7 @@ export class BufferProvider {
         let bufferCode = '';
         let error = null;
         try {
-            bufferCode = fs.readFileSync(file, 'utf-8');
+            bufferCode = Buffer.from(await fs.promises.readFile(file, 'utf-8')).toString();
             success = true;
         }
         catch (e) {
@@ -111,7 +111,7 @@ export class BufferProvider {
         return { success, error, bufferCode };
     }
 
-    private makeName(path: string): string{
+    private makeName(path: string): string {
         let name = JSON.stringify(path);
         let trim = (name: string) => {
             return name.replace(/^["]+|["]+$/g, '');
@@ -119,7 +119,7 @@ export class BufferProvider {
         return trim(name);
     }
 
-    private parseShaderCodeInternal(rootFile: string, file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
+    private async parseShaderCodeInternal(rootFile: string, file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
         const found = this.visitedFiles.find((visitedFile: string) => visitedFile === file);
         if (found) {
             return;
@@ -134,7 +134,7 @@ export class BufferProvider {
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
         let strictComp: Types.BoxedValue<boolean> = { Value: false };
 
-        code = this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, strictComp, generateStandalone);
+        code = await this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
@@ -163,15 +163,15 @@ export class BufferProvider {
                     }
                     else {
                         // Read the whole file of the shader
-                        const shaderFile = this.readShaderFile(depFile);
-                        if(shaderFile.success === false){
+                        const shaderFile = await this.readShaderFile(depFile);
+                        if (shaderFile.success === false) {
                             vscode.window.showErrorMessage(`Could not open file: ${userPath}`);
                             return;
                         }
-    
+
                         // Parse the shader
-                        this.parseShaderCodeInternal(rootFile, depFile, shaderFile.bufferCode, buffers, commonIncludes, generateStandalone);
-            
+                        await this.parseShaderCodeInternal(rootFile, depFile, shaderFile.bufferCode, buffers, commonIncludes, generateStandalone);
+
                         // Push buffers as textures
                         textures.push({
                             Channel: channel,
@@ -273,7 +273,7 @@ void main() {
 }`;
             };
 
-            if (this.context.getConfig<boolean>('shaderToyStrictCompatibility')  || strictComp.Value) {
+            if (this.context.getConfig<boolean>('shaderToyStrictCompatibility') || strictComp.Value) {
                 insertMainImageCode();
             }
             else {
@@ -315,8 +315,8 @@ void main() {
             try {
                 code = glsl(code);
             }
-            catch(e) {
-                vscode.window.showErrorMessage(e.message);
+            catch (e) {
+                vscode.window.showErrorMessage((e as Error).message);
             }
         }
 
@@ -337,9 +337,9 @@ void main() {
         });
     }
 
-    private transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>, 
-                          uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>,  strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): string {
-        
+    private async transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>,
+        uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, usesFirstPersonControls: Types.BoxedValue<boolean>, strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): Promise<string> {
+
         let addTextureSettingIfNew = (channel: number) => {
             if (textureSettings.get(channel) === undefined) {
                 textureSettings.set(channel, {});
@@ -392,7 +392,7 @@ void main() {
                             textureFile = userPath;
                         }
                         else {
-                            ({ file: textureFile, userPath: userPath } = this.context.mapUserPath(userPath, file));
+                            ({ file: textureFile, userPath: userPath } = await this.context.mapUserPath(userPath, file));
                             if (generateStandalone) {
                                 textureFile = path.relative(path.dirname(rootFile), textureFile);
                             }
@@ -451,8 +451,8 @@ void main() {
                 case ObjectType.Include: {
                     let userPath = nextObject.Path;
                     let includeFile: string;
-                    ({ file: includeFile, userPath: userPath } = this.context.mapUserPath(userPath, file));
-                    
+                    ({ file: includeFile, userPath: userPath } = await this.context.mapUserPath(userPath, file));
+
                     let sharedIncludeIndex = sharedIncludes.findIndex((value: Types.IncludeDefinition) => {
                         if (value.File === includeFile) {
                             return true;
@@ -461,11 +461,11 @@ void main() {
                     });
 
                     if (sharedIncludeIndex < 0) {
-                        let includeCode = this.readShaderFile(includeFile);
+                        let includeCode = await this.readShaderFile(includeFile);
                         if (includeCode.success) {
                             let include_line_offset: Types.BoxedValue<number> = { Value: 0 };
-                            let transformedIncludeCode = this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                                                                            uniforms, includes, sharedIncludes, usesKeyboard, strictComp, generateStandalone);
+                            let transformedIncludeCode = await this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
+                                uniforms, includes, sharedIncludes, usesKeyboard, usesFirstPersonControls, strictComp, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
                                 Name: this.makeName(includeFile),
                                 File: includeFile,
@@ -491,8 +491,8 @@ void main() {
                 }
                 case ObjectType.Uniform:
                     if (nextObject.Default !== undefined && nextObject.Min !== undefined && nextObject.Max !== undefined) {
-                        let range = [ nextObject.Min, nextObject.Max ];
-                        for (let i of [ 0, 1 ]) {
+                        let range = [nextObject.Min, nextObject.Max];
+                        for (let i of [0, 1]) {
                             let value = range[i];
                             if (value.length !== nextObject.Default.length) {
                                 if (value.length !== 1) {
@@ -503,7 +503,7 @@ void main() {
                                     this.showDiagnosticAtLine(file, `Type mismatch in ${valueType} value, ${mismatchType}.`, parser.line(), vscode.DiagnosticSeverity.Information);
                                 }
 
-                                for (let j of [ 0, 1, 2, 3 ]) {
+                                for (let j of [0, 1, 2, 3]) {
                                     if (range[i][j] === undefined) {
                                         range[i][j] = range[i][0];
                                     }
@@ -548,7 +548,7 @@ void main() {
 
         return code;
     }
-    
+
     private showDiagnosticAtLine(file: string, message: string, line: number, severity: vscode.DiagnosticSeverity) {
         let diagnosticBatch: Types.DiagnosticBatch = {
             filename: file,

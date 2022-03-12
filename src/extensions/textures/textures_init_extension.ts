@@ -11,12 +11,15 @@ import * as fs from 'fs';
 export class TexturesInitExtension implements WebviewExtension {
     private content: string;
 
-    constructor(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
+    constructor() {
         this.content = '';
-        this.processBuffers(buffers, context, makeAvailableResource);
     }
 
-    private processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
+    public async init(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
+        await this.processBuffers(buffers, context, makeAvailableResource);
+    }
+
+    private async processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
         let convertMagFilter = (mag: Types.TextureMagFilter | undefined) => {
             switch(mag) {
             case Types.TextureMagFilter.Nearest:
@@ -144,12 +147,14 @@ function(err) {
                         continue;
                     }
 
-                    let getTexturesFromPrefixes = (pattern: string, prefixes: [ string, string, string, string, string, string ]) => {
+                    let getTexturesFromPrefixes = async (pattern: string, prefixes: [string, string, string, string, string, string]) => {
                         let textures = [];
-                        for (let dir of prefixes)
-                        {
+                        for (let dir of prefixes) {
                             let directionFile = pattern.replace('{}', dir);
-                            if (!fs.existsSync(directionFile)) {
+                            try {
+                                await fs.promises.access(directionFile);
+                            }
+                            catch {
                                 return;
                             }
                             textures.push(directionFile);
@@ -157,15 +162,15 @@ function(err) {
                         return textures;
                     };
 
-                    let textures = getTexturesFromPrefixes(localPath, [ 'e', 'w', 'u', 'd', 'n', 's' ]);
+                    let textures = await getTexturesFromPrefixes(localPath, ['e', 'w', 'u', 'd', 'n', 's']);
                     if (textures === undefined) {
-                        textures = getTexturesFromPrefixes(localPath, [ 'east', 'west', 'up', 'down', 'north', 'south' ]);
+                        textures = await getTexturesFromPrefixes(localPath, ['east', 'west', 'up', 'down', 'north', 'south']);
                     }
                     if (textures === undefined) {
-                        textures = getTexturesFromPrefixes(localPath, [ 'px', 'nx', 'py', 'ny', 'pz', 'nz' ]);
+                        textures = await getTexturesFromPrefixes(localPath, ['px', 'nx', 'py', 'ny', 'pz', 'nz']);
                     }
                     if (textures === undefined) {
-                        textures = getTexturesFromPrefixes(localPath, [ 'posx', 'negx', 'posy', 'negy', 'posz', 'negz' ]);
+                        textures = await getTexturesFromPrefixes(localPath, ['posx', 'negx', 'posy', 'negy', 'posz', 'negz']);
                     }
 
                     if (textures === undefined) {
