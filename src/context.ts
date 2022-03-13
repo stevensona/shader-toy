@@ -3,7 +3,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as glob from 'glob';
 import { DiagnosticBatch } from './typenames';
 
 export class Context {
@@ -47,7 +46,7 @@ export class Context {
             let fileCandidates: string[] = [];
 
             let exists = async (file: string) => {
-                if (file.indexOf('{}') < 0 && file.indexOf('*') < 0) {
+                let singleFileExists = async (file: string) => {
                     try {
                         await fs.promises.access(file);
                         return true;
@@ -56,10 +55,36 @@ export class Context {
                     {
                         return false;
                     }
+                };
+
+                if (file.indexOf('{}') < 0 && file.indexOf('*') < 0) {
+                    return await singleFileExists(file);
                 }
                 else {
-                    let fileMatches: string[] = glob.sync(file.replace('{}', '*'));
-                    return fileMatches.length > 0;
+                    let existsWithEachPrefix = async (pattern: string, prefixes: [string, string, string, string, string, string]) => {
+                        for (let dir of prefixes) {
+                            let directionFile = pattern.replace('{}', dir);
+                            if (!await singleFileExists(directionFile)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    };
+
+                    let possiblePrefixes: [string, string, string, string, string, string][] = [
+                        ['e', 'w', 'u', 'd', 'n', 's'],
+                        ['east', 'west', 'up', 'down', 'north', 'south'],
+                        ['px', 'nx', 'py', 'ny', 'pz', 'nz'],
+                        ['posx', 'negx', 'posy', 'negy', 'posz', 'negz']
+                    ];
+
+                    let pattern = file.replace('*', '{}');
+                    for (let prefixes of possiblePrefixes) {
+                        if (await existsWithEachPrefix(pattern, prefixes)) {
+                            return true;
+                        }
+                    }
+                    return false;
                 }
             };
 

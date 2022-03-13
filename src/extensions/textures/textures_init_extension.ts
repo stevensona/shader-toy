@@ -162,15 +162,19 @@ function(err) {
                         return textures;
                     };
 
-                    let textures = await getTexturesFromPrefixes(localPath, ['e', 'w', 'u', 'd', 'n', 's']);
-                    if (textures === undefined) {
-                        textures = await getTexturesFromPrefixes(localPath, ['east', 'west', 'up', 'down', 'north', 'south']);
-                    }
-                    if (textures === undefined) {
-                        textures = await getTexturesFromPrefixes(localPath, ['px', 'nx', 'py', 'ny', 'pz', 'nz']);
-                    }
-                    if (textures === undefined) {
-                        textures = await getTexturesFromPrefixes(localPath, ['posx', 'negx', 'posy', 'negy', 'posz', 'negz']);
+                    let possiblePrefixes: [string, string, string, string, string, string][] = [
+                        ['e', 'w', 'u', 'd', 'n', 's'],
+                        ['east', 'west', 'up', 'down', 'north', 'south'],
+                        ['px', 'nx', 'py', 'ny', 'pz', 'nz'],
+                        ['posx', 'negx', 'posy', 'negy', 'posz', 'negz']
+                    ];
+
+                    let textures: string[] | undefined = undefined;
+                    for (let prefixes of possiblePrefixes) {
+                        textures = await getTexturesFromPrefixes(localPath, prefixes);
+                        if (textures !== undefined) {
+                            break;
+                        }
                     }
 
                     if (textures === undefined) {
