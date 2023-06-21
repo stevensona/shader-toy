@@ -2,45 +2,45 @@ name: Build and Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
   release:
-    types: [ created ]
+    types: [created]
 
 jobs:
   build_and_test:
     name: ${{ matrix.name }}
-    
+
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
         include:
-        - os: macos-latest
-          name: MacOS
-        - os: ubuntu-latest
-          name: Ubuntu
-        - os: windows-latest
-          name: Windows
-    
-    runs-on: ${{ matrix.os }}
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2.2.0
+          - os: macos-latest
+            name: MacOS
+          - os: ubuntu-latest
+            name: Ubuntu
+          - os: windows-latest
+            name: Windows
 
-    - name: Install Node.js
-      uses: actions/setup-node@v1.4.4
-      with:
-        node-version: 10.x
-      
-    - name: Install
-      run: npm install
-      
-    - name: Build
-      run: npm run webpack
-      
-    - name: Test
-      uses: GabrielBB/xvfb-action@v1.0
-      with:
-        run: npm test
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.2.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v1.4.4
+        with:
+          node-version: 18.x
+
+      - name: Install
+        run: npm install
+
+      - name: Build
+        run: npm run webpack
+
+      - name: Test
+        uses: GabrielBB/xvfb-action@v1.0
+        with:
+          run: npm test
