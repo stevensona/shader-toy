@@ -94,7 +94,7 @@ export class ShaderToyManager {
             let htmlContent = webviewContentProvider.generateWebviewContent(undefined, this.startingData);
             let originalFileExt = path.extname(document.fileName);
             let previewFilePath = document.fileName.replace(originalFileExt, '.html');
-            fs.promises.writeFile(previewFilePath, htmlContent)
+            fs.promises.writeFile(previewFilePath, await htmlContent)
                 .catch((reason: any) => {
                     console.error(reason.message);
                 });

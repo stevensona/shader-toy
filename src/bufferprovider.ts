@@ -134,7 +134,7 @@ export class BufferProvider {
         let boxedUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
         let strictComp: Types.BoxedValue<boolean> = { Value: false };
 
-        code = await this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
+        code = await this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, strictComp, generateStandalone);
 
         let lineOffset = boxedLineOffset.Value;
         let textures: Types.TextureDefinition[] = [];
@@ -338,7 +338,7 @@ void main() {
     }
 
     private async transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>,
-        uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, usesFirstPersonControls: Types.BoxedValue<boolean>, strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): Promise<string> {
+        uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): Promise<string> {
 
         let addTextureSettingIfNew = (channel: number) => {
             if (textureSettings.get(channel) === undefined) {
@@ -465,7 +465,7 @@ void main() {
                         if (includeCode.success) {
                             let include_line_offset: Types.BoxedValue<number> = { Value: 0 };
                             let transformedIncludeCode = await this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                                uniforms, includes, sharedIncludes, usesKeyboard, usesFirstPersonControls, strictComp, generateStandalone);
+                                uniforms, includes, sharedIncludes, usesKeyboard, strictComp, generateStandalone);
                             let newInclude: Types.IncludeDefinition = {
                                 Name: this.makeName(includeFile),
                                 File: includeFile,
