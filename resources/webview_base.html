@@ -123,6 +123,7 @@
     updateDate();
 
     let paused = <!-- Start Paused -->;
+    let forceRenderOneFrame = paused;
     let pauseButton = document.getElementById('pause-button');
     if (pauseButton) {
         pauseButton.checked = paused;
@@ -298,7 +299,10 @@
 
     function render() {
         requestAnimationFrame(render);
-        // Pause Whole Render
+        if (!forceRenderOneFrame) {
+            // Pause Whole Render
+        }
+        forceRenderOneFrame = false;
 
         // Advance Time
         updateDate();
