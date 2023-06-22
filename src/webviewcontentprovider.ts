@@ -8,6 +8,7 @@ import { WebviewContentAssembler } from './webviewcontentassembler';
 import { WebviewExtension } from './extensions/webview_extension';
 
 import { InitialTimeExtension } from './extensions/initial_time_extension';
+import { InitialPausedExtension } from './extensions/initial_paused_extension';
 import { InitialMouseExtension } from './extensions/initial_mouse_extension';
 import { InitialNormalizedMouseExtension } from './extensions/initial_normalized_mouse_extension';
 
@@ -185,6 +186,8 @@ export class WebviewContentProvider {
         // Initial State
         let initialTimeExtension = new InitialTimeExtension(startingState.Time);
         this.webviewAssembler.addReplaceModule(initialTimeExtension, 'let startingTime = <!-- Start Time -->;', '<!-- Start Time -->');
+        let initialPausedExtension = new InitialPausedExtension(startingState.Paused);
+        this.webviewAssembler.addReplaceModule(initialPausedExtension, 'let paused = <!-- Start Paused -->;', '<!-- Start Paused -->');
         let initialMouseExtension = new InitialMouseExtension(startingState.Mouse);
         this.webviewAssembler.addReplaceModule(initialMouseExtension, 'let mouse = new THREE.Vector4(<!-- Start Mouse -->);', '<!-- Start Mouse -->');
         let initialNormalizedMouseExtension = new InitialNormalizedMouseExtension(startingState.NormalizedMouse);

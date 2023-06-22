@@ -113,6 +113,11 @@
                     "default": true,
                     "description": "Determines whether pausing will pause only time thus still render and allow input, or pause everything."
                 },
+                "shader-toy.pauseMaintainedOnReload": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If unticked the render wil un-pause when reloading, otherwise it will stay paused if it was paused before."
+                },
                 "shader-toy.printShaderFrameTime": {
                     "type": "boolean",
                     "default": true,
