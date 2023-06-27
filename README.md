@@ -175,6 +175,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.11.0
+* Use the async interface for file I/O.
+
 ### 0.10.15
 * Lex numbers with exponents as floating point, not integer,
 * make assignability testing more robust.
