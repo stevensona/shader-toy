@@ -122,9 +122,11 @@
     };
     updateDate();
 
-    let paused = false;
+    let paused = <!-- Start Paused -->;
+    let forceRenderOneFrame = paused;
     let pauseButton = document.getElementById('pause-button');
     if (pauseButton) {
+        pauseButton.checked = paused;
         pauseButton.onclick = function(){
             paused = pauseButton.checked;
             if (!paused) {
@@ -133,6 +135,13 @@
             }
             else {
                 // Audio Pause
+            }
+
+            if (vscode !== undefined) {
+                vscode.postMessage({
+                    command: 'setPause',
+                    paused: paused
+                });
             }
         };
     }
@@ -165,6 +174,13 @@
                 }
                 else {
                     // Audio Pause
+                }
+
+                if (vscode !== undefined) {
+                    vscode.postMessage({
+                        command: 'setPause',
+                        paused: paused
+                    });
                 }
                 break;
             case 'screenshot':
@@ -283,7 +299,10 @@
 
     function render() {
         requestAnimationFrame(render);
-        // Pause Whole Render
+        if (!forceRenderOneFrame) {
+            // Pause Whole Render
+        }
+        forceRenderOneFrame = false;
 
         // Advance Time
         updateDate();

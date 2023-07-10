@@ -16,6 +16,7 @@ export type UniformsGuiStartingData = {
     Values: Map<string, number[]>;
 };
 export class RenderStartingData {
+    Paused: boolean = false;
     Time: number = 0;
     Mouse: Mouse = new Mouse();
     NormalizedMouse: NormalizedMouse = new NormalizedMouse();
