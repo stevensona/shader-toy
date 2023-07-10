@@ -31,6 +31,8 @@ import { PauseButtonStyleExtension } from './extensions/user_interface/pause_but
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
 import { ScreenshotButtonStyleExtension } from './extensions/user_interface/screenshot_button_style_extension';
 import { ScreenshotButtonExtension } from './extensions/user_interface/screenshot_button_extension';
+import { RecordButtonStyleExtension } from './extensions/user_interface/record_button_style_extension';
+import { RecordButtonExtension } from './extensions/user_interface/record_button_extension';
 import { ReloadButtonStyleExtension } from './extensions/user_interface/reload_button_style_extension';
 import { ReloadButtonExtension } from './extensions/user_interface/reload_button_extension';
 
@@ -66,10 +68,10 @@ export class WebviewContentProvider {
     private webviewAssembler: WebviewContentAssembler;
     private documentContent: string;
     private documentName: string;
-    
+
     private buffers: Types.BufferDefinition[];
     private commonIncludes: Types.IncludeDefinition[];
-    
+
     constructor(context: Context, documentContent: string, documentName: string) {
         this.context = context;
         this.webviewAssembler = new WebviewContentAssembler(context);
@@ -140,7 +142,7 @@ export class WebviewContentProvider {
                 }
             }
         }
-        localResources = localResources.filter(function(elem, index, self) {
+        localResources = localResources.filter(function (elem, index, self) {
             return index === self.indexOf(elem);
         });
         localResources = removeDuplicates(localResources);
@@ -171,12 +173,12 @@ export class WebviewContentProvider {
                 useKeyboard = true;
             }
 
-            const audios =  buffer.AudioInputs;
+            const audios = buffer.AudioInputs;
             if (audios.length > 0) {
                 useAudio = true;
             }
 
-            const uniforms =  buffer.CustomUniforms;
+            const uniforms = buffer.CustomUniforms;
             if (uniforms.length > 0) {
                 useUniforms = true;
             }
@@ -195,9 +197,9 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Initial State
-        let forcedAspect = this.context.getConfig<[ number, number ]>('forceAspectRatio');
+        let forcedAspect = this.context.getConfig<[number, number]>('forceAspectRatio');
         if (forcedAspect === undefined) {
-            forcedAspect = [ -1, -1 ];
+            forcedAspect = [-1, -1];
         }
         let forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
         this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
@@ -281,7 +283,7 @@ export class WebviewContentProvider {
 
             let audioUpdateExtension = new AudioUpdateExtension();
             this.webviewAssembler.addWebviewModule(audioUpdateExtension, '// Audio Update');
-            
+
             let audioPauseExtension = new AudioPauseExtension();
             this.webviewAssembler.addWebviewModule(audioPauseExtension, '// Audio Pause');
 
@@ -341,10 +343,17 @@ export class WebviewContentProvider {
                 let screenshotButtonExtension = new ScreenshotButtonExtension();
                 this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
             }
+            if (this.context.getConfig<boolean>('showRecordButton')) {
+                let recordButtonStyleExtension = new RecordButtonStyleExtension(getWebviewResourcePath);
+                this.webviewAssembler.addWebviewModule(recordButtonStyleExtension, '/* Record Button Style */');
+
+                let recordButtonExtension = new RecordButtonExtension();
+                this.webviewAssembler.addWebviewModule(recordButtonExtension, '<!-- Record Element -->');
+            }
         }
-        let forcedScreenshotResolution = this.context.getConfig<[ number, number ]>('screenshotResolution');
+        let forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution');
         if (forcedScreenshotResolution === undefined) {
-            forcedScreenshotResolution = [ -1, -1 ];
+            forcedScreenshotResolution = [-1, -1];
         }
         let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
@@ -360,7 +369,7 @@ export class WebviewContentProvider {
                 this.webviewAssembler.addWebviewModule(reloadButtonExtension, '<!-- Reload Element -->');
             }
         }
-        
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling
         let errorsExtension: WebviewExtension;

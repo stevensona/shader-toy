@@ -53,8 +53,27 @@
         }
 
         /* Pause Button Style */
+
+        .rec_base {
+            position: absolute;
+            border: none;
+            right: 0px;
+            padding: 26px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 26px;
+            border-radius: 8px;
+            margin: 8px;
+            transform: translateX(0%);
+            z-index: 1;
+        }
+        .rec_base:nth-of-type(2) {
+            top: 60px;
+        }
         
         /* Screenshot Button Style */
+        
+        /* Record Button Style */
 
         /* Reload Button Style */
     </style>
@@ -66,6 +85,7 @@
         <!-- Pause Element -->
     </div>
     <!-- Screenshot Element -->
+    <!-- Record Element -->
     <!-- Reload Element -->
 </body>
 <script src="<!-- JQuery.js -->"></script>
@@ -154,6 +174,13 @@
     }
     
     {
+        let recordButton = document.getElementById("record");
+        if (recordButton) {
+            recordButton.addEventListener('click', recordAction);
+        }
+    }
+    
+    {
         let reloadButton = document.getElementById("reload");
         if (reloadButton) {
             reloadButton.addEventListener('click', reloadWebview);
@@ -205,6 +232,7 @@
     let mouseButton = new THREE.Vector4(0, 0, 0, 0);
     let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);
     let frameCounter = 0;
+    let recording = false;
 
     // Audio Init
     // Audio Resume
@@ -421,6 +449,18 @@
             doSaveScreenshot();
             renderer.setSize(resolution.x, resolution.y, false);
         }
+    }
+    function recordAction() {
+        let recordButton = document.getElementById("record");
+        if (!recording) {
+            recordButton.classList.add('recording');
+            // Start recording
+        }
+        else {
+            recordButton.classList.remove('recording');
+            // End recording
+        }
+        recording = !recording;
     }
     function reloadWebview() {
         if (vscode !== undefined) {
