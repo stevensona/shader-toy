@@ -175,6 +175,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.11.1
+* Added option to maintain pause state when reloading the shader.
+
 ### 0.11.0
 * Use the async interface for file I/O.
 
