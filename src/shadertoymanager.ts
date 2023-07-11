@@ -23,7 +23,7 @@ export class ShaderToyManager {
 
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
-    
+
     constructor(context: Context) {
         this.context = context;
     }
@@ -123,6 +123,9 @@ export class ShaderToyManager {
                 if (this.context.getConfig<boolean>('resetStateOnChangeEditor')) {
                     this.resetStartingData();
                 }
+                if (!this.context.getConfig<boolean>('pauseMaintainedOnReload')) {
+                    this.resetPauseState();
+                }
                 if (this.webviewPanel !== undefined) {
                     this.webviewPanel = await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
                 }
@@ -138,7 +141,12 @@ export class ShaderToyManager {
     }
 
     private resetStartingData = () => {
+        let paused = this.startingData.Paused;
         this.startingData = new RenderStartingData();
+        this.startingData.Paused = paused;
+    }
+    private resetPauseState = () => {
+        this.startingData.Paused = false;
     }
 
     private createWebview = (title: string, localResourceRoots: vscode.Uri[] | undefined) => {
@@ -174,6 +182,9 @@ export class ShaderToyManager {
                     return;
                 case 'updateTime':
                     this.startingData.Time = message.time;
+                    return;
+                case 'setPause':
+                    this.startingData.Paused = message.paused;
                     return;
                 case 'updateMouse':
                     this.startingData.Mouse = message.mouse;
