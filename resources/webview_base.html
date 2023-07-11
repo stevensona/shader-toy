@@ -232,7 +232,7 @@
     let mouseButton = new THREE.Vector4(0, 0, 0, 0);
     let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);
     let frameCounter = 0;
-    let recording = false;
+    let recorder = null;
 
     // Audio Init
     // Audio Resume
@@ -452,15 +452,30 @@
     }
     function recordAction() {
         let recordButton = document.getElementById("record");
-        if (!recording) {
+        if (recorder == null) {
             recordButton.classList.add('recording');
-            // Start recording
+
+            let canvas = document.querySelector('canvas');
+            let stream = canvas.captureStream(30);
+            let recorderOptions = {
+                mimeType: "video/webm"
+            };
+            recorder = new MediaRecorder(stream, recorderOptions);
+            recorder.start();
+            recorder.ondataavailable = function(evt) {
+                let a = document.createElement('a');
+                let url = URL.createObjectURL(evt.data);
+                a.href = url;
+                a.download = 'shadertoy.webm';
+                a.click();
+            };
         }
         else {
             recordButton.classList.remove('recording');
-            // End recording
+
+            recorder.stop();
+            recorder = null;
         }
-        recording = !recording;
     }
     function reloadWebview() {
         if (vscode !== undefined) {
