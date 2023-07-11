@@ -103,6 +103,11 @@
                     ],
                     "description": "Manually set the resolution of a screenshot. Set either to zero or negative to use the viewports resolution."
                 },
+                "shader-toy.showRecordButton": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Shows a record button in the OpenGL viewport which allows to start a recording of the viewport."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,
