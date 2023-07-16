@@ -227,7 +227,7 @@
     else if (supportsHalfFloatFramebuffer) framebufferType = THREE.HalfFloatType;
 
     let renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, context: gl, preserveDrawingBuffer: true });
-    let resolution = new THREE.Vector3();
+    let resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
     let mouse = new THREE.Vector4(<!-- Start Mouse -->);
     let mouseButton = new THREE.Vector4(0, 0, 0, 0);
     let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);
@@ -371,26 +371,26 @@
 
         frameCounter++;
     }
-    function computeSize() {
-        let forceAspectRatio = (width, height) => {
-            // Forced aspect ratio
-            let forcedAspects = [<!-- Forced Aspect -->];
-            let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
-            let aspectRatio = width / height;
+    function forceAspectRatio(width, height) {
+        // Forced aspect ratio
+        let forcedAspects = [<!-- Forced Aspect -->];
+        let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
+        let aspectRatio = width / height;
 
-            if (forcedAspectRatio <= 0 || !isFinite(forcedAspectRatio)) {
-                let resolution = new THREE.Vector3(width, height, 1.0);
-                return resolution;
-            }
-            else if (aspectRatio < forcedAspectRatio) {
-                let resolution = new THREE.Vector3(width, Math.floor(width / forcedAspectRatio), 1);
-                return resolution;
-            }
-            else {
-                let resolution = new THREE.Vector3(Math.floor(height * forcedAspectRatio), height, 1);
-                return resolution;
-            }
-        };
+        if (forcedAspectRatio <= 0 || !isFinite(forcedAspectRatio)) {
+            let resolution = new THREE.Vector3(width, height, 1.0);
+            return resolution;
+        }
+        else if (aspectRatio < forcedAspectRatio) {
+            let resolution = new THREE.Vector3(width, Math.floor(width / forcedAspectRatio), 1);
+            return resolution;
+        }
+        else {
+            let resolution = new THREE.Vector3(Math.floor(height * forcedAspectRatio), height, 1);
+            return resolution;
+        }
+    }
+    function computeSize() {
         
         // Compute forced aspect ratio and align canvas
         resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
