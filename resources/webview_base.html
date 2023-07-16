@@ -358,6 +358,11 @@
 
         // Keyboard Update
 
+        if (mouse.w > 0.0) {
+            mouse.w = -mouse.w;
+            updateMouse();
+        }
+
         for (let buffer of buffers) {
             if (buffer.PingPongTarget) {
                 [buffer.PingPongTarget, buffer.Target] = [buffer.Target, buffer.PingPongTarget];
