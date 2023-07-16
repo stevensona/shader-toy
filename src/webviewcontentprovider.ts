@@ -48,6 +48,7 @@ import { BuffersInitExtension } from './extensions/buffers/buffers_init_extensio
 import { ShadersExtension } from './extensions/buffers/shaders_extension';
 import { IncludesExtension } from './extensions/buffers/includes_extension';
 import { IncludesInitExtension } from './extensions/buffers/includes_init_extension';
+import { IncludesTestCompileExtension } from './extensions/buffers/includes_test_compile_extension'
 
 import { TexturesInitExtension } from './extensions/textures/textures_init_extension';
 
@@ -267,6 +268,11 @@ export class WebviewContentProvider {
         this.webviewAssembler.addWebviewModule(includesExtension, '<!-- Shaders -->');
         let includesInitExtension = new IncludesInitExtension(this.commonIncludes);
         this.webviewAssembler.addWebviewModule(includesInitExtension, '// Includes');
+
+        if (this.context.getConfig<boolean>('testCompileIncludedFiles')) {
+            let includesTestCompileExtension = new IncludesTestCompileExtension();
+            this.webviewAssembler.addWebviewModule(includesTestCompileExtension, '// Test Compile Included Files');
+        }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Texture Loading
