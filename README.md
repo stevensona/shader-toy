@@ -177,7 +177,9 @@ Contributions of any kind are welcome and encouraged.
 
 ### 0.11.1
 * Added option to maintain pause state when reloading the shader,
-* added ability to record the shader.
+* added ability to record the shader,
+* fixed first frame of mouse down mismatch with online version,
+* added setting to not compile included files separately.
 
 ### 0.11.0
 * Use the async interface for file I/O.
