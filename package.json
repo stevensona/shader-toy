@@ -143,6 +143,11 @@
                     "default": 512,
                     "description": "Size of the domain used for four transformation when using audio as an input."
                 },
+                "shader-toy.testCompileIncludedFiles": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If enabled all included files will be compiled on their own. Some included files may not compile on their own and require this to be disabled."
+                },
                 "shader-toy.shaderToyStrictCompatibility": {
                     "type": "boolean",
                     "default": false,

@@ -277,10 +277,7 @@
             // add two for version and precision lines
             LineOffset: <!-- Preamble Line Numbers --> + 2
         };
-        // bail if there is an error found in the include script
-        if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) {
-            throw Error(`Failed to compile ${include.Name}`);
-        }
+        // Test Compile Included Files
     }
 
     for (let buffer of buffers) {
