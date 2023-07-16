@@ -143,7 +143,7 @@ void main () {
 
 
 ### GLSL Preview Interaction
-The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. The resolution of the saved screenshot will by default be the same resolution as the GLSL Preview, though a setting is available that allows the user to override the resolution with an arbitrary value. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
+The extension provides a pause button inside the GLSL Preview to stop the progression of time. In conjunction with this you can use the screenshot button provided inside the GLSL Preview to capture and save a frame. The resolution of the saved screenshot will by default be the same resolution as the GLSL Preview, though a setting is available that allows the user to override the resolution with an arbitrary value. A recording button is also available, the quality as well as the size of the recording is determined by the webview. Lastly the extension provides a superficial view into the shaders performance and memory consumption.
 
 ### Error Highlighting
 The extension also supports highlighting of compilation errors in the text editor, for single shaders but also for multiple passes. It does so by showing errors as diagnostics directly in the text editor as well as presenting them in a digestible format inside the GLSL Preview and allowing the user to interact with the error messages to jump to the relevant lines, and open the relevant files if necessary:
@@ -176,7 +176,8 @@ Contributions of any kind are welcome and encouraged.
 ## Release Notes
 
 ### 0.11.1
-* Added option to maintain pause state when reloading the shader.
+* Added option to maintain pause state when reloading the shader,
+* added ability to record the shader.
 
 ### 0.11.0
 * Use the async interface for file I/O.
