@@ -108,6 +108,11 @@
                     "default": true,
                     "description": "Shows a record button in the OpenGL viewport which allows to start a recording of the viewport."
                 },
+                "shader-toy.recordTargetFramerate": {
+                    "type": "number",
+                    "default": 30,
+                    "description": "Framerate that is targeted when using the record button."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,
