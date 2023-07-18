@@ -458,7 +458,7 @@
             recordButton.classList.add('recording');
 
             let canvas = document.querySelector('canvas');
-            let stream = canvas.captureStream(30);
+            let stream = canvas.captureStream(<!-- Record Target Framerate -->);
             let recorderOptions = {
                 mimeType: "video/webm"
             };

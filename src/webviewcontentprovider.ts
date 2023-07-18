@@ -63,6 +63,7 @@ import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_e
 import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
 
 import { removeDuplicates } from './utility';
+import { RecordTargetFramerateExtension } from './extensions/user_interface/record_target_framerate_extension';
 
 export class WebviewContentProvider {
     private context: Context;
@@ -357,12 +358,14 @@ export class WebviewContentProvider {
                 this.webviewAssembler.addWebviewModule(recordButtonExtension, '<!-- Record Element -->');
             }
         }
-        let forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution');
-        if (forcedScreenshotResolution === undefined) {
-            forcedScreenshotResolution = [-1, -1];
-        }
+
+        let forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution') || [-1, -1];
         let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
+
+        let recordTargetFramerate = this.context.getConfig<number>('shader-toy.recordTargetFramerate') || 30;
+        let recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
+        this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let stream = canvas.captureStream(<!-- Record Target Framerate -->);', '<!-- Record Target Framerate -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Reload Logic
