@@ -1,16 +1,3 @@
-<Remove before land>
-Instructions to test `iFirstPersonControls` locally: 
-
-1. pull and switch to directory `shader-toy`
-2. run `npm install`
-3. Open shader-toy folder in vscode and 'run extension'. It likely will fail
-4. If 3 failed, make a symlink from 'shader-toy/out' to 'shader-toy/dist/src'
-5. try to run again. Open the shader `demos/fly_controls.glsl`
-6. with the shader window in focus, get the command window and select `ShaderToy Mod: Show GLSL Preview`
-7. Focus the shader window and use controls: <b>WASD</b> move, <b>R|F</b> up | down, <b>Q|E</b> roll, <b>up|down</b> pitch, <b>left|right</b> yaw
-
-</Remove before land>
-
 # Visual Studio Code - Shader Toy
 <p align="center">
   <a href="https://github.com/stevensona/shader-toy/actions">
@@ -177,20 +164,21 @@ The extension also supports highlighting of compilation errors in the text edito
 * Shaders with audio from remote sources are currently not working properly, this is however an issue on VSCode side and will be fixed when releasing with Electron 6.
 * There seems to be a very rare bug that causes audio inputs to sound corrupted.
 
-## Todo
-
-* Receive more feedback,
-* disable audio in non-portable version.
-
 ## Contributing
 
 Contributions of any kind are welcome and encouraged.
 
 [GitHub Project Page](https://github.com/stevensona/shader-toy)
 
+[Contributing Guidelines](https://raw.githubusercontent.com/stevensona/shader-toy/master/CONTRIBUTING.md)
+
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.11.2
+* Added free fly controls,
+* fixed a bug that would result in recording the frame time panel.
 
 ### 0.11.1
 * Added option to maintain pause state when reloading the shader,
