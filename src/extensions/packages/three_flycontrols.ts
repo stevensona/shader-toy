@@ -3,14 +3,14 @@
 import { WebviewExtension } from '../webview_extension';
 
 export class ThreeFlyControlsExtension implements WebviewExtension {
-    private getWebviewResourcePath: (relativePath: string) => string;
+	private getWebviewResourcePath: (relativePath: string) => string;
 
-    constructor(getWebviewResourcePath: (relativePath: string) => string) {
-        this.getWebviewResourcePath = getWebviewResourcePath;
-    }
+	constructor(getWebviewResourcePath: (relativePath: string) => string) {
+		this.getWebviewResourcePath = getWebviewResourcePath;
+	}
 
-    public generateContent(): string {
-        return `
+	public generateContent(): string {
+		return `
 <script type="text/javascript">
 const _changeEvent = { type: 'change' };
 
@@ -37,6 +37,7 @@ class FlyControls extends THREE.EventDispatcher {
 
 		this.dragToLook = false;
 		this.autoForward = false;
+		this.mouseInside = false;
 
 		// disable default target object behavior
 
@@ -51,9 +52,10 @@ class FlyControls extends THREE.EventDispatcher {
 
 		this.tmpQuaternion = new THREE.Quaternion();
 
-		this.mouseStatus = 0;
+		this.mouseStatus = false;
 
-		this.moveState = { up: 0, down: 0, left: 0, right: 0, forward: 0, back: 0, pitchUp: 0, pitchDown: 0, yawLeft: 0, yawRight: 0, rollLeft: 0, rollRight: 0 };
+		this.defaultMoveState = { up: 0, down: 0, left: 0, right: 0, forward: 0, back: 0, pitchUp: 0, pitchDown: 0, yawLeft: 0, yawRight: 0, rollLeft: 0, rollRight: 0 };
+		this.moveState = this.defaultMoveState;
 		this.moveVector = new THREE.Vector3( 0, 0, 0 );
 		this.rotationVector = new THREE.Vector3( 0, 0, 0 );
 
@@ -131,7 +133,7 @@ class FlyControls extends THREE.EventDispatcher {
 
 			if ( this.dragToLook ) {
 
-				this.mouseStatus ++;
+				this.mouseStatus = true;
 
 			} else {
 
@@ -150,7 +152,7 @@ class FlyControls extends THREE.EventDispatcher {
 
 		this.mousemove = function ( event ) {
 
-			if ( ! this.dragToLook || this.mouseStatus > 0 ) {
+			if ( ! this.dragToLook || this.mouseStatus ) {
 
 				const container = this.getContainerDimensions();
 				const halfWidth = container.size[ 0 ] / 2;
@@ -169,7 +171,7 @@ class FlyControls extends THREE.EventDispatcher {
 
 			if ( this.dragToLook ) {
 
-				this.mouseStatus --;
+				this.mouseStatus = false;
 
 				this.moveState.yawLeft = this.moveState.pitchDown = 0;
 
@@ -190,7 +192,27 @@ class FlyControls extends THREE.EventDispatcher {
 
 		};
 
+		this.mouseenter = function ( event ) {
+			this.mouseInside = true;
+			if (event.buttons != 0) {
+				this.mouseStatus = true;
+				console.log("this.mouseStatus = true");
+			}
+			else {
+				this.mouseStatus = false;
+				this.moveState.yawLeft = this.moveState.pitchDown = 0;
+				console.log("this.mouseStatus = false");
+			}
+			this.updateRotationVector();
+		};
+
+		this.mouseleave = function ( event ) {
+			this.mouseInside = false;
+		};
+
 		this.update = function ( delta ) {
+			if (!this.mouseInside)
+				return;
 
 			const moveMult = delta * scope.movementSpeed;
 			const rotMult = delta * scope.rollSpeed;
@@ -258,20 +280,22 @@ class FlyControls extends THREE.EventDispatcher {
 		};
 
 		this.dispose = function () {
-
 			this.domElement.removeEventListener( 'contextmenu', contextmenu );
 			this.domElement.removeEventListener( 'mousedown', _mousedown );
 			this.domElement.removeEventListener( 'mousemove', _mousemove );
 			this.domElement.removeEventListener( 'mouseup', _mouseup );
+			this.domElement.removeEventListener( 'mouseleave', _mouseleave );
+			this.domElement.removeEventListener( 'mouseenter', _mouseenter );
 
 			window.removeEventListener( 'keydown', _keydown );
 			window.removeEventListener( 'keyup', _keyup );
-
 		};
 
 		const _mousemove = this.mousemove.bind( this );
 		const _mousedown = this.mousedown.bind( this );
 		const _mouseup = this.mouseup.bind( this );
+		const _mouseleave = this.mouseleave.bind( this );
+		const _mouseenter = this.mouseenter.bind( this );
 		const _keydown = this.keydown.bind( this );
 		const _keyup = this.keyup.bind( this );
 
@@ -280,7 +304,8 @@ class FlyControls extends THREE.EventDispatcher {
 		this.domElement.addEventListener( 'mousemove', _mousemove );
 		this.domElement.addEventListener( 'mousedown', _mousedown );
 		this.domElement.addEventListener( 'mouseup', _mouseup );
-
+		this.domElement.addEventListener( 'mouseleave', _mouseleave );
+		this.domElement.addEventListener( 'mouseenter', _mouseenter );
 		window.addEventListener( 'keydown', _keydown );
 		window.addEventListener( 'keyup', _keyup );
 
@@ -298,5 +323,5 @@ function contextmenu( event ) {
 }
 </script>
 `;
-    }
+	}
 }
