@@ -11,6 +11,8 @@ import { InitialTimeExtension } from './extensions/initial_time_extension';
 import { InitialPausedExtension } from './extensions/initial_paused_extension';
 import { InitialMouseExtension } from './extensions/initial_mouse_extension';
 import { InitialNormalizedMouseExtension } from './extensions/initial_normalized_mouse_extension';
+import { InitialFlyControlPositionExtension } from './extensions/initial_fly_control_position_extension';
+import { InitialFlyControlRotationExtension } from './extensions/initial_fly_control_rotation_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
 import { ForcedScreenshotResolutionExtension } from './extensions/forced_screenshot_resolution_extension';
@@ -202,6 +204,10 @@ export class WebviewContentProvider {
         this.webviewAssembler.addReplaceModule(initialMouseExtension, 'let mouse = new THREE.Vector4(<!-- Start Mouse -->);', '<!-- Start Mouse -->');
         let initialNormalizedMouseExtension = new InitialNormalizedMouseExtension(startingState.NormalizedMouse);
         this.webviewAssembler.addReplaceModule(initialNormalizedMouseExtension, 'let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);', '<!-- Start Normalized Mouse -->');
+        let initialFlyControlPositionExtension = new InitialFlyControlPositionExtension(startingState.FlyControlPosition);
+        this.webviewAssembler.addReplaceModule(initialFlyControlPositionExtension, 'controlState.position.set(<!-- Start Fly Control Position -->);', '<!-- Start Fly Control Position -->');
+        let initialFlyControlRotationExtension = new InitialFlyControlRotationExtension(startingState.FlyControlRotation);
+        this.webviewAssembler.addReplaceModule(initialFlyControlRotationExtension, 'controlState.quaternion.set(<!-- Start Fly Control Rotation -->);', '<!-- Start Fly Control Rotation -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Initial State

@@ -90,7 +90,6 @@
 </body>
 <script src="<!-- JQuery.js -->"></script>
 <script src="<!-- Three.js -->"></script>
-<script src="<!-- Three.Module.js -->"></script>
 <!-- Stats.js -->
 <!-- dat.gui -->
 
@@ -268,11 +267,13 @@
     scene.add(quad);
 
     let controlState = new THREE.Camera();
+    controlState.position.set(<!-- Start Fly Control Position -->);
+    controlState.quaternion.set(<!-- Start Fly Control Rotation -->);
     scene.add(controlState);
 
     let flyControls = undefined;
     if (typeof FlyControls === 'function') {
-        flyControls = new FlyControls(controlState, renderer.domElement);
+        flyControls = new FlyControls(controlState, renderer.domElement, vscode);
         flyControls.movementSpeed = 1;
         flyControls.domElement = renderer.domElement;
         flyControls.rollSpeed = Math.PI / 24;

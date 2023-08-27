@@ -193,6 +193,10 @@ export class ShaderToyManager {
                 case 'updateKeyboard':
                     this.startingData.Keys = message.keys;
                     return;
+                case 'updateFlyControlTransform':
+                    this.startingData.FlyControlPosition = message.position;
+                    this.startingData.FlyControlRotation = message.rotation;
+                    return;
                 case 'updateUniformsGuiOpen':
                     this.startingData.UniformsGui.Open = message.value;
                     return;

@@ -16,7 +16,7 @@ const _changeEvent = { type: 'change' };
 
 class FlyControls extends THREE.EventDispatcher {
 
-	constructor( object, domElement ) {
+	constructor( object, domElement, vscode ) {
 
 		super();
 
@@ -196,12 +196,10 @@ class FlyControls extends THREE.EventDispatcher {
 			this.mouseInside = true;
 			if (event.buttons != 0) {
 				this.mouseStatus = true;
-				console.log("this.mouseStatus = true");
 			}
 			else {
 				this.mouseStatus = false;
 				this.moveState.yawLeft = this.moveState.pitchDown = 0;
-				console.log("this.mouseStatus = false");
 			}
 			this.updateRotationVector();
 		};
@@ -232,9 +230,17 @@ class FlyControls extends THREE.EventDispatcher {
 				scope.dispatchEvent( _changeEvent );
 				lastQuaternion.copy( scope.object.quaternion );
 				lastPosition.copy( scope.object.position );
-
 			}
-
+			
+			if (vscode !== undefined) {
+				let p = this.object.position;
+				let r = this.object.quaternion;
+				vscode.postMessage({
+					command: 'updateFlyControlTransform',
+					position: [ p.x, p.y, p.z ],
+					rotation: [ r.x, r.y, r.z, r.w ]
+				});
+			}
 		};
 
 		this.updateMovementVector = function () {
@@ -245,8 +251,6 @@ class FlyControls extends THREE.EventDispatcher {
 			this.moveVector.y = -( - this.moveState.down + this.moveState.up );
 			this.moveVector.z = -( - forward + this.moveState.back );
 
-			//console.log( 'move:', [ this.moveVector.x, this.moveVector.y, this.moveVector.z ] );
-
 		};
 
 		this.updateRotationVector = function () {
@@ -254,8 +258,6 @@ class FlyControls extends THREE.EventDispatcher {
 			this.rotationVector.x = -( - this.moveState.pitchDown + this.moveState.pitchUp );
 			this.rotationVector.y = -( - this.moveState.yawRight + this.moveState.yawLeft );
 			this.rotationVector.z = -( - this.moveState.rollRight + this.moveState.rollLeft );
-
-			//console.log( 'rotate:', [ this.rotationVector.x, this.rotationVector.y, this.rotationVector.z ] );
 
 		};
 

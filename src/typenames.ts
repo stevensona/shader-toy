@@ -11,6 +11,8 @@ export class NormalizedMouse {
     y: number = 0;
 }
 export type Keys = number[];
+export type Position = [number, number, number];
+export type Quaternion = [number, number, number, number];
 export type UniformsGuiStartingData = {
     Open: boolean;
     Values: Map<string, number[]>;
@@ -21,6 +23,8 @@ export class RenderStartingData {
     Mouse: Mouse = new Mouse();
     NormalizedMouse: NormalizedMouse = new NormalizedMouse();
     Keys: Keys = [];
+    FlyControlPosition: Position = [0, 0, 0];
+    FlyControlRotation: Quaternion = [0, 0, 0, 1];
     UniformsGui: UniformsGuiStartingData = { Open: false, Values: new Map<string, number[]>() };
 }
 
