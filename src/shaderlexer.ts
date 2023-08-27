@@ -75,6 +75,7 @@ export class ShaderLexer {
     private static preprocessor_keywords = [
         'include',
         'iKeyboard',
+        'iFirstPersonControls',
         'iUniform',
         'StrictCompatibility'
     ];

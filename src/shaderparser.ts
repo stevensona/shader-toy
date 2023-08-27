@@ -15,6 +15,7 @@ export enum ObjectType {
     Value,
     Uniform,
     Keyboard,
+    FirstPersonControls,
     StrictCompatibility,
     Error
 }
@@ -71,6 +72,9 @@ type Uniform = {
 type Keyboard = {
     Type: ObjectType.Keyboard
 };
+type FirstPersonControls = {
+    Type: ObjectType.FirstPersonControls
+};
 type StrictCompatibility = {
     Type: ObjectType.StrictCompatibility
 };
@@ -79,7 +83,7 @@ type ErrorObject = {
     Message: string
 };
 type TextureObject = Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType;
-type Object = Include | TextureObject | Uniform | Keyboard | StrictCompatibility;
+type Object = Include | TextureObject | Uniform | Keyboard | FirstPersonControls | StrictCompatibility;
 
 export class ShaderParser {
     private stream: ShaderStream;
@@ -131,6 +135,9 @@ export class ShaderParser {
                 break;
             case 'iKeyboard':
                 returnObject = { Type: ObjectType.Keyboard };
+                break;
+            case 'iFirstPersonControls':
+                returnObject = { Type: ObjectType.FirstPersonControls };
                 break;
             case 'StrictCompatibility':
                 returnObject = { Type: ObjectType.StrictCompatibility };

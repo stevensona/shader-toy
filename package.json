@@ -1,6 +1,6 @@
 {
-    "name": "shader-toy",
-    "displayName": "Shader Toy",
+    "name": "shader-toy-mod",
+    "displayName": "Shader Toy Mod",
     "description": "Live preview of GLSL shaders similar to shadertoy",
     "version": "0.11.1",
     "publisher": "stevensona",
@@ -163,23 +163,23 @@
         "commands": [
             {
                 "command": "shader-toy.showGlslPreview",
-                "title": "Shader Toy: Show GLSL Preview"
+                "title": "Shader Toy Mod: Show GLSL Preview"
             },
             {
                 "command": "shader-toy.showStaticGlslPreview",
-                "title": "Shader Toy: Show Static GLSL Preview"
+                "title": "Shader Toy Mod: Show Static GLSL Preview"
             },
             {
                 "command": "shader-toy.createPortableGlslPreview",
-                "title": "Shader Toy: Create Portable GLSL Preview"
+                "title": "Shader Toy Mod: Create Portable GLSL Preview"
             },
             {
                 "command": "shader-toy.pauseGlslPreviews",
-                "title": "Shader Toy: Pause/Play GLSL Previews"
+                "title": "Shader Toy Mod: Pause/Play GLSL Previews"
             },
             {
                 "command": "shader-toy.saveGlslPreviewScreenShots",
-                "title": "Shader Toy: Save GLSL Preview Screenshots"
+                "title": "Shader Toy Mod: Save GLSL Preview Screenshots"
             }
         ],
         "menus": {

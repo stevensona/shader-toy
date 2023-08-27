@@ -24,6 +24,8 @@ import { KeyboardShaderExtension } from './extensions/keyboard/keyboard_shader_e
 
 import { JQueryExtension } from './extensions/packages/jquery_extension';
 import { ThreeExtension } from './extensions/packages/three_extension';
+import { ThreeModuleExtension } from './extensions/packages/three_module_extension';
+import { ThreeFlyControlsExtension } from './extensions/packages/three_flycontrols';
 import { StatsExtension } from './extensions/packages/stats_extension';
 import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 
@@ -168,11 +170,16 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Feature Check
         let useKeyboard = false;
+        let useFirstPersonControls = false;
         let useAudio = false;
         let useUniforms = false;
         for (const buffer of this.buffers) {
             if (buffer.UsesKeyboard) {
                 useKeyboard = true;
+            }
+
+            if (buffer.UsesFirstPersonControls) {
+                useFirstPersonControls = true;
             }
 
             const audios = buffer.AudioInputs;
@@ -264,6 +271,15 @@ export class WebviewContentProvider {
         this.webviewAssembler.addWebviewModule(shadersExtension, '<!-- Shaders -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Misc Scripts
+
+        // First Person Camera
+        if (useFirstPersonControls) {
+            let flycontrolsExtension = new ThreeFlyControlsExtension(getWebviewResourcePath);
+            this.webviewAssembler.addWebviewModule(flycontrolsExtension, '<!-- FlyControls -->');
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Include Scripts
         let includesExtension = new IncludesExtension(this.commonIncludes, preambleExtension);
         this.webviewAssembler.addWebviewModule(includesExtension, '<!-- Shaders -->');
@@ -310,6 +326,10 @@ export class WebviewContentProvider {
 
             let threeExtension = new ThreeExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
+
+            let threeModuleExtension = new ThreeModuleExtension(getWebviewResourcePath, generateStandalone);
+            this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.Module.js -->"></script>', '<!-- Three.Module.js -->');
+
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             let statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);

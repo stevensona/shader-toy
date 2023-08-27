@@ -44,7 +44,7 @@ buffers.push({
             iFrame: { type: 'i', value: 0 },
             iMouse: { type: 'v4', value: mouse },
             iMouseButton: { type: 'v2', value: mouseButton },
-
+            iViewMatrix: {type: 'm44', value: new THREE.Matrix4() },
             iChannelResolution: { type: 'v3v', value: Array(10).fill(new THREE.Vector3(0,0,0)) },
 
             iDate: { type: 'v4', value: date },
