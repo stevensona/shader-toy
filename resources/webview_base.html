@@ -355,7 +355,7 @@
 
         // Audio Update
 
-        for (let buffer of buffers) { 
+        for (let buffer of buffers) {
             buffer.Shader.uniforms['iResolution'].value = resolution;
             buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
             buffer.Shader.uniforms['iTime'].value = time;
@@ -363,8 +363,6 @@
             buffer.Shader.uniforms['iMouse'].value = mouse;
             buffer.Shader.uniforms['iMouseButton'].value = mouseButton;
 
-            //var m = new THREE.Matrix4();
-            //m.getInverse( controlState.matrixWorld );
             buffer.Shader.uniforms['iViewMatrix'].value = controlState.matrixWorld;
 
             buffer.Shader.uniforms['resolution'].value = resolution;
