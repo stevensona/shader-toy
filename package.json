@@ -77,6 +77,11 @@
                     "default": false,
                     "description": "Reload OpenGL viewport when editor changes."
                 },
+                "shader-toy.reloadOnSaveFile": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Reload OpenGL viewport when editor is saved."
+                },
                 "shader-toy.resetStateOnChangeEditor": {
                     "type": "boolean",
                     "default": true,

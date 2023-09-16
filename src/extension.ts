@@ -25,38 +25,47 @@ export function activate(extensionContext: vscode.ExtensionContext) {
     const shadertoyManager = new ShaderToyManager(context);
 
     let timeout: ReturnType<typeof setTimeout>;
-    let changeTextEvent: vscode.Disposable | undefined;
-    let changeEditorEvent: vscode.Disposable | undefined;
-    const registerCallbacks = () => {
+    let events: vscode.Disposable[] = [];
+    const registerCallbacks = (context: Context) => {
         clearTimeout(timeout);
-        if (changeTextEvent !== undefined) {
-            changeTextEvent.dispose();
+
+        for (const event of events) {
+            event.dispose();
         }
-        if (changeEditorEvent !== undefined) {
-            changeEditorEvent.dispose();
-        }
+        events = [];
 
         if (context.getConfig<boolean>('reloadOnEditText')) {
             const reloadDelay: number = context.getConfig<number>('reloadOnEditTextDelay') || 1.0;
-            changeTextEvent = vscode.workspace.onDidChangeTextDocument((documentChange: vscode.TextDocumentChangeEvent) => {
+            vscode.workspace.onDidChangeTextDocument((documentChange: vscode.TextDocumentChangeEvent) => {
+                if (documentChange.contentChanges.length == 0) {
+                    return;
+                }
+                
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
                     shadertoyManager.onDocumentChanged(documentChange);
                 }, reloadDelay * 1000);
-            });
+            }, undefined, events);
         }
 
-        changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
+        if (context.getConfig<boolean>('reloadOnSaveFile')) {
+            vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
+                shadertoyManager.onDocumentSaved(document);
+            }, undefined, events);
+        }
+
+        vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
             shadertoyManager.onEditorChanged(newEditor);
-        });
+        }, undefined, events);
     };
 
-    registerCallbacks();
+    registerCallbacks(context);
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration('shader-toy')) {
+        if (e.affectsConfiguration('shader-toy')) {    
             const lastActiveEditor = context.activeEditor;
             context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
+            registerCallbacks(context);
             if (context.activeEditor === undefined) {
                 context.activeEditor = lastActiveEditor;
             }
