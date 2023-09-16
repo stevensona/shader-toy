@@ -301,7 +301,7 @@ void main() {
             if (this.context.getConfig<boolean>('warnOnUndefinedTextures')) {
                 for (let i = 0; i < 9; i++) {
                     if (code.search('iChannel' + i) > 0) {
-                        if (definedTextures.has(i)) {
+                        if (!definedTextures.has(i)) {
                             vscode.window.showWarningMessage(`iChannel${i} in use but there is no definition #iChannel${i} in shader`, 'Details')
                                 .then(() => {
                                     vscode.window.showInformationMessage(`To use this channel add to your shader a line '#iChannel${i}' followed by a space and the path to your texture. Use 'file://' for local textures, 'https://' for remote textures or 'buf://' for other shaders.`);
