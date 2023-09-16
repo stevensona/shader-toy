@@ -87,6 +87,7 @@ export class BufferProvider {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async readShaderFile(file: string): Promise<{ success: boolean, error: any, bufferCode: string }> {
         for (const editor of vscode.window.visibleTextEditors) {
             let editorFile = editor.document.fileName;
@@ -313,7 +314,7 @@ void main() {
 
         if (this.context.getConfig<boolean>('enableGlslifySupport')) {
             // glslify the code
-            const glsl = require('glslify');
+            const glsl = require('glslify'); // eslint-disable-line @typescript-eslint/no-var-requires
             try {
                 code = glsl(code);
             }

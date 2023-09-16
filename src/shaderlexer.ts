@@ -16,7 +16,7 @@ export enum TokenType {
 }
 export type Token = {
     type: TokenType,
-    value: any
+    value: any // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 
 export type LineRange = {

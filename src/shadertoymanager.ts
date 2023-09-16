@@ -166,7 +166,7 @@ export class ShaderToyManager {
         );
         newWebviewPanel.iconPath = this.context.getResourceUri('thumb.png');
         newWebviewPanel.webview.onDidReceiveMessage(
-            (message: any) => {
+            (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 switch (message.command) {
                 case 'reloadWebview':
                     if (this.webviewPanel !== undefined && this.webviewPanel.Panel === newWebviewPanel && this.context.activeEditor !== undefined) {
