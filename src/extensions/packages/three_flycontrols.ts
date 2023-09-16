@@ -3,14 +3,14 @@
 import { WebviewExtension } from '../webview_extension';
 
 export class ThreeFlyControlsExtension implements WebviewExtension {
-	private getWebviewResourcePath: (relativePath: string) => string;
+    private getWebviewResourcePath: (relativePath: string) => string;
 
-	constructor(getWebviewResourcePath: (relativePath: string) => string) {
-		this.getWebviewResourcePath = getWebviewResourcePath;
-	}
+    constructor(getWebviewResourcePath: (relativePath: string) => string) {
+        this.getWebviewResourcePath = getWebviewResourcePath;
+    }
 
-	public generateContent(): string {
-		return `
+    public generateContent(): string {
+        return `
 <script type="text/javascript">
 const _changeEvent = { type: 'change' };
 
@@ -325,5 +325,5 @@ function contextmenu( event ) {
 }
 </script>
 `;
-	}
+    }
 }

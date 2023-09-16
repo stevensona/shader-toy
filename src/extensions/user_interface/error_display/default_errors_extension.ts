@@ -9,7 +9,7 @@ console.error = function (message) {
     if('7' in arguments) {
         let message = arguments[7].replace(/ERROR: \\d+:(\\d+):\\W(.*)\\n/g, function(match, line, error) {
             let lineNumber = Number(line) - currentShader.LineOffset;
-            let lineHighlight = \`${`<a class='error' unselectable onclick='revealError(\${lineNumber}, "\${currentShader.File}")'>Line \${lineNumber}</a>`}\`;
+            let lineHighlight = \`${'<a class=\'error\' unselectable onclick=\'revealError(${lineNumber}, "${currentShader.File}")\'>Line ${lineNumber}</a>'}\`;
             return \`<li>\${lineHighlight}: \${error}</li>\`;
         });
 

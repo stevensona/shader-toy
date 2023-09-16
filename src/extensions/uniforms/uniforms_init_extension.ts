@@ -13,7 +13,7 @@ export class UniformsInitExtension implements WebviewExtension {
 
     private processBuffers(buffers: Types.BufferDefinition[], startingState: Types.UniformsGuiStartingData) {
         let has_uniforms = false;
-        for (let buffer of buffers) {
+        for (const buffer of buffers) {
             if (buffer.CustomUniforms.length > 0) {
                 has_uniforms = true;
                 break;
@@ -28,27 +28,27 @@ dat_gui_container.appendChild(dat_gui.domElement);
 `;
         }
 
-        for (let i in buffers) {
-            let buffer = buffers[i];
-            let uniforms = buffer.CustomUniforms;
+        for (const i in buffers) {
+            const buffer = buffers[i];
+            const uniforms = buffer.CustomUniforms;
             if (uniforms.length > 0) {
                 this.content += `\
 buffers[${i}].UniformValues = {};
 `;
             }
 
-            for (let uniform of uniforms) {
-                let uniform_values = `buffers[${i}].UniformValues`;
-                let threeType = this.mapArrayToThreeType(uniform.Default);
+            for (const uniform of uniforms) {
+                const uniform_values = `buffers[${i}].UniformValues`;
+                const threeType = this.mapArrayToThreeType(uniform.Default);
 
                 let defaultValue = uniform.Default;
                 if (uniform.Typename === 'color3') {
-                    for (let i in defaultValue) {
+                    for (const i in defaultValue) {
                         defaultValue[i] = defaultValue[i] * 255.0;
                     }
                 }
 
-                let startingValue = startingState.Values.get(uniform.Name);
+                const startingValue = startingState.Values.get(uniform.Name);
                 if (startingValue !== undefined) {
                     defaultValue = startingValue;
                 }
@@ -115,11 +115,11 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     };
     let values = [];
 `;
-            let sub_object = `${object}.${property}`;
+            const sub_object = `${object}.${property}`;
             for (let i = 0; i < value.Default.length; i++) {
-                let sub_value: Types.UniformDefinition = {
+                const sub_value: Types.UniformDefinition = {
                     Name: this.indexToDimension(i),
-                    Typename: value.Typename[0] === 'i' ? "integer" : "float",
+                    Typename: value.Typename[0] === 'i' ? 'integer' : 'float',
                     Default: [ value.Default[i] ],
                     Min: value.Min ? [ value.Min[i] ] : undefined,
                     Max: value.Max ? [ value.Max[i] ] : undefined,
@@ -147,9 +147,9 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     }
     private getRawDatGuiValueString(object: string, property: string, value: Types.UniformDefinition) {
         if (value.Default.length === 1) {
-            let min = value.Min ? `.min(${value.Min})` : '';
-            let max = value.Max ? `.max(${value.Max})` : '';
-            let step = value.Step ? `.step(${value.Step})` : '';
+            const min = value.Min ? `.min(${value.Min})` : '';
+            const max = value.Max ? `.max(${value.Max})` : '';
+            const step = value.Step ? `.step(${value.Step})` : '';
             return `dat_gui.add(${object}, '${property}')${min}${max}${step}`;
         }
         else if (value.Default.length === 3 && !value.Min && !value.Max && !value.Step) {
@@ -158,20 +158,20 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     }
     
     private indexToDimension(index: number) {
-        let dimensionStrings = [ 'x', 'y', 'z', 'w' ];
+        const dimensionStrings = [ 'x', 'y', 'z', 'w' ];
         return dimensionStrings[index];
     }
     private mapArrayToThreeType(value: number[]) {
-        let l = value.length;
+        const l = value.length;
         switch (l) {
-            case 1:
-                return 'number';
-            case 2:
-            case 3:
-            case 4:
-                return `THREE.Vector${l}`;
-            default:
-                return 'THREE.ErrorType';
+        case 1:
+            return 'number';
+        case 2:
+        case 3:
+        case 4:
+            return `THREE.Vector${l}`;
+        default:
+            return 'THREE.ErrorType';
         }
     }
 

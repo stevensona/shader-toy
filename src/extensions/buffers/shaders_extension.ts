@@ -14,11 +14,11 @@ export class ShadersExtension implements WebviewExtension {
     }
 
     private processBuffers(buffers: Types.BufferDefinition[],  preambleExtension: ShaderPreambleExtension, keyboardShaderExtension: KeyboardShaderExtension | undefined) {
-        for (let buffer of buffers) {
+        for (const buffer of buffers) {
             let preamble = preambleExtension.getShaderPreamble();
-            for (let texture of buffer.TextureInputs) {
+            for (const texture of buffer.TextureInputs) {
                 if (texture.Type === Types.TextureType.CubeMap) {
-                    preamble = preamble.replace(`sampler2D   iChannel${texture.Channel}`, `samplerCube iChannel${texture.Channel}`)
+                    preamble = preamble.replace(`sampler2D   iChannel${texture.Channel}`, `samplerCube iChannel${texture.Channel}`);
                 }
             }
             this.content += `\

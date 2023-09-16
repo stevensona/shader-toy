@@ -6,7 +6,7 @@ export class WebviewContent {
     private content: string[];
     
     constructor(originalFile: string) {
-        let rawContent = fs.readFileSync(originalFile, 'utf-8');
+        const rawContent = fs.readFileSync(originalFile, 'utf-8');
         this.content = rawContent.split(/\r?\n/);
     }
 
@@ -18,8 +18,8 @@ export class WebviewContent {
     }
 
     public insertAfterLine(content: string, lineNumber: number) {
-        let indentationAmount = this.content[lineNumber - 1].split(/[^ ]/)[0].length;
-        let indentation = ' '.repeat(indentationAmount);
+        const indentationAmount = this.content[lineNumber - 1].split(/[^ ]/)[0].length;
+        const indentation = ' '.repeat(indentationAmount);
 
         let splitContent = content.split('\n');
         splitContent = splitContent.map((line: string) => indentation + line);

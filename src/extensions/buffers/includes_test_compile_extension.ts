@@ -7,7 +7,7 @@ export class IncludesTestCompileExtension implements WebviewExtension {
         return `\
 // bail if there is an error found in the include script
 if(compileFragShader(gl, document.getElementById(include.Name).textContent) == false) {
-    throw Error(\`Failed to compile $\{include.Name\}\`);
+    throw Error(\`Failed to compile $\{include.Name}\`);
 }`;
     }
 }

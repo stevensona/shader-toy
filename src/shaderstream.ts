@@ -22,19 +22,19 @@ export class ShaderStream {
     }
 
     public mutate(destRangeBegin: number, destRangeEnd: number, source: string) {
-        let preDestContent = this.content.substring(0, destRangeBegin);
-        let destContent = this.content.substring(destRangeBegin, destRangeEnd);
-        let postDestContent = this.content.substring(destRangeEnd);
+        const preDestContent = this.content.substring(0, destRangeBegin);
+        const destContent = this.content.substring(destRangeBegin, destRangeEnd);
+        const postDestContent = this.content.substring(destRangeEnd);
 
-        let destLineNumber = preDestContent.split(/\r\n|\n/).length;
-        let sourceLineCount = source.split(/\r\n|\n/).length;
-        let destLineCount = destContent.split(/\r\n|\n/).length;
+        const destLineNumber = preDestContent.split(/\r\n|\n/).length;
+        const sourceLineCount = source.split(/\r\n|\n/).length;
+        const destLineCount = destContent.split(/\r\n|\n/).length;
 
         if (sourceLineCount !== destLineCount) {
             let preceedingRange: number | undefined = undefined;
             let isInsideExistingRange = false;
-            for (let mutatedRangeIndex in this.mutations) {
-                let mutatedRange = this.mutations[mutatedRangeIndex];
+            for (const mutatedRangeIndex in this.mutations) {
+                const mutatedRange = this.mutations[mutatedRangeIndex];
                 if (mutatedRange.Begin < destLineNumber) {
                     if (mutatedRange.Length > destLineCount) {
                         isInsideExistingRange = true;
@@ -45,7 +45,7 @@ export class ShaderStream {
             }
 
             if (!isInsideExistingRange) {
-                let mutatedRange = {
+                const mutatedRange = {
                     Begin: destLineNumber,
                     Length: sourceLineCount,
                     LinesInOriginal: destLineCount
@@ -63,10 +63,10 @@ export class ShaderStream {
     public reset(position: number) {
         this.position = position;
 
-        let preparsedContent = this.content.substring(0, position).split(/\r\n|\n/);
+        const preparsedContent = this.content.substring(0, position).split(/\r\n|\n/);
         this.currentLine = preparsedContent.length;
         this.currentColumn = 0;
-        let currentLineBegin = preparsedContent.pop();
+        const currentLineBegin = preparsedContent.pop();
         if (currentLineBegin) {
             this.currentColumn = this.position - currentLineBegin.length;
         }
@@ -76,7 +76,7 @@ export class ShaderStream {
         return this.content[this.position + ahead];
     }
     public next(): string {
-        let ret = this.content[this.position];
+        const ret = this.content[this.position];
         this.position++;
         this.currentColumn++;
         if (ret === '\n' || ret === '\r\n') {
@@ -96,7 +96,7 @@ export class ShaderStream {
     }
     public originalLine(): number {
         let originalLine = this.currentLine;
-        for (let mutatedRange of this.mutations) {
+        for (const mutatedRange of this.mutations) {
             if (mutatedRange.Begin < originalLine) {
                 originalLine -= mutatedRange.Length - mutatedRange.LinesInOriginal;
             }
@@ -114,8 +114,8 @@ export class ShaderStream {
     }
 
     public getCurrentLine(): string {
-        let lineFirstHalf = this.content.substring(0, this.position).split(/\r\n|\n/).pop() || '';
-        let lineSecondHalf = this.content.substring(this.position).split(/\r\n|\n/)[0] || '';
+        const lineFirstHalf = this.content.substring(0, this.position).split(/\r\n|\n/).pop() || '';
+        const lineSecondHalf = this.content.substring(this.position).split(/\r\n|\n/)[0] || '';
         return lineFirstHalf + lineSecondHalf;
     }
 }

@@ -29,25 +29,25 @@ export class RenderStartingData {
 }
 
 export enum TextureMagFilter {
-    Linear  = "Linear",
-    Nearest = "Nearest",
+    Linear  = 'Linear',
+    Nearest = 'Nearest',
 }
 export enum TextureMinFilter {
-    Nearest                 = "Nearest",
-    NearestMipMapNearest    = "NearestMipMapNearest",
-    NearestMipMapLinear     = "NearestMipMapLinear",
-    Linear                  = "Linear",
-    LinearMipMapNearest     = "LinearMipMapNearest",
-    LinearMipMapLinear      = "LinearMipMapLinear",
+    Nearest                 = 'Nearest',
+    NearestMipMapNearest    = 'NearestMipMapNearest',
+    NearestMipMapLinear     = 'NearestMipMapLinear',
+    Linear                  = 'Linear',
+    LinearMipMapNearest     = 'LinearMipMapNearest',
+    LinearMipMapLinear      = 'LinearMipMapLinear',
 }
 export enum TextureWrapMode {
-    Repeat  = "Repeat",
-    Clamp   = "Clamp",
-    Mirror  = "Mirror",
+    Repeat  = 'Repeat',
+    Clamp   = 'Clamp',
+    Mirror  = 'Mirror',
 }
 export enum TextureType {
-    Texture2D   = "Texture2D",
-    CubeMap     = "CubeMap",
+    Texture2D   = 'Texture2D',
+    CubeMap     = 'CubeMap',
 }
 
 export type TextureDefinition = {

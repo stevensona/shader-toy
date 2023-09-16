@@ -36,7 +36,7 @@ export class WebviewContentAssembler {
         let lineNumber = 1;
         for (let line of this.webviewContent.getLines()) {
             line = line.trim();
-            let lines = this.webviewContentLineMappings.get(line);
+            const lines = this.webviewContentLineMappings.get(line);
             if (lines !== undefined) {
                 lines.push(lineNumber);
             }
@@ -48,16 +48,16 @@ export class WebviewContentAssembler {
     }
 
     public addWebviewModule(extension: WebviewExtension, originalLine: string) {
-        let insertModule: InsertModule = {
+        const insertModule: InsertModule = {
             Type: ModuleType.Insert,
             Extension: extension
         };
 
         originalLine = originalLine.trim();
-        let lines = this.webviewContentLineMappings.get(originalLine);
+        const lines = this.webviewContentLineMappings.get(originalLine);
         if (lines !== undefined) {
-            for (let lineNumber of lines) {
-                let webviewModule: WebviewModule = {
+            for (const lineNumber of lines) {
+                const webviewModule: WebviewModule = {
                     Module: insertModule,
                     LineNumber: lineNumber
                 };
@@ -67,17 +67,17 @@ export class WebviewContentAssembler {
     }
 
     public addReplaceModule(extension: WebviewExtension, originalLine: string, replaceContent: string) {
-        let replaceModule: ReplaceModule = {
+        const replaceModule: ReplaceModule = {
             Type: ModuleType.Replace,
             ReplaceContent: replaceContent,
             Extension: extension
         };
 
         originalLine = originalLine.trim();
-        let lines = this.webviewContentLineMappings.get(originalLine);
+        const lines = this.webviewContentLineMappings.get(originalLine);
         if (lines !== undefined) {
-            for (let lineNumber of lines) {
-                let webviewModule: WebviewModule = {
+            for (const lineNumber of lines) {
+                const webviewModule: WebviewModule = {
                     Module: replaceModule,
                     LineNumber: lineNumber
                 };
@@ -87,7 +87,7 @@ export class WebviewContentAssembler {
     }
 
     private insertModule(webviewModule: WebviewModule) {
-        let sortedIndex = this.webviewModules.findIndex((module: WebviewModule) => module.LineNumber < webviewModule.LineNumber);
+        const sortedIndex = this.webviewModules.findIndex((module: WebviewModule) => module.LineNumber < webviewModule.LineNumber);
         if (sortedIndex < 0) {
             this.webviewModules.push(webviewModule);    
         }
@@ -97,7 +97,7 @@ export class WebviewContentAssembler {
     }
 
     public assembleWebviewContent() {
-        for (let webviewModule of this.webviewModules) {
+        for (const webviewModule of this.webviewModules) {
             if (webviewModule.Module.Type === ModuleType.Insert) {
                 this.webviewContent.insertAfterLine(webviewModule.Module.Extension.generateContent(), webviewModule.LineNumber);
             }

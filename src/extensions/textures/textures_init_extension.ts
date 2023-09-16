@@ -5,7 +5,6 @@ import { Context } from '../../context';
 import { WebviewExtension } from '../webview_extension';
 import { TextureExtensionExtension } from '../textures/texture_extension_extension';
 import { DiagnosticSeverity } from 'vscode';
-import * as path from 'path';
 import * as fs from 'fs';
 
 export class TexturesInitExtension implements WebviewExtension {
@@ -20,7 +19,7 @@ export class TexturesInitExtension implements WebviewExtension {
     }
 
     private async processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
-        let convertMagFilter = (mag: Types.TextureMagFilter | undefined) => {
+        const convertMagFilter = (mag: Types.TextureMagFilter | undefined) => {
             switch(mag) {
             case Types.TextureMagFilter.Nearest:
                 return 'THREE.NearestFilter';
@@ -29,24 +28,24 @@ export class TexturesInitExtension implements WebviewExtension {
                 return 'THREE.LinearFilter';
             }
         };
-        let convertMinFilter = (min: Types.TextureMinFilter | undefined) => {
+        const convertMinFilter = (min: Types.TextureMinFilter | undefined) => {
             switch(min) {
-                case Types.TextureMinFilter.Nearest:
-                    return'THREE.NearestFilter';
-                case Types.TextureMinFilter.NearestMipMapNearest:
-                    return'THREE.NearestMipmapNearestFilter';
-                case Types.TextureMinFilter.NearestMipMapLinear:
-                    return'THREE.NearestMipmapLinearFilter';
-                case Types.TextureMinFilter.Linear:
-                default:
-                    return'THREE.LinearFilter';
-                case Types.TextureMinFilter.LinearMipMapNearest:
-                    return'THREE.LinearMipmapNearestFilter';
-                case Types.TextureMinFilter.LinearMipMapLinear:
-                    return'THREE.LinearMipmapLinearFilter';
+            case Types.TextureMinFilter.Nearest:
+                return'THREE.NearestFilter';
+            case Types.TextureMinFilter.NearestMipMapNearest:
+                return'THREE.NearestMipmapNearestFilter';
+            case Types.TextureMinFilter.NearestMipMapLinear:
+                return'THREE.NearestMipmapLinearFilter';
+            case Types.TextureMinFilter.Linear:
+            default:
+                return'THREE.LinearFilter';
+            case Types.TextureMinFilter.LinearMipMapNearest:
+                return'THREE.LinearMipmapNearestFilter';
+            case Types.TextureMinFilter.LinearMipMapLinear:
+                return'THREE.LinearMipmapLinearFilter';
             }
         };
-        let convertWrapMode = (wrap: Types.TextureWrapMode | undefined) => {
+        const convertWrapMode = (wrap: Types.TextureWrapMode | undefined) => {
             switch(wrap) {
             case Types.TextureWrapMode.Clamp:
                 return 'THREE.ClampToEdgeWrapping';
@@ -58,14 +57,14 @@ export class TexturesInitExtension implements WebviewExtension {
             }
         };
 
-        let textureOnLoadScript = (texture: Types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
-            let magFilter = convertMagFilter(texture.Mag);
-            let minFilter = convertMinFilter(texture.Min);
-            let wrapMode = convertWrapMode(texture.Wrap);
+        const textureOnLoadScript = (texture: Types.TextureDefinition, bufferIndex: number, textureChannel: number) => {
+            const magFilter = convertMagFilter(texture.Mag);
+            const minFilter = convertMinFilter(texture.Min);
+            const wrapMode = convertWrapMode(texture.Wrap);
 
-            let textureFileOrigin = texture.File;
-            let hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
-            let powerOfTwoWarning = `\
+            const textureFileOrigin = texture.File;
+            const hasCustomSettings = texture.MagLine !== undefined || texture.MinLine !== undefined || texture.WrapLine !== undefined || textureFileOrigin !== undefined;
+            const powerOfTwoWarning = `\
 function isPowerOfTwo(n) {
     return n && (n & (n - 1)) === 0;
 };
@@ -75,17 +74,17 @@ if (!isPowerOfTwo(texture.image.width) || !isPowerOfTwo(texture.image.height)) {
             line: ${texture.MagLine},
             message: 'Texture is not power of two, custom texture settings may not work.'
         });` : ''
-    }
+}
     ${texture.MinLine !== undefined ? `diagnostics.push({
             line: ${texture.MinLine},
             message: 'Texture is not power of two, custom texture settings may not work.'
         });` : ''
-    }
+}
     ${texture.WrapLine !== undefined ? `diagnostics.push({
             line: ${texture.WrapLine},
             message: 'Texture is not power of two, custom texture settings may not work.'
         });` : ''
-    }
+}
     let diagnosticBatch = {
         filename: '${textureFileOrigin}',
         diagnostics: diagnostics
@@ -111,7 +110,7 @@ function(texture) {
     texture.wrapT = ${wrapMode};
 }`;
         };
-        let makeTextureLoadErrorScript = (filename: string) => { 
+        const makeTextureLoadErrorScript = (filename: string) => { 
             return `\
 function(err) {
     console.log(err);
@@ -124,10 +123,10 @@ function(err) {
 }`;
         };
 
-        for (let i in buffers) {
+        for (const i in buffers) {
             const buffer = buffers[i];
             const textures =  buffer.TextureInputs;
-            for (let texture of textures) {
+            for (const texture of textures) {
                 const channel = texture.Channel;
 
                 const textureBufferIndex = texture.BufferIndex;
@@ -136,7 +135,7 @@ function(err) {
 
                 if (texture.Type !== undefined && texture.Type === Types.TextureType.CubeMap) {
                     if (localPath === undefined || (localPath.match(/{}/g) || []).length !== 1) {
-                        let diagnosticBatch: Types.DiagnosticBatch = {
+                        const diagnosticBatch: Types.DiagnosticBatch = {
                             filename: texture.File,
                             diagnostics: [{
                                 line: texture.TypeLine || 0,
@@ -147,10 +146,10 @@ function(err) {
                         continue;
                     }
 
-                    let getTexturesFromPrefixes = async (pattern: string, prefixes: [string, string, string, string, string, string]) => {
-                        let textures = [];
-                        for (let dir of prefixes) {
-                            let directionFile = pattern.replace('{}', dir);
+                    const getTexturesFromPrefixes = async (pattern: string, prefixes: [string, string, string, string, string, string]) => {
+                        const textures = [];
+                        for (const dir of prefixes) {
+                            const directionFile = pattern.replace('{}', dir);
                             try {
                                 await fs.promises.access(directionFile);
                             }
@@ -162,7 +161,7 @@ function(err) {
                         return textures;
                     };
 
-                    let possiblePrefixes: [string, string, string, string, string, string][] = [
+                    const possiblePrefixes: [string, string, string, string, string, string][] = [
                         ['e', 'w', 'u', 'd', 'n', 's'],
                         ['east', 'west', 'up', 'down', 'north', 'south'],
                         ['px', 'nx', 'py', 'ny', 'pz', 'nz'],
@@ -170,7 +169,7 @@ function(err) {
                     ];
 
                     let textures: string[] | undefined = undefined;
-                    for (let prefixes of possiblePrefixes) {
+                    for (const prefixes of possiblePrefixes) {
                         textures = await getTexturesFromPrefixes(localPath, prefixes);
                         if (textures !== undefined) {
                             break;
@@ -178,11 +177,11 @@ function(err) {
                     }
 
                     if (textures === undefined) {
-                        let diagnosticBatch: Types.DiagnosticBatch = {
+                        const diagnosticBatch: Types.DiagnosticBatch = {
                             filename: texture.File,
                             diagnostics: [{
                                 line: texture.TypeLine || 0,
-                                message: `Could not find all cubemap files for the given path with wildcard.`
+                                message: 'Could not find all cubemap files for the given path with wildcard.'
                             }]
                         };
                         context.showDiagnostics(diagnosticBatch, DiagnosticSeverity.Error);
@@ -190,7 +189,7 @@ function(err) {
                     }
 
                     textures = textures.map((texture: string) => { return  makeAvailableResource(texture); });
-                    let textureLoadScript = `new THREE.CubeTextureLoader().load([ "${textures.join('", "')}" ], ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(localPath)})`;
+                    const textureLoadScript = `new THREE.CubeTextureLoader().load([ "${textures.join('", "')}" ], ${textureOnLoadScript(texture, Number(i), channel)}, undefined, ${makeTextureLoadErrorScript(localPath)})`;
                 
                     this.content += `\
 buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${textureLoadScript} };`;
@@ -199,9 +198,9 @@ buffers[${i}].Shader.uniforms.iChannel${channel} = { type: 't', value: ${texture
                     let textureLoadScript: string | undefined;
                     let textureSizeScript: string = 'null';
                     if (textureBufferIndex !== undefined) {
-                        let magFilter = convertMagFilter(texture.Mag);
-                        let minFilter = convertMinFilter(texture.Min);
-                        let wrapMode = convertWrapMode(texture.Wrap);
+                        const magFilter = convertMagFilter(texture.Mag);
+                        const minFilter = convertMinFilter(texture.Min);
+                        const wrapMode = convertWrapMode(texture.Wrap);
             
                         textureLoadScript = `\
 (() => {

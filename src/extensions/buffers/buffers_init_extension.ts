@@ -12,7 +12,7 @@ export class BuffersInitExtension implements WebviewExtension {
     }
 
     private processBuffers(buffers: Types.BufferDefinition[]) {
-        for (let buffer of buffers) {
+        for (const buffer of buffers) {
             // Create a RenderTarget for all but the final buffer
             let target = 'null';
             let pingPongTarget = 'null';
