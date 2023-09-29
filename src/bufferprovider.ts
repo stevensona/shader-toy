@@ -313,10 +313,18 @@ void main() {
         }
 
         if (this.context.getConfig<boolean>('enableGlslifySupport')) {
+            let baseDir = path.dirname(rootFile);
+            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0)
+            {
+                baseDir = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            }
+
+            this.showInformationAtLine(file, `Using root path '${baseDir}' for glslify`, 0);
+
             // glslify the code
             const glsl = require('glslify'); // eslint-disable-line @typescript-eslint/no-var-requires
             try {
-                code = glsl(code);
+                code = glsl.compile(code, {basedir: baseDir});
             }
             catch (e) {
                 vscode.window.showErrorMessage((e as Error).message);
