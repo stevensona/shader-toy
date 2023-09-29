@@ -176,6 +176,10 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.11.3
+* Added option to reload on save,
+* fixed a bug where glslify would never find modules.
+
 ### 0.11.2
 * Added free fly controls,
 * fixed a bug that would result in recording the frame time panel.
