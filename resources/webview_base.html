@@ -431,10 +431,14 @@
     }
     function computeSize() {
         
+        let forcedResolutions = [<!-- Forced Resolution -->];
+        let zoom = forcedResolutions[0] > 0 ? 1.0/window.devicePixelRatio : 1.0;
+        canvas.style.zoom = zoom;
+
         // Compute forced aspect ratio and align canvas
         resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
-        canvas.style.left = `${(window.innerWidth - resolution.x) / 2}px`;
-        canvas.style.top = `${(window.innerHeight - resolution.y) / 2}px`;
+        canvas.style.left = `${(window.innerWidth - resolution.x*zoom) / 2}px`;
+        canvas.style.top = `${(window.innerHeight - resolution.y*zoom) / 2}px`;
 
         for (let buffer of buffers) {
             if (buffer.Target) {
