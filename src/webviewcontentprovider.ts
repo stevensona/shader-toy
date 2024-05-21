@@ -73,6 +73,7 @@ import { RecordVideoContainerExtension } from './extensions/user_interface/recor
 import { RecordVideoCodecExtension } from './extensions/user_interface/record_video_codec_extension';
 import { RecordVideoBitRateExtension } from './extensions/user_interface/record_video_bit_rate_extension';
 import { RecordMaxDurationExtension } from './extensions/user_interface/record_max_duration_extension';
+import { RecordOfflineFormatExtension } from './extensions/user_interface/record_offline_format_extension';
 import { RecordOfflineQualityExtension } from './extensions/user_interface/record_offline_quality_extension';
 
 export class WebviewContentProvider {
@@ -421,6 +422,10 @@ export class WebviewContentProvider {
         const recordMaxDuration = this.context.getConfig<number>('recordMaxDuration') || 0;
         const recordMaxDurationExtension = new RecordMaxDurationExtension(recordMaxDuration);
         this.webviewAssembler.addReplaceModule(recordMaxDurationExtension, 'let maxDuration = <!-- Record Max Duration -->;', '<!-- Record Max Duration -->');
+
+        const recordOfflineFormat = this.context.getConfig<string>('recordOfflineFormat') || "webm";
+        const recordOfflineFormatExtension = new RecordOfflineFormatExtension(recordOfflineFormat);
+        this.webviewAssembler.addReplaceModule(recordOfflineFormatExtension, 'let format = <!-- Record Offline Format -->;', '<!-- Record Offline Format -->');
 
         const recordOfflineQuality = this.context.getConfig<number>('recordOfflineQuality') || 80;
         const recordOfflineQualityExtension = new RecordOfflineQualityExtension(recordOfflineQuality);

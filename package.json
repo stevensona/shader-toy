@@ -154,10 +154,15 @@
                     "default": false,
                     "description": "Enable high-quality offline recording."
                 },
+                "shader-toy.recordOfflineFormat": {
+                    "type": "string",
+                    "default": "webm",
+                    "description": "Offline recording quality. Possible value are webm, gif, png and jpg."
+                },
                 "shader-toy.recordOfflineQuality": {
                     "type": "number",
                     "default": 80,
-                    "description": "Offline recording quality. Applies when format is webm or jpg."
+                    "description": "Offline recording format. 0 is lowest and 100 highest. Applies when format is webm or jpg."
                 },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",

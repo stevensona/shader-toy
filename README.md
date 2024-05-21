@@ -175,7 +175,8 @@ The default is real-time rendering to activate offline rendering set `shader-toy
 
 ### Offline rendering parameters
 
-* `shader-toy.recordOfflineQuality`: Offline recording quality. Applies when format is webm or jpg.
+* `shader-toy.recordOfflineFormat`: Offline recording format. Possible value are `webm`, `gif`, `png` and `jpg`. PNG and JPEG images are individual images packaged in a .tar archive.
+* `shader-toy.recordOfflineQuality`: Offline recording quality. 0 is lowest and 100 highest. Applies when format is `webm` or `jpg`.
 
 ## Requirements
 
@@ -208,6 +209,7 @@ Contributions of any kind are welcome and encouraged.
 * Fixed the `shader-toy.recordTargetFramerate` setting.
 * Moved the Stats widget to the bottom left, so it doesn't overlap with the GUI.
 * Added `shader-toy.recordOffline` to switch between real-time and offline rendering.
+* Added `shader-toy.recordOfflineFormat`. Used in conjunction with `shader-toy.recordOffline`
 * Added `shader-toy.recordOfflineQuality`. Used in conjunction with `shader-toy.recordOffline`
 
 ### 0.11.3

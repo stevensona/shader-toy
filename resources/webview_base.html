@@ -503,11 +503,12 @@
 
             let maxDuration = <!-- Record Max Duration -->;
             let targetFrameRate = <!-- Record Target Framerate -->;
+            let format = <!-- Record Offline Format -->;
             let quality = <!-- Record Offline Quality -->;
 
             offlineRecording = true;
             recorder = new CCapture( {
-                format: 'webm',
+                format: format,
                 quality: quality,
                 timeLimit: maxDuration,
                 framerate: targetFrameRate,
