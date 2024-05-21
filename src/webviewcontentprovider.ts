@@ -15,6 +15,7 @@ import { InitialFlyControlPositionExtension } from './extensions/initial_fly_con
 import { InitialFlyControlRotationExtension } from './extensions/initial_fly_control_rotation_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
+import { ForcedResolutionExtension } from './extensions/forced_resolution_extension';
 import { ForcedScreenshotResolutionExtension } from './extensions/forced_screenshot_resolution_extension';
 
 import { ShaderPreambleExtension } from './extensions/preamble_extension';
@@ -217,6 +218,13 @@ export class WebviewContentProvider {
         }
         const forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
         this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
+
+        let forcedResolution = this.context.getConfig<[number, number]>('forceResolution');
+        if (forcedResolution === undefined) {
+            forcedResolution = [-1, -1];
+        }
+        const forcedResolutionExtension = new ForcedResolutionExtension(forcedResolution);
+        this.webviewAssembler.addReplaceModule(forcedResolutionExtension, 'let forcedResolutions = [<!-- Forced Resolution -->];', '<!-- Forced Resolution -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard

@@ -37,6 +37,22 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
+                "shader-toy.forceResolution": {
+                    "type": "array",
+                    "items": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "default": [
+                        0,
+                        0
+                    ],
+                    "description": "Force the rendering into a specific resolution. Set either to zero or negative to ignore."
+                },
                 "shader-toy.showCompileErrorsAsDiagnostics": {
                     "type": "boolean",
                     "default": true,
