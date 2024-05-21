@@ -497,14 +497,15 @@
         }
     }
     function recordCCapture() {
+        let maxDuration = <!-- Record Max Duration -->;
+        let targetFrameRate = <!-- Record Target Framerate -->;
+        let format = <!-- Record Offline Format -->;
+        let quality = <!-- Record Offline Quality -->;
+        let extension = format == "png" || format == "jpg" ? "tar" : format;
+
         let recordButton = document.getElementById("record");
         if (recorder == null) {
             recordButton.classList.add('recording');
-
-            let maxDuration = <!-- Record Max Duration -->;
-            let targetFrameRate = <!-- Record Target Framerate -->;
-            let format = <!-- Record Offline Format -->;
-            let quality = <!-- Record Offline Quality -->;
 
             offlineRecording = true;
             recorder = new CCapture( {
@@ -523,7 +524,7 @@
                 let a = document.createElement('a');
                 let url = URL.createObjectURL(blob);
                 a.href = url;
-                a.download = `shadertoy.webm`;
+                a.download = `shadertoy.${extension}`;
                 a.click();
             } );
             recorder = null;
