@@ -129,6 +129,11 @@
                     "default": 30,
                     "description": "Framerate that is targeted when using the record button."
                 },
+                "shader-toy.recordVideoBitRate": {
+                    "type": "number",
+                    "default": 2500000,
+                    "description": "Video encoding bit rate."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,

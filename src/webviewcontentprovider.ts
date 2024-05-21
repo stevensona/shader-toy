@@ -68,6 +68,7 @@ import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamb
 
 import { removeDuplicates } from './utility';
 import { RecordTargetFramerateExtension } from './extensions/user_interface/record_target_framerate_extension';
+import { RecordVideoBitRateExtension } from './extensions/user_interface/record_video_bit_rate_extension';
 
 export class WebviewContentProvider {
     private context: Context;
@@ -395,6 +396,10 @@ export class WebviewContentProvider {
         const recordTargetFramerate = this.context.getConfig<number>('shader-toy.recordTargetFramerate') || 30;
         const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
         this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let stream = canvas.captureStream(<!-- Record Target Framerate -->);', '<!-- Record Target Framerate -->');
+
+        const recordVideoBitRate = this.context.getConfig<number>('recordVideoBitRate') || 2500000;
+        const recordVideoBitRateExtension = new RecordVideoBitRateExtension(recordVideoBitRate);
+        this.webviewAssembler.addReplaceModule(recordVideoBitRateExtension, 'videoBitsPerSecond: <!-- Record Video Bit Rate -->,', '<!-- Record Video Bit Rate -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Reload Logic

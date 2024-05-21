@@ -490,6 +490,7 @@
             let stream = canvas.captureStream(<!-- Record Target Framerate -->);
             let recorderOptions = {
                 mimeType: "video/webm"
+                videoBitsPerSecond: <!-- Record Video Bit Rate -->,
             };
             recorder = new MediaRecorder(stream, recorderOptions);
             recorder.start();
