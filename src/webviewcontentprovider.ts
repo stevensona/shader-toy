@@ -393,7 +393,7 @@ export class WebviewContentProvider {
         const forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
 
-        const recordTargetFramerate = this.context.getConfig<number>('shader-toy.recordTargetFramerate') || 30;
+        const recordTargetFramerate = this.context.getConfig<number>('recordTargetFramerate') || 30;
         const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
         this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let stream = canvas.captureStream(<!-- Record Target Framerate -->);', '<!-- Record Target Framerate -->');
 
