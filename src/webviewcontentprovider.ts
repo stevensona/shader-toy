@@ -71,6 +71,7 @@ import { RecordTargetFramerateExtension } from './extensions/user_interface/reco
 import { RecordVideoContainerExtension } from './extensions/user_interface/record_video_container_extension';
 import { RecordVideoCodecExtension } from './extensions/user_interface/record_video_codec_extension';
 import { RecordVideoBitRateExtension } from './extensions/user_interface/record_video_bit_rate_extension';
+import { RecordMaxDurationExtension } from './extensions/user_interface/record_max_duration_extension';
 
 export class WebviewContentProvider {
     private context: Context;
@@ -410,6 +411,10 @@ export class WebviewContentProvider {
         const recordVideoBitRate = this.context.getConfig<number>('recordVideoBitRate') || 2500000;
         const recordVideoBitRateExtension = new RecordVideoBitRateExtension(recordVideoBitRate);
         this.webviewAssembler.addReplaceModule(recordVideoBitRateExtension, 'videoBitsPerSecond: <!-- Record Video Bit Rate -->,', '<!-- Record Video Bit Rate -->');
+
+        const recordMaxDuration = this.context.getConfig<number>('recordMaxDuration') || 0;
+        const recordMaxDurationExtension = new RecordMaxDurationExtension(recordMaxDuration);
+        this.webviewAssembler.addReplaceModule(recordMaxDurationExtension, 'let maxDuration = <!-- Record Max Duration -->;', '<!-- Record Max Duration -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Reload Logic

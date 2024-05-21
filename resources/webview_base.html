@@ -235,6 +235,7 @@
     let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);
     let frameCounter = 0;
     let recorder = null;
+    let recordingTimeout = null;
 
     // Audio Init
     // Audio Resume
@@ -484,11 +485,16 @@
     }
     function recordAction() {
         let recordButton = document.getElementById("record");
+        if (recordingTimeout != null) {
+            clearTimeout(recordingTimeout);
+            recordingTimeout = null;
+        }
         if (recorder == null) {
             recordButton.classList.add('recording');
 
             let videoContainer = <!-- Record Video Container -->;
             let videoCodec = <!-- Record Video Codec -->;
+            let maxDuration = <!-- Record Max Duration -->;
 
             let stream = canvas.captureStream(<!-- Record Target Framerate -->);
             let recorderOptions = {
@@ -504,6 +510,15 @@
                 a.download = `shadertoy.${videoContainer}`;
                 a.click();
             };
+
+            if (maxDuration > 0) {
+                recordingTimeout = setTimeout(() => {
+                    recordButton.classList.remove('recording');
+                    recorder.stop();
+                    recorder = null;
+                    recordingTimeout = null;
+                }, maxDuration*1000);
+            }
         }
         else {
             recordButton.classList.remove('recording');

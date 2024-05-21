@@ -144,6 +144,11 @@
                     "default": 2500000,
                     "description": "Video encoding bit rate in bits/seconds."
                 },
+                "shader-toy.recordMaxDuration": {
+                    "type": "number",
+                    "default": 0,
+                    "description": "Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,
