@@ -157,8 +157,8 @@ The extension also supports highlighting of compilation errors in the text edito
 ## Recording Capabilities
 The following settings allow to configure recording quality
 * `shader-toy.forceResolution`: Set canvas resolution, this will also set the resolution of the recorded video file. By default, the canvas will stretch to fill the entire window.
-* `shader-toy.recordVideoContainer`: Set the video file container. Currently only `webm`is supported, but `mp4`support is coming [soon](https://chromestatus.com/feature/5163469011943424).
-* `shader-toy.recordVideoCodec`: Set video codec. `vp8`, `vp9`, `h264`and `avc1`are all supported. Default it `vp8`.
+* `shader-toy.recordVideoContainer`: Set the video file container. Currently only `webm` is supported, but `mp4`support is coming [soon](https://chromestatus.com/feature/5163469011943424).
+* `shader-toy.recordVideoCodec`: Set video codec. `vp8`, `vp9`, `h264` and `avc1` are all supported. Default it `vp8`.
 * `shader-toy.recordVideoBitRate`: Set recording bit rate in bits/second. Default is 2500000.
 * `shader-toy.recordTargetFramerate`: Set recording target frame-rate. Default is 30fps.
 
