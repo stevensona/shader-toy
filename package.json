@@ -129,6 +129,16 @@
                     "default": 30,
                     "description": "Framerate that is targeted when using the record button."
                 },
+                "shader-toy.recordVideoContainer": {
+                    "type": "string",
+                    "default": "webm",
+                    "description": "Video file container."
+                },
+                "shader-toy.recordVideoCodec": {
+                    "type": "string",
+                    "default": "vp8",
+                    "description": "Video codec."
+                },
                 "shader-toy.recordVideoBitRate": {
                     "type": "number",
                     "default": 2500000,

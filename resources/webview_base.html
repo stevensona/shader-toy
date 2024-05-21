@@ -487,10 +487,13 @@
         if (recorder == null) {
             recordButton.classList.add('recording');
 
+            let videoContainer = <!-- Record Video Container -->;
+            let videoCodec = <!-- Record Video Codec -->;
+
             let stream = canvas.captureStream(<!-- Record Target Framerate -->);
             let recorderOptions = {
-                mimeType: "video/webm"
                 videoBitsPerSecond: <!-- Record Video Bit Rate -->,
+                mimeType: `video/${videoContainer};codecs=${videoCodec}`
             };
             recorder = new MediaRecorder(stream, recorderOptions);
             recorder.start();
@@ -498,7 +501,7 @@
                 let a = document.createElement('a');
                 let url = URL.createObjectURL(evt.data);
                 a.href = url;
-                a.download = 'shadertoy.webm';
+                a.download = `shadertoy.${videoContainer}`;
                 a.click();
             };
         }
