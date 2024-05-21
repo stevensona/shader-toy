@@ -155,13 +155,27 @@ The extension also supports highlighting of compilation errors in the text edito
 ![error example](https://raw.githubusercontent.com/stevensona/shader-toy/master/images/example3.png)
 
 ## Recording Capabilities
-The following settings allow to configure recording quality
+Two rendering modes are supported:
+* Realtime rendering: suitable for previews and scenarios where real-time interaction with the visuals are required. As with all real-time video capture, frame drops might occur, especially on lower spec hardware or when rendering very complex visuals.
+* Offline rendering: suitable for production-grade rendering. Each frame is rendered sequentially without any drops.
+
+The default is real-time rendering to activate offline rendering set `shader-toy.recordOffline`to true.
+
+### Shared parameters
+
 * `shader-toy.forceResolution`: Set canvas resolution, this will also set the resolution of the recorded video file. By default, the canvas will stretch to fill the entire window.
+* `shader-toy.recordTargetFramerate`: Set recording target frame-rate. Default is 30fps.
+* `shader-toy.recordMaxDuration`: Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again.
+
+### Real-time Rendering parameters
+
 * `shader-toy.recordVideoContainer`: Set the video file container. Currently only `webm` is supported, but `mp4`support is coming [soon](https://chromestatus.com/feature/5163469011943424).
 * `shader-toy.recordVideoCodec`: Set video codec. `vp8`, `vp9`, `h264` and `avc1` are all supported. Default it `vp8`.
 * `shader-toy.recordVideoBitRate`: Set recording bit rate in bits/second. Default is 2500000.
-* `shader-toy.recordTargetFramerate`: Set recording target frame-rate. Default is 30fps.
-* `shader-toy.recordMaxDuration`: Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again.
+
+### Offline rendering parameters
+
+* `shader-toy.recordOfflineQuality`: Offline recording quality. Applies when format is webm or jpg.
 
 ## Requirements
 
@@ -186,13 +200,15 @@ Contributions of any kind are welcome and encouraged.
 ## Release Notes
 
 ### 0.11.4
-* Added `shader-toy.forceResolution` (force canvas resolution),
-* Added `shader-toy.recordVideoContainer` (set video file container),
-* Added `shader-toy.recordVideoCodec` (set video codec),
-* Added `shader-toy.recordVideoBitRate` (set recording bit rate),
-* Added `shader-toy.recordMaxDuration` (set maximum recording duration),
-* Fixed the `shader-toy.recordTargetFramerate` setting,
+* Added `shader-toy.forceResolution` (force canvas resolution).
+* Added `shader-toy.recordVideoContainer` (set video file container).
+* Added `shader-toy.recordVideoCodec` (set video codec).
+* Added `shader-toy.recordVideoBitRate` (set recording bit rate).
+* Added `shader-toy.recordMaxDuration` (set maximum recording duration).
+* Fixed the `shader-toy.recordTargetFramerate` setting.
 * Moved the Stats widget to the bottom left, so it doesn't overlap with the GUI.
+* Added `shader-toy.recordOffline` to switch between real-time and offline rendering.
+* Added `shader-toy.recordOfflineQuality`. Used in conjunction with `shader-toy.recordOffline`
 
 ### 0.11.3
 * Added option to reload on save,
