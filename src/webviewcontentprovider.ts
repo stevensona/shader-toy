@@ -30,6 +30,7 @@ import { ThreeExtension } from './extensions/packages/three_extension';
 import { ThreeFlyControlsExtension } from './extensions/packages/three_flycontrols';
 import { StatsExtension } from './extensions/packages/stats_extension';
 import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
+import { CCaptureExtension } from './extensions/packages/ccapture_extension';
 
 import { PauseButtonStyleExtension } from './extensions/user_interface/pause_button_style_extension';
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
@@ -348,6 +349,10 @@ export class WebviewContentProvider {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
         }
+        if (this.context.getConfig<boolean>('recordOffline')) {
+            const ccaptureExtension = new CCaptureExtension(getWebviewResourcePath, generateStandalone);
+            this.webviewAssembler.addWebviewModule(ccaptureExtension, '<!-- CCapture.js -->');
+        }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Pause Logic
@@ -398,7 +403,7 @@ export class WebviewContentProvider {
 
         const recordTargetFramerate = this.context.getConfig<number>('recordTargetFramerate') || 30;
         const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
-        this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let stream = canvas.captureStream(<!-- Record Target Framerate -->);', '<!-- Record Target Framerate -->');
+        this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let targetFrameRate = <!-- Record Target Framerate -->;', '<!-- Record Target Framerate -->');
 
         const recordVideoContainer = this.context.getConfig<string>('recordVideoContainer') || "webm";
         const recordVideoContainerExtension = new RecordVideoContainerExtension(recordVideoContainer);

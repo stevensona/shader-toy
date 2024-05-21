@@ -149,6 +149,11 @@
                     "default": 0,
                     "description": "Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again."
                 },
+                "shader-toy.recordOffline": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable high-quality offline recording."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,
