@@ -137,6 +137,7 @@
                 "shader-toy.recordVideoCodec": {
                     "type": "string",
                     "default": "vp8",
+                    "enum": ["vp8", "vp9", "h264", "avc1"],
                     "description": "Video codec. vp8, vp9, h264 and avc1 are all supported. Default it vp8."
                 },
                 "shader-toy.recordVideoBitRate": {
