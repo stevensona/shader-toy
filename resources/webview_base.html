@@ -410,12 +410,6 @@
         let forcedAspectRatio = forcedAspects[0] / forcedAspects[1];
         let aspectRatio = width / height;
 
-        let forcedResolutions = [<!-- Forced Resolution -->];
-        if (forcedResolutions[0] > 0 && forcedResolutions[1] > 0)
-        {
-            return new THREE.Vector3(forcedResolutions[0], forcedResolutions[1], 1); 
-        }
-
         if (forcedAspectRatio <= 0 || !isFinite(forcedAspectRatio)) {
             let resolution = new THREE.Vector3(width, height, 1.0);
             return resolution;

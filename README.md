@@ -163,7 +163,6 @@ The default is real-time rendering to activate offline rendering set `shader-toy
 
 ### Shared parameters
 
-* `shader-toy.forceResolution`: Set canvas resolution, this will also set the resolution of the recorded video file. By default, the canvas will stretch to fill the entire window.
 * `shader-toy.recordTargetFramerate`: Set recording target frame-rate. Default is 30fps.
 * `shader-toy.recordMaxDuration`: Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again.
 
@@ -201,7 +200,6 @@ Contributions of any kind are welcome and encouraged.
 ## Release Notes
 
 ### 0.11.4
-* Added `shader-toy.forceResolution` (force canvas resolution).
 * Added `shader-toy.recordVideoContainer` (set video file container).
 * Added `shader-toy.recordVideoCodec` (set video codec).
 * Added `shader-toy.recordVideoBitRate` (set recording bit rate).
