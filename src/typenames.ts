@@ -11,6 +11,8 @@ export class NormalizedMouse {
     y: number = 0;
 }
 export type Keys = number[];
+export type Position = [number, number, number];
+export type Quaternion = [number, number, number, number];
 export type UniformsGuiStartingData = {
     Open: boolean;
     Values: Map<string, number[]>;
@@ -21,29 +23,31 @@ export class RenderStartingData {
     Mouse: Mouse = new Mouse();
     NormalizedMouse: NormalizedMouse = new NormalizedMouse();
     Keys: Keys = [];
+    FlyControlPosition: Position = [0, 0, 0];
+    FlyControlRotation: Quaternion = [0, 0, 0, 1];
     UniformsGui: UniformsGuiStartingData = { Open: false, Values: new Map<string, number[]>() };
 }
 
 export enum TextureMagFilter {
-    Linear  = "Linear",
-    Nearest = "Nearest",
+    Linear  = 'Linear',
+    Nearest = 'Nearest',
 }
 export enum TextureMinFilter {
-    Nearest                 = "Nearest",
-    NearestMipMapNearest    = "NearestMipMapNearest",
-    NearestMipMapLinear     = "NearestMipMapLinear",
-    Linear                  = "Linear",
-    LinearMipMapNearest     = "LinearMipMapNearest",
-    LinearMipMapLinear      = "LinearMipMapLinear",
+    Nearest                 = 'Nearest',
+    NearestMipMapNearest    = 'NearestMipMapNearest',
+    NearestMipMapLinear     = 'NearestMipMapLinear',
+    Linear                  = 'Linear',
+    LinearMipMapNearest     = 'LinearMipMapNearest',
+    LinearMipMapLinear      = 'LinearMipMapLinear',
 }
 export enum TextureWrapMode {
-    Repeat  = "Repeat",
-    Clamp   = "Clamp",
-    Mirror  = "Mirror",
+    Repeat  = 'Repeat',
+    Clamp   = 'Clamp',
+    Mirror  = 'Mirror',
 }
 export enum TextureType {
-    Texture2D   = "Texture2D",
-    CubeMap     = "CubeMap",
+    Texture2D   = 'Texture2D',
+    CubeMap     = 'CubeMap',
 }
 
 export type TextureDefinition = {
@@ -100,6 +104,7 @@ export type BufferDefinition = {
     LineOffset: number
     Includes: IncludeDefinition[],
     UsesKeyboard?: boolean,
+    UsesFirstPersonControls?: boolean,
 };
 
 export type Diagnostic = {

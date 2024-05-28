@@ -11,6 +11,8 @@ import { InitialTimeExtension } from './extensions/initial_time_extension';
 import { InitialPausedExtension } from './extensions/initial_paused_extension';
 import { InitialMouseExtension } from './extensions/initial_mouse_extension';
 import { InitialNormalizedMouseExtension } from './extensions/initial_normalized_mouse_extension';
+import { InitialFlyControlPositionExtension } from './extensions/initial_fly_control_position_extension';
+import { InitialFlyControlRotationExtension } from './extensions/initial_fly_control_rotation_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
 import { ForcedScreenshotResolutionExtension } from './extensions/forced_screenshot_resolution_extension';
@@ -24,6 +26,7 @@ import { KeyboardShaderExtension } from './extensions/keyboard/keyboard_shader_e
 
 import { JQueryExtension } from './extensions/packages/jquery_extension';
 import { ThreeExtension } from './extensions/packages/three_extension';
+import { ThreeFlyControlsExtension } from './extensions/packages/three_flycontrols';
 import { StatsExtension } from './extensions/packages/stats_extension';
 import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 
@@ -48,7 +51,7 @@ import { BuffersInitExtension } from './extensions/buffers/buffers_init_extensio
 import { ShadersExtension } from './extensions/buffers/shaders_extension';
 import { IncludesExtension } from './extensions/buffers/includes_extension';
 import { IncludesInitExtension } from './extensions/buffers/includes_init_extension';
-import { IncludesTestCompileExtension } from './extensions/buffers/includes_test_compile_extension'
+import { IncludesTestCompileExtension } from './extensions/buffers/includes_test_compile_extension';
 
 import { TexturesInitExtension } from './extensions/textures/textures_init_extension';
 
@@ -91,18 +94,18 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Parse Shaders
         {
-            let shader = this.documentContent;
+            const shader = this.documentContent;
             {
-                let buffer_provider = new BufferProvider(this.context);
+                const buffer_provider = new BufferProvider(this.context);
                 await buffer_provider.parseShaderCode(shaderName, shader, this.buffers, this.commonIncludes, generateStandalone);
             }
 
             // If final buffer uses feedback we need to add a last pass that renders it to the screen
             // because we can not ping-pong the screen
             {
-                let finalBuffer = this.buffers[this.buffers.length - 1];
+                const finalBuffer = this.buffers[this.buffers.length - 1];
                 if (finalBuffer.UsesSelf) {
-                    let finalBufferIndex = this.buffers.length - 1;
+                    const finalBufferIndex = this.buffers.length - 1;
                     finalBuffer.Dependents.push({
                         Index: this.buffers.length,
                         Channel: 0
@@ -110,10 +113,10 @@ export class WebviewContentProvider {
                     this.buffers.push({
                         Name: 'final-blit',
                         File: 'final-blit',
-                        Code: `void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }`,
+                        Code: 'void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }',
                         TextureInputs: [{
                             Channel: 0,
-                            File: "",
+                            File: '',
                             Buffer: finalBuffer.Name,
                             BufferIndex: finalBufferIndex,
                         }],
@@ -132,13 +135,13 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Local Resources
         let localResources: string[] = [];
-        for (let buffer of this.buffers) {
-            for (let texture of buffer.TextureInputs) {
+        for (const buffer of this.buffers) {
+            for (const texture of buffer.TextureInputs) {
                 if (texture.LocalTexture) {
                     localResources.push(texture.LocalTexture);
                 }
             }
-            for (let audio of buffer.AudioInputs) {
+            for (const audio of buffer.AudioInputs) {
                 if (audio.LocalPath) {
                     localResources.push(audio.LocalPath);
                 }
@@ -154,25 +157,30 @@ export class WebviewContentProvider {
 
     public async generateWebviewContent(webview: vscode.Webview | undefined, startingState: Types.RenderStartingData): Promise<string> {
 
-        let generateStandalone = webview === undefined;
+        const generateStandalone = webview === undefined;
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Resource Helpers
-        let makeWebviewResource = webview !== undefined
+        const makeWebviewResource = webview !== undefined
             ? (localPath: string) => this.context.makeWebviewResource(webview, this.context.makeUri(localPath)).toString()
             : (localPath: string) => localPath;
-        let getWebviewResourcePath = webview !== undefined
+        const getWebviewResourcePath = webview !== undefined
             ? (relativePath: string) => this.context.getWebviewResourcePath(webview, relativePath)
             : (relativePath: string) => relativePath;
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Feature Check
         let useKeyboard = false;
+        let useFirstPersonControls = false;
         let useAudio = false;
         let useUniforms = false;
         for (const buffer of this.buffers) {
             if (buffer.UsesKeyboard) {
                 useKeyboard = true;
+            }
+
+            if (buffer.UsesFirstPersonControls) {
+                useFirstPersonControls = true;
             }
 
             const audios = buffer.AudioInputs;
@@ -188,14 +196,18 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Initial State
-        let initialTimeExtension = new InitialTimeExtension(startingState.Time);
+        const initialTimeExtension = new InitialTimeExtension(startingState.Time);
         this.webviewAssembler.addReplaceModule(initialTimeExtension, 'let startingTime = <!-- Start Time -->;', '<!-- Start Time -->');
-        let initialPausedExtension = new InitialPausedExtension(startingState.Paused);
+        const initialPausedExtension = new InitialPausedExtension(startingState.Paused);
         this.webviewAssembler.addReplaceModule(initialPausedExtension, 'let paused = <!-- Start Paused -->;', '<!-- Start Paused -->');
-        let initialMouseExtension = new InitialMouseExtension(startingState.Mouse);
+        const initialMouseExtension = new InitialMouseExtension(startingState.Mouse);
         this.webviewAssembler.addReplaceModule(initialMouseExtension, 'let mouse = new THREE.Vector4(<!-- Start Mouse -->);', '<!-- Start Mouse -->');
-        let initialNormalizedMouseExtension = new InitialNormalizedMouseExtension(startingState.NormalizedMouse);
+        const initialNormalizedMouseExtension = new InitialNormalizedMouseExtension(startingState.NormalizedMouse);
         this.webviewAssembler.addReplaceModule(initialNormalizedMouseExtension, 'let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);', '<!-- Start Normalized Mouse -->');
+        const initialFlyControlPositionExtension = new InitialFlyControlPositionExtension(startingState.FlyControlPosition);
+        this.webviewAssembler.addReplaceModule(initialFlyControlPositionExtension, 'controlState.position.set(<!-- Start Fly Control Position -->);', '<!-- Start Fly Control Position -->');
+        const initialFlyControlRotationExtension = new InitialFlyControlRotationExtension(startingState.FlyControlRotation);
+        this.webviewAssembler.addReplaceModule(initialFlyControlRotationExtension, 'controlState.quaternion.set(<!-- Start Fly Control Rotation -->);', '<!-- Start Fly Control Rotation -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Initial State
@@ -203,20 +215,20 @@ export class WebviewContentProvider {
         if (forcedAspect === undefined) {
             forcedAspect = [-1, -1];
         }
-        let forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
+        const forcedAspectExtension = new ForcedAspectExtension(forcedAspect);
         this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard
         let keyboardShaderExtension: KeyboardShaderExtension | undefined;
         if (useKeyboard) {
-            let keyboardInit = new KeyboardInitExtension(startingState.Keys);
+            const keyboardInit = new KeyboardInitExtension(startingState.Keys);
             this.webviewAssembler.addWebviewModule(keyboardInit, '// Keyboard Init');
 
-            let keyboardUpdate = new KeyboardUpdateExtension();
+            const keyboardUpdate = new KeyboardUpdateExtension();
             this.webviewAssembler.addWebviewModule(keyboardUpdate, '// Keyboard Update');
 
-            let keyboardCallbacks = new KeyboardCallbacksExtension();
+            const keyboardCallbacks = new KeyboardCallbacksExtension();
             this.webviewAssembler.addWebviewModule(keyboardCallbacks, '// Keyboard Callbacks');
 
             keyboardShaderExtension = new KeyboardShaderExtension();
@@ -224,28 +236,28 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Shader Preamble
-        let preambleExtension = new ShaderPreambleExtension();
+        const preambleExtension = new ShaderPreambleExtension();
         this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Custom Uniforms
         if (useUniforms) {
-            let uniformsInitExtension = new UniformsInitExtension(this.buffers, startingState.UniformsGui);
+            const uniformsInitExtension = new UniformsInitExtension(this.buffers, startingState.UniformsGui);
             this.webviewAssembler.addWebviewModule(uniformsInitExtension, '// Uniforms Init');
-            let uniformsUpdateExtension = new UniformsUpdateExtension(this.buffers);
+            const uniformsUpdateExtension = new UniformsUpdateExtension(this.buffers);
             this.webviewAssembler.addWebviewModule(uniformsUpdateExtension, '// Uniforms Update');
-            let uniformsPreambleExtension = new UniformsPreambleExtension(this.buffers);
+            const uniformsPreambleExtension = new UniformsPreambleExtension(this.buffers);
             preambleExtension.addPreambleExtension(uniformsPreambleExtension);
 
-            let datGuiExtension = new DatGuiExtension(getWebviewResourcePath, generateStandalone);
+            const datGuiExtension = new DatGuiExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(datGuiExtension, '<!-- dat.gui -->');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Fix up line offsets
         {
-            let webglPlusThreeJsLineNumbers = 107;
-            for (let buffer of this.buffers) {
+            const webglPlusThreeJsLineNumbers = 107;
+            for (const buffer of this.buffers) {
                 buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglPlusThreeJsLineNumbers;
                 if (buffer.UsesKeyboard && keyboardShaderExtension !== undefined) {
                     buffer.LineOffset += keyboardShaderExtension.getShaderPreambleLineNumbers();
@@ -255,64 +267,73 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Buffer Logic
-        let buffersInitExtension = new BuffersInitExtension(this.buffers);
+        const buffersInitExtension = new BuffersInitExtension(this.buffers);
         this.webviewAssembler.addWebviewModule(buffersInitExtension, '// Buffers');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Shader Scripts
-        let shadersExtension = new ShadersExtension(this.buffers, preambleExtension, keyboardShaderExtension);
+        const shadersExtension = new ShadersExtension(this.buffers, preambleExtension, keyboardShaderExtension);
         this.webviewAssembler.addWebviewModule(shadersExtension, '<!-- Shaders -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Misc Scripts
+
+        // First Person Camera
+        if (useFirstPersonControls) {
+            const flycontrolsExtension = new ThreeFlyControlsExtension(getWebviewResourcePath);
+            this.webviewAssembler.addWebviewModule(flycontrolsExtension, '<!-- FlyControls -->');
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Include Scripts
-        let includesExtension = new IncludesExtension(this.commonIncludes, preambleExtension);
+        const includesExtension = new IncludesExtension(this.commonIncludes, preambleExtension);
         this.webviewAssembler.addWebviewModule(includesExtension, '<!-- Shaders -->');
-        let includesInitExtension = new IncludesInitExtension(this.commonIncludes);
+        const includesInitExtension = new IncludesInitExtension(this.commonIncludes);
         this.webviewAssembler.addWebviewModule(includesInitExtension, '// Includes');
 
         if (this.context.getConfig<boolean>('testCompileIncludedFiles')) {
-            let includesTestCompileExtension = new IncludesTestCompileExtension();
+            const includesTestCompileExtension = new IncludesTestCompileExtension();
             this.webviewAssembler.addWebviewModule(includesTestCompileExtension, '// Test Compile Included Files');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Texture Loading
-        let textureInitExtension = new TexturesInitExtension();
+        const textureInitExtension = new TexturesInitExtension();
         await textureInitExtension.init(this.buffers, this.context, makeWebviewResource);
         this.webviewAssembler.addWebviewModule(textureInitExtension, '// Texture Init');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Audio Logic
         if (useAudio) {
-            let audioInitExtension = new AudioInitExtension(this.buffers, this.context, makeWebviewResource);
+            const audioInitExtension = new AudioInitExtension(this.buffers, this.context, makeWebviewResource);
             this.webviewAssembler.addWebviewModule(audioInitExtension, '// Audio Init');
             textureInitExtension.addTextureContent(audioInitExtension);
 
-            let audioUpdateExtension = new AudioUpdateExtension();
+            const audioUpdateExtension = new AudioUpdateExtension();
             this.webviewAssembler.addWebviewModule(audioUpdateExtension, '// Audio Update');
 
-            let audioPauseExtension = new AudioPauseExtension();
+            const audioPauseExtension = new AudioPauseExtension();
             this.webviewAssembler.addWebviewModule(audioPauseExtension, '// Audio Pause');
 
-            let audioResumeExtension = new AudioResumeExtension();
+            const audioResumeExtension = new AudioResumeExtension();
             this.webviewAssembler.addWebviewModule(audioResumeExtension, '// Audio Resume');
         }
         else {
-            let noAudioExtension = new NoAudioExtension();
+            const noAudioExtension = new NoAudioExtension();
             this.webviewAssembler.addWebviewModule(noAudioExtension, '// Audio Init');
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Packages
         {
-            let jqueryExtension = new JQueryExtension(getWebviewResourcePath, generateStandalone);
+            const jqueryExtension = new JQueryExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addReplaceModule(jqueryExtension, '<script src="<!-- JQuery.js -->"></script>', '<!-- JQuery.js -->');
 
-            let threeExtension = new ThreeExtension(getWebviewResourcePath, generateStandalone);
+            const threeExtension = new ThreeExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
-            let statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
+            const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
         }
 
@@ -320,23 +341,23 @@ export class WebviewContentProvider {
         // Pause Logic
         if (!generateStandalone) {
             if (this.context.getConfig<boolean>('showPauseButton')) {
-                let pauseButtonStyleExtension = new PauseButtonStyleExtension(getWebviewResourcePath);
+                const pauseButtonStyleExtension = new PauseButtonStyleExtension(getWebviewResourcePath);
                 this.webviewAssembler.addWebviewModule(pauseButtonStyleExtension, '/* Pause Button Style */');
 
-                let pauseButtonExtension = new PauseButtonExtension();
+                const pauseButtonExtension = new PauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
         }
 
         if (this.context.getConfig<boolean>('pauseWholeRender')) {
-            let pauseWholeRenderExtension = new PauseWholeRenderExtension();
+            const pauseWholeRenderExtension = new PauseWholeRenderExtension();
             this.webviewAssembler.addWebviewModule(pauseWholeRenderExtension, '// Pause Whole Render');
 
-            let advanceTimeExtension = new AdvanceTimeExtension();
+            const advanceTimeExtension = new AdvanceTimeExtension();
             this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
         }
         else {
-            let advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
+            const advanceTimeExtension = new AdvanceTimeIfNotPausedExtension();
             this.webviewAssembler.addWebviewModule(advanceTimeExtension, '// Advance Time');
         }
 
@@ -344,37 +365,37 @@ export class WebviewContentProvider {
         // Screenshot Logic
         if (!generateStandalone) {
             if (this.context.getConfig<boolean>('showScreenshotButton')) {
-                let screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(getWebviewResourcePath);
+                const screenshotButtonStyleExtension = new ScreenshotButtonStyleExtension(getWebviewResourcePath);
                 this.webviewAssembler.addWebviewModule(screenshotButtonStyleExtension, '/* Screenshot Button Style */');
 
-                let screenshotButtonExtension = new ScreenshotButtonExtension();
+                const screenshotButtonExtension = new ScreenshotButtonExtension();
                 this.webviewAssembler.addWebviewModule(screenshotButtonExtension, '<!-- Screenshot Element -->');
             }
             if (this.context.getConfig<boolean>('showRecordButton')) {
-                let recordButtonStyleExtension = new RecordButtonStyleExtension(getWebviewResourcePath);
+                const recordButtonStyleExtension = new RecordButtonStyleExtension(getWebviewResourcePath);
                 this.webviewAssembler.addWebviewModule(recordButtonStyleExtension, '/* Record Button Style */');
 
-                let recordButtonExtension = new RecordButtonExtension();
+                const recordButtonExtension = new RecordButtonExtension();
                 this.webviewAssembler.addWebviewModule(recordButtonExtension, '<!-- Record Element -->');
             }
         }
 
-        let forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution') || [-1, -1];
-        let forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
+        const forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution') || [-1, -1];
+        const forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
 
-        let recordTargetFramerate = this.context.getConfig<number>('shader-toy.recordTargetFramerate') || 30;
-        let recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
+        const recordTargetFramerate = this.context.getConfig<number>('shader-toy.recordTargetFramerate') || 30;
+        const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
         this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let stream = canvas.captureStream(<!-- Record Target Framerate -->);', '<!-- Record Target Framerate -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Reload Logic
         if (!generateStandalone) {
             if (!this.context.getConfig<boolean>('reloadAutomatically')) {
-                let reloadButtonStyleExtension = new ReloadButtonStyleExtension(getWebviewResourcePath);
+                const reloadButtonStyleExtension = new ReloadButtonStyleExtension(getWebviewResourcePath);
                 this.webviewAssembler.addWebviewModule(reloadButtonStyleExtension, '/* Reload Button Style */');
 
-                let reloadButtonExtension = new ReloadButtonExtension();
+                const reloadButtonExtension = new ReloadButtonExtension();
                 this.webviewAssembler.addWebviewModule(reloadButtonExtension, '<!-- Reload Element -->');
             }
         }

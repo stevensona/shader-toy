@@ -16,10 +16,10 @@ export class AudioInitExtension implements WebviewExtension, TextureExtensionExt
     }
 
     private processBuffers(buffers: Types.BufferDefinition[], context: Context, makeAvailableResource: (localUri: string) => string) {
-        for (let i in buffers) {
+        for (const i in buffers) {
             const buffer = buffers[i];
             const audios =  buffer.AudioInputs;
-            for (let j in audios) {
+            for (const j in audios) {
                 const audio = audios[j];
 
                 const channel = audio.Channel;

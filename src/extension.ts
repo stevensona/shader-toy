@@ -6,11 +6,11 @@ import { Context } from './context';
 import { ShaderToyManager } from './shadertoymanager';
 
 export function activate(extensionContext: vscode.ExtensionContext) {
-    let shadertoyExtension = vscode.extensions.getExtension('stevensona.shader-toy');
+    const shadertoyExtension = vscode.extensions.getExtension('stevensona.shader-toy');
 
     if (shadertoyExtension) {
-        let lastVersion = extensionContext.globalState.get<string>('version') || '0.0.0';
-        let currentVersion = <string | undefined>shadertoyExtension.packageJSON.version || '9.9.9';
+        const lastVersion = extensionContext.globalState.get<string>('version') || '0.0.0';
+        const currentVersion = <string | undefined>shadertoyExtension.packageJSON.version || '9.9.9';
         if (compareVersions(currentVersion, lastVersion) > 0) {
             vscode.window.showInformationMessage('Your ShaderToy version just got updated, check out the readme to see what\'s new.');
             extensionContext.globalState.update('version', currentVersion);
@@ -22,41 +22,50 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         vscode.window.showWarningMessage('Deprecation warnings are omitted, stay safe otherwise!');
     }
 
-    let shadertoyManager = new ShaderToyManager(context);
+    const shadertoyManager = new ShaderToyManager(context);
 
     let timeout: ReturnType<typeof setTimeout>;
-    let changeTextEvent: vscode.Disposable | undefined;
-    let changeEditorEvent: vscode.Disposable | undefined;
-    let registerCallbacks = () => {
+    let events: vscode.Disposable[] = [];
+    const registerCallbacks = (context: Context) => {
         clearTimeout(timeout);
-        if (changeTextEvent !== undefined) {
-            changeTextEvent.dispose();
+
+        for (const event of events) {
+            event.dispose();
         }
-        if (changeEditorEvent !== undefined) {
-            changeEditorEvent.dispose();
-        }
+        events = [];
 
         if (context.getConfig<boolean>('reloadOnEditText')) {
-            let reloadDelay: number = context.getConfig<number>('reloadOnEditTextDelay') || 1.0;
-            changeTextEvent = vscode.workspace.onDidChangeTextDocument((documentChange: vscode.TextDocumentChangeEvent) => {
+            const reloadDelay: number = context.getConfig<number>('reloadOnEditTextDelay') || 1.0;
+            vscode.workspace.onDidChangeTextDocument((documentChange: vscode.TextDocumentChangeEvent) => {
+                if (documentChange.contentChanges.length == 0) {
+                    return;
+                }
+                
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
                     shadertoyManager.onDocumentChanged(documentChange);
                 }, reloadDelay * 1000);
-            });
+            }, undefined, events);
         }
 
-        changeEditorEvent = vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
+        if (context.getConfig<boolean>('reloadOnSaveFile')) {
+            vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
+                shadertoyManager.onDocumentSaved(document);
+            }, undefined, events);
+        }
+
+        vscode.window.onDidChangeActiveTextEditor((newEditor: vscode.TextEditor | undefined) => {
             shadertoyManager.onEditorChanged(newEditor);
-        });
+        }, undefined, events);
     };
 
-    registerCallbacks();
+    registerCallbacks(context);
 
     vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration('shader-toy')) {
-            let lastActiveEditor = context.activeEditor;
+        if (e.affectsConfiguration('shader-toy')) {    
+            const lastActiveEditor = context.activeEditor;
             context = new Context(extensionContext, vscode.workspace.getConfiguration('shader-toy'));
+            registerCallbacks(context);
             if (context.activeEditor === undefined) {
                 context.activeEditor = lastActiveEditor;
             }
@@ -64,19 +73,19 @@ export function activate(extensionContext: vscode.ExtensionContext) {
         }
     });
 
-    let previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
+    const previewCommand = vscode.commands.registerCommand('shader-toy.showGlslPreview', () => {
         shadertoyManager.showDynamicPreview();
     });
-    let staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {
+    const staticPreviewCommand = vscode.commands.registerCommand('shader-toy.showStaticGlslPreview', () => {
         shadertoyManager.showStaticPreview();
     });
-    let standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
+    const standaloneCompileCommand = vscode.commands.registerCommand('shader-toy.createPortableGlslPreview', () => {
         shadertoyManager.createPortablePreview();
     });
-    let pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
+    const pausePreviewsCommand = vscode.commands.registerCommand('shader-toy.pauseGlslPreviews', () => {
         shadertoyManager.postCommand('pause');
     });
-    let saveScreenshotsCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
+    const saveScreenshotsCommand = vscode.commands.registerCommand('shader-toy.saveGlslPreviewScreenShots', () => {
         shadertoyManager.postCommand('screenshot');
     });
     extensionContext.subscriptions.push(previewCommand);

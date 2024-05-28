@@ -89,6 +89,10 @@ To use custom uniforms define those directly in your shader, giving an initial v
 #iUniform color3 my_color = color3(1.0) // This will be editable as a color picker
 #iUniform vec2 position_in_2d = vec2(1.0) // This will expose two text fields
 #iUniform vec4 other_color = vec4(1.0) in { 0.0, 1.0 } // This will expose four sliders
+
+ `iViewMatrix`, a mat4 with the view matrix. Must use directive `#iFirstPersonControls` in order to control, otherwise it remains identity.
+ Controls:
+ <b>WASD</b> move, <b>R|F</b> up | down, <b>Q|E</b> roll, <b>up|down</b> pitch, <b>left|right</b> yaw
 ```
 
 ### Compatibility with Shadertoy.com
@@ -160,20 +164,25 @@ The extension also supports highlighting of compilation errors in the text edito
 * Shaders with audio from remote sources are currently not working properly, this is however an issue on VSCode side and will be fixed when releasing with Electron 6.
 * There seems to be a very rare bug that causes audio inputs to sound corrupted.
 
-## Todo
-
-* Receive more feedback,
-* disable audio in non-portable version.
-
 ## Contributing
 
 Contributions of any kind are welcome and encouraged.
 
 [GitHub Project Page](https://github.com/stevensona/shader-toy)
 
+[Contributing Guidelines](https://raw.githubusercontent.com/stevensona/shader-toy/master/CONTRIBUTING.md)
+
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=stevensona.shader-toy)
 
 ## Release Notes
+
+### 0.11.3
+* Added option to reload on save,
+* fixed a bug where glslify would never find modules.
+
+### 0.11.2
+* Added free fly controls,
+* fixed a bug that would result in recording the frame time panel.
 
 ### 0.11.1
 * Added option to maintain pause state when reloading the shader,

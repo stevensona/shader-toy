@@ -12,10 +12,10 @@ export class UniformsUpdateExtension implements WebviewExtension {
     }
 
     private processBuffers(buffers: Types.BufferDefinition[]) {
-        for (let i in buffers) {
-            let buffer = buffers[i];
-            let uniforms = buffer.CustomUniforms;
-            for (let uniform of uniforms) {
+        for (const i in buffers) {
+            const buffer = buffers[i];
+            const uniforms = buffer.CustomUniforms;
+            for (const uniform of uniforms) {
                 let uniform_access = `buffers[${i}].UniformValues.${uniform.Name}`;
                 if (uniform.Typename === 'color3') {
                     this.content += `\
@@ -39,16 +39,16 @@ if (vscode !== undefined) {
     }
 
     private mapArrayToShaderType(value: number[]) {
-        let l = value.length;
+        const l = value.length;
         switch (l) {
-            case 1:
-                return 'f';
-            case 2:
-            case 3:
-            case 4:
-                return `v${l}`;
-            default:
-                return 'err';
+        case 1:
+            return 'f';
+        case 2:
+        case 3:
+        case 4:
+            return `v${l}`;
+        default:
+            return 'err';
         }
     }
 

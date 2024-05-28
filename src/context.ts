@@ -43,10 +43,10 @@ export class Context {
         sourcePath = path.dirname(sourcePath);
 
         let file = await (async (file: string) => {
-            let fileCandidates: string[] = [];
+            const fileCandidates: string[] = [];
 
-            let exists = async (file: string) => {
-                let singleFileExists = async (file: string) => {
+            const exists = async (file: string) => {
+                const singleFileExists = async (file: string) => {
                     try {
                         await fs.promises.access(file);
                         return true;
@@ -61,9 +61,9 @@ export class Context {
                     return await singleFileExists(file);
                 }
                 else {
-                    let existsWithEachPrefix = async (pattern: string, prefixes: [string, string, string, string, string, string]) => {
-                        for (let dir of prefixes) {
-                            let directionFile = pattern.replace('{}', dir);
+                    const existsWithEachPrefix = async (pattern: string, prefixes: [string, string, string, string, string, string]) => {
+                        for (const dir of prefixes) {
+                            const directionFile = pattern.replace('{}', dir);
                             if (!await singleFileExists(directionFile)) {
                                 return false;
                             }
@@ -71,15 +71,15 @@ export class Context {
                         return true;
                     };
 
-                    let possiblePrefixes: [string, string, string, string, string, string][] = [
+                    const possiblePrefixes: [string, string, string, string, string, string][] = [
                         ['e', 'w', 'u', 'd', 'n', 's'],
                         ['east', 'west', 'up', 'down', 'north', 'south'],
                         ['px', 'nx', 'py', 'ny', 'pz', 'nz'],
                         ['posx', 'negx', 'posy', 'negy', 'posz', 'negz']
                     ];
 
-                    let pattern = file.replace('*', '{}');
-                    for (let prefixes of possiblePrefixes) {
+                    const pattern = file.replace('*', '{}');
+                    for (const prefixes of possiblePrefixes) {
                         if (await existsWithEachPrefix(pattern, prefixes)) {
                             return true;
                         }
@@ -105,12 +105,12 @@ export class Context {
 
             // Last priority are relative to workspace folders
             if (vscode.workspace.workspaceFolders !== undefined) {
-                let workspaceFileCandidates: string[] = [];
-                for (let worspaceFolder of vscode.workspace.workspaceFolders) {
+                const workspaceFileCandidates: string[] = [];
+                for (const worspaceFolder of vscode.workspace.workspaceFolders) {
                     let workspacePath = worspaceFolder.uri.fsPath;
                     workspacePath = workspacePath.replace(/\\/g, '/');
                     workspacePath = workspacePath.replace(/\.\//g, '');
-                    let fileCandidate = [workspacePath, file].join('/');
+                    const fileCandidate = [workspacePath, file].join('/');
                     if (await exists(fileCandidate)) {
                         workspaceFileCandidates.push(fileCandidate);
                     }
@@ -142,16 +142,16 @@ export class Context {
         this.diagnosticCollection.clear();
     }
     public showDiagnostics(diagnosticBatch: DiagnosticBatch, severity: vscode.DiagnosticSeverity) {
-        let file = diagnosticBatch.filename;
-        let newDocument = vscode.workspace.openTextDocument(file);
+        const file = diagnosticBatch.filename;
+        const newDocument = vscode.workspace.openTextDocument(file);
         newDocument.then((document: vscode.TextDocument) => {
             if (this.collectedDiagnostics[file] === undefined) {
                 this.collectedDiagnostics[file] = [];
             }
 
-            for (let diagnostic of diagnosticBatch.diagnostics) {
-                let line = Math.min(Math.max(1, diagnostic.line), document.lineCount) - 1;
-                let range = document.lineAt(line).range;
+            for (const diagnostic of diagnosticBatch.diagnostics) {
+                const line = Math.min(Math.max(1, diagnostic.line), document.lineCount) - 1;
+                const range = document.lineAt(line).range;
                 this.collectedDiagnostics[file].push(new vscode.Diagnostic(range, diagnostic.message, severity));
             }
             this.diagnosticCollection.set(document.uri, this.collectedDiagnostics[file]);
@@ -161,9 +161,9 @@ export class Context {
     }
 
     public revealLine(file: string, line: number) {
-        let highlightLine = (document: vscode.TextDocument, line: number) => {
+        const highlightLine = (document: vscode.TextDocument, line: number) => {
             line = Math.min(Math.max(1, line), document.lineCount) - 1;
-            let range = document.lineAt(line).range;
+            const range = document.lineAt(line).range;
             vscode.window.showTextDocument(document, vscode.ViewColumn.One, true)
                 .then((editor: vscode.TextEditor) => {
                     editor.selection = new vscode.Selection(range.start, range.end);
@@ -180,7 +180,7 @@ export class Context {
             }
         }
 
-        let newDocument = vscode.workspace.openTextDocument(file);
+        const newDocument = vscode.workspace.openTextDocument(file);
         newDocument.then((document: vscode.TextDocument) => {
             highlightLine(document, line);
         }, (reason) => {

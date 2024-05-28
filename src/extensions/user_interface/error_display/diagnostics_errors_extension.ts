@@ -20,7 +20,7 @@ console.error = function () {
                 line: lineNumber,
                 message: error
             });
-            let lineHighlight = \`${`<a class='error' unselectable onclick='revealError(\${lineNumber}, "\${currentShader.File}")'>Line \${lineNumber}</a>`}\`;
+            let lineHighlight = \`${'<a class=\'error\' unselectable onclick=\'revealError(${lineNumber}, "${currentShader.File}")\'>Line ${lineNumber}</a>'}\`;
             message += \`<li>\${lineHighlight}: \${error}</li>\`;
         }
         console.log(message);

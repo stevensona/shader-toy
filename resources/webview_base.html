@@ -97,6 +97,8 @@
 
 <!-- Shaders -->
 
+<!-- FlyControls -->
+
 <script type="text/javascript">
     let vscode = undefined;
     if (typeof acquireVsCodeApi === 'function') {
@@ -263,7 +265,22 @@
         null
     );
     scene.add(quad);
-    
+
+    let controlState = new THREE.Camera();
+    controlState.position.set(<!-- Start Fly Control Position -->);
+    controlState.quaternion.set(<!-- Start Fly Control Rotation -->);
+    scene.add(controlState);
+
+    let flyControls = undefined;
+    if (typeof FlyControls === 'function') {
+        flyControls = new FlyControls(controlState, renderer.domElement, vscode);
+        flyControls.movementSpeed = 1;
+        flyControls.domElement = renderer.domElement;
+        flyControls.rollSpeed = Math.PI / 24;
+        flyControls.autoForward = false;
+        flyControls.dragToLook = true;
+    }
+
     let camera = new THREE.OrthographicCamera(-resolution.x / 2.0, resolution.x / 2.0, resolution.y / 2.0, -resolution.y / 2.0, 1, 1000);
     camera.position.set(0, 0, 10);
 
@@ -331,6 +348,11 @@
 
         // Advance Time
         updateDate();
+        
+        if(flyControls)
+        {
+            flyControls.update(0.1);
+        }
 
         // Audio Update
 
@@ -341,6 +363,8 @@
             buffer.Shader.uniforms['iFrame'].value = frameCounter;
             buffer.Shader.uniforms['iMouse'].value = mouse;
             buffer.Shader.uniforms['iMouseButton'].value = mouseButton;
+
+            buffer.Shader.uniforms['iViewMatrix'].value = controlState.matrixWorld;
 
             buffer.Shader.uniforms['resolution'].value = resolution;
             buffer.Shader.uniforms['time'].value = time;
@@ -457,7 +481,6 @@
         if (recorder == null) {
             recordButton.classList.add('recording');
 
-            let canvas = document.querySelector('canvas');
             let stream = canvas.captureStream(<!-- Record Target Framerate -->);
             let recorderOptions = {
                 mimeType: "video/webm"

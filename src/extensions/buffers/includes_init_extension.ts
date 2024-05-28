@@ -12,7 +12,7 @@ export class IncludesInitExtension implements WebviewExtension {
     }
 
     private processBuffers(includes: Types.IncludeDefinition[]) {
-        for (let include of includes) {
+        for (const include of includes) {
             this.content += `\
 commonIncludes.push({
     Name: '${include.Name}',

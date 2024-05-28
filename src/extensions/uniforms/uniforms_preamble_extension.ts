@@ -21,9 +21,9 @@ export class UniformsPreambleExtension implements WebviewExtension {
     }
 
     private processBuffers(buffers: Types.BufferDefinition[]) {
-        for (let buffer of buffers) {
-            let uniforms = buffer.CustomUniforms;
-            for (let uniform of uniforms) {
+        for (const buffer of buffers) {
+            const uniforms = buffer.CustomUniforms;
+            for (const uniform of uniforms) {
                 this.content += `\
 uniform ${UniformsPreambleExtension.mapTypenameToGlslType(uniform.Typename)} ${uniform.Name};
 `;

@@ -18,6 +18,7 @@ uniform vec4        iDate;
 uniform vec3        iChannelResolution[10];
 uniform vec4        iMouse;
 uniform vec4        iMouseButton;
+uniform mat4        iViewMatrix;
 uniform sampler2D   iChannel0;
 uniform sampler2D   iChannel1;
 uniform sampler2D   iChannel2;

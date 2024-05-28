@@ -15,6 +15,7 @@ export enum ObjectType {
     Value,
     Uniform,
     Keyboard,
+    FirstPersonControls,
     StrictCompatibility,
     Error
 }
@@ -71,6 +72,9 @@ type Uniform = {
 type Keyboard = {
     Type: ObjectType.Keyboard
 };
+type FirstPersonControls = {
+    Type: ObjectType.FirstPersonControls
+};
 type StrictCompatibility = {
     Type: ObjectType.StrictCompatibility
 };
@@ -79,7 +83,7 @@ type ErrorObject = {
     Message: string
 };
 type TextureObject = Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType;
-type Object = Include | TextureObject | Uniform | Keyboard | StrictCompatibility;
+type ParseObject = Include | TextureObject | Uniform | Keyboard | FirstPersonControls | StrictCompatibility;
 
 export class ShaderParser {
     private stream: ShaderStream;
@@ -112,7 +116,7 @@ export class ShaderParser {
         return this.lastObjectRange;
     }
 
-    public next(): Object | ErrorObject | undefined {
+    public next(): ParseObject | ErrorObject | undefined {
         let nextToken = this.lexer.next();
         while (!this.lexer.eof() && (nextToken === undefined || nextToken.type !== TokenType.PreprocessorKeyword)) {
             nextToken = this.lexer.next();
@@ -121,49 +125,52 @@ export class ShaderParser {
             return undefined;
         }
 
-        let rangeBegin = this.lexer.getLastRange().Begin;
+        const rangeBegin = this.lexer.getLastRange().Begin;
 
-        let tokenValue = nextToken.value as string;
-        let returnObject: Object | ErrorObject;
+        const tokenValue = nextToken.value as string;
+        let returnObject: ParseObject | ErrorObject;
         switch (tokenValue) {
-            case 'include':
-                returnObject = this.getInclude();
-                break;
-            case 'iKeyboard':
-                returnObject = { Type: ObjectType.Keyboard };
-                break;
-            case 'StrictCompatibility':
-                returnObject = { Type: ObjectType.StrictCompatibility };
-                break;
-            case 'iUniform':
-                returnObject = this.getUniformObject();
-                break;
-            default: // Must be iChannel
-                returnObject = this.getTextureObject(nextToken);
-                break;
+        case 'include':
+            returnObject = this.getInclude();
+            break;
+        case 'iKeyboard':
+            returnObject = { Type: ObjectType.Keyboard };
+            break;
+        case 'iFirstPersonControls':
+            returnObject = { Type: ObjectType.FirstPersonControls };
+            break;
+        case 'StrictCompatibility':
+            returnObject = { Type: ObjectType.StrictCompatibility };
+            break;
+        case 'iUniform':
+            returnObject = this.getUniformObject();
+            break;
+        default: // Must be iChannel
+            returnObject = this.getTextureObject(nextToken);
+            break;
         }
 
-        let rangeEnd = this.lexer.getLastRange().End;
+        const rangeEnd = this.lexer.getLastRange().End;
         this.lastObjectRange = { Begin: rangeBegin, End: rangeEnd };
 
         returnObject = returnObject || {
             Type: ObjectType.Error,
-            Message: `Unkown error while parsing for custom features`
+            Message: 'Unkown error while parsing for custom features'
         };
         return returnObject;
     }
 
     private getInclude(): Include | ErrorObject {
-        let nextToken = this.lexer.next();
+        const nextToken = this.lexer.next();
         if (nextToken === undefined) {
-            return this.makeError(`Expected string after "include" but got end-of-file`);
+            return this.makeError('Expected string after "include" but got end-of-file');
         }
         if (nextToken.type !== TokenType.String) {
             return this.makeError(`Expected string after "include" but got "${nextToken.value}"`);
         }
 
-        let tokenValue = nextToken.value as string;
-        let include: Include = {
+        const tokenValue = nextToken.value as string;
+        const include: Include = {
             Type: ObjectType.Include,
             Path: tokenValue
         };
@@ -171,7 +178,7 @@ export class ShaderParser {
     }
 
     private getTextureObject(previous: Token): Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType | ErrorObject {
-        let nextToken = this.lexer.next();
+        const nextToken = this.lexer.next();
         if (nextToken === undefined) {
             return this.makeError(`Expected string or "::" after "${previous.value}" but got end-of-file`);
         }
@@ -180,15 +187,15 @@ export class ShaderParser {
             return this.makeError(`Expected string or "::" after "${previous.value}" but got "${nextToken.value}"`);
         }
 
-        let channelName = previous.value as string;
-        let index = parseInt(channelName.replace('iChannel', ''));
+        const channelName = previous.value as string;
+        const index = parseInt(channelName.replace('iChannel', ''));
 
         if (nextToken.type === TokenType.Punctuation) {
             return this.getTextureParameter(index);            
         }
 
-        let tokenValue = nextToken.value as string;
-        let texture: Texture = {
+        const tokenValue = nextToken.value as string;
+        const texture: Texture = {
             Type: ObjectType.Texture,
             Index: index,
             Path: tokenValue
@@ -197,18 +204,18 @@ export class ShaderParser {
     }
 
     private getTextureParameter(index: number): TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType | ErrorObject {
-        let nextToken = this.lexer.next();
+        const nextToken = this.lexer.next();
         if (nextToken === undefined) {
-            return this.makeError(`Expected texture parameter keyword after "::" but got end-of-file, valid options are "MinFilter", "MagFilter", "WrapMode" and "Type"`);
+            return this.makeError('Expected texture parameter keyword after "::" but got end-of-file, valid options are "MinFilter", "MagFilter", "WrapMode" and "Type"');
         }
         if (nextToken.type !== TokenType.Keyword ||
             nextToken.value === 'in') {
             return this.makeError(`Expected texture parameter keyword after "::" but got "${nextToken.value}", valid options are "MinFilter", "MagFilter", "WrapMode" and "Type"`);
         }
 
-        let textureSetting = nextToken.value as string;
+        const textureSetting = nextToken.value as string;
 
-        let nextNextToken = this.lexer.next();
+        const nextNextToken = this.lexer.next();
         if (nextNextToken === undefined) {
             return this.makeError(`Expected string after "${textureSetting}" but got end-of-file`);
         }
@@ -216,72 +223,72 @@ export class ShaderParser {
             return this.makeError(`Expected string after "${textureSetting}" but got "${nextNextToken.value}"`);
         }
 
-        let settingValue = nextNextToken.value as string;
+        const settingValue = nextNextToken.value as string;
 
         switch(textureSetting) {
-            case "MagFilter":
-                if (Object.values(Types.TextureMagFilter).includes(settingValue as Types.TextureMagFilter)) {
-                    let magFilter: TextureMagFilter = {
-                        Type: ObjectType.TextureMagFilter,
-                        Index: index,
-                        Value: settingValue as Types.TextureMagFilter
-                    };
-                    return magFilter;
-                }
-                else {
-                    return this.makeError(`Expected one of "Nearest" or "Linear" after "${textureSetting}" but got "${settingValue}"`);
-                }
-            case "MinFilter":
-                if (Object.values(Types.TextureMinFilter).includes(settingValue as Types.TextureMinFilter)) {
-                    let minFilter: TextureMinFilter = {
-                        Type: ObjectType.TextureMinFilter,
-                        Index: index,
-                        Value: settingValue as Types.TextureMinFilter
-                    };
-                    return minFilter;
-                }
-                else {
-                    return this.makeError(`Expected one of "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear" after "${textureSetting}" but got "${settingValue}"`);
-                }
-            case "WrapMode":
-                if (Object.values(Types.TextureWrapMode).includes(settingValue as Types.TextureWrapMode)) {
-                    let wrapMode: TextureWrapMode = {
-                        Type: ObjectType.TextureWrapMode,
-                        Index: index,
-                        Value: settingValue as Types.TextureWrapMode
-                    };
-                    return wrapMode;
-                }
-                else {
-                    return this.makeError(`Expected one of "Clamp", "Repeat" or "Mirror" after "${textureSetting}" but got "${settingValue}"`);
-                }
-            case "Type":
-                if (Object.values(Types.TextureType).includes(settingValue as Types.TextureType)) {
-                    let textureType: TextureType = {
-                        Type: ObjectType.TextureType,
-                        Index: index,
-                        Value: settingValue as Types.TextureType
-                    };
-                    return textureType;
-                }
-                else {
-                    return this.makeError(`Expected one of "Texture2D" or "CubeMap" after "${textureSetting}" but got "${settingValue}"`);
-                }
+        case 'MagFilter':
+            if (Object.values(Types.TextureMagFilter).includes(settingValue as Types.TextureMagFilter)) {
+                const magFilter: TextureMagFilter = {
+                    Type: ObjectType.TextureMagFilter,
+                    Index: index,
+                    Value: settingValue as Types.TextureMagFilter
+                };
+                return magFilter;
+            }
+            else {
+                return this.makeError(`Expected one of "Nearest" or "Linear" after "${textureSetting}" but got "${settingValue}"`);
+            }
+        case 'MinFilter':
+            if (Object.values(Types.TextureMinFilter).includes(settingValue as Types.TextureMinFilter)) {
+                const minFilter: TextureMinFilter = {
+                    Type: ObjectType.TextureMinFilter,
+                    Index: index,
+                    Value: settingValue as Types.TextureMinFilter
+                };
+                return minFilter;
+            }
+            else {
+                return this.makeError(`Expected one of "Nearest", "NearestMipMapNearest", "NearestMipMapLinear", "Linear", "LinearMipMapNearest" or "LinearMipMapLinear" after "${textureSetting}" but got "${settingValue}"`);
+            }
+        case 'WrapMode':
+            if (Object.values(Types.TextureWrapMode).includes(settingValue as Types.TextureWrapMode)) {
+                const wrapMode: TextureWrapMode = {
+                    Type: ObjectType.TextureWrapMode,
+                    Index: index,
+                    Value: settingValue as Types.TextureWrapMode
+                };
+                return wrapMode;
+            }
+            else {
+                return this.makeError(`Expected one of "Clamp", "Repeat" or "Mirror" after "${textureSetting}" but got "${settingValue}"`);
+            }
+        case 'Type':
+            if (Object.values(Types.TextureType).includes(settingValue as Types.TextureType)) {
+                const textureType: TextureType = {
+                    Type: ObjectType.TextureType,
+                    Index: index,
+                    Value: settingValue as Types.TextureType
+                };
+                return textureType;
+            }
+            else {
+                return this.makeError(`Expected one of "Texture2D" or "CubeMap" after "${textureSetting}" but got "${settingValue}"`);
+            }
         }
 
-        return this.makeError(`Unkown error while parsing texture setting`);
+        return this.makeError('Unkown error while parsing texture setting');
     }
 
     private getUniformObject(): Uniform | ErrorObject {
         let nextToken = this.lexer.next();
         if (nextToken === undefined) {
-            return this.makeError(`Expected type after "iUniform" but got end-of-file`);
+            return this.makeError('Expected type after "iUniform" but got end-of-file');
         }
         if (nextToken.type !== TokenType.Type) {
             return this.makeError(`Expected type after "iUniform" but got "${nextToken.value}"`);
         }
 
-        let type = nextToken.value as string;
+        const type = nextToken.value as string;
 
         nextToken = this.lexer.next();
         if (nextToken === undefined) {
@@ -291,7 +298,7 @@ export class ShaderParser {
             return this.makeError(`Expected identifier after "${type}" but got "${nextToken.value}"`);
         }
 
-        let name = nextToken.value as string;
+        const name = nextToken.value as string;
 
         let defaultvalue: LiteralNumber | LiteralValue | undefined;
         let minValue: LiteralNumber | LiteralValue | undefined;
@@ -299,9 +306,9 @@ export class ShaderParser {
         let stepValue: LiteralNumber | LiteralValue | undefined;
 
         nextToken = this.lexer.peek();
-        if (nextToken !== undefined && nextToken.value === "=") {
+        if (nextToken !== undefined && nextToken.value === '=') {
             this.lexer.next();
-            let nextValue = this.getValue();
+            const nextValue = this.getValue();
             if (nextValue.Type === ObjectType.Error) {
                 return nextValue;
             }
@@ -311,9 +318,9 @@ export class ShaderParser {
             }
             nextToken = this.lexer.peek();
         }
-        if (nextToken !== undefined && nextToken.value === "in") {
+        if (nextToken !== undefined && nextToken.value === 'in') {
             this.lexer.next();
-            let rangeArray = this.getArray();
+            const rangeArray = this.getArray();
             
             if (rangeArray.Type === ObjectType.Error) {
                 return rangeArray;
@@ -331,9 +338,9 @@ export class ShaderParser {
             }
             nextToken = this.lexer.peek();
         }
-        if (nextToken !== undefined && nextToken.value === "step") {
+        if (nextToken !== undefined && nextToken.value === 'step') {
             this.lexer.next();
-            let step = this.getValue();
+            const step = this.getValue();
             
             if (step.Type === ObjectType.Error) {
                 return step;
@@ -346,17 +353,17 @@ export class ShaderParser {
             stepValue = step;
         }
 
-        let isIntegerType = [ "int", "ivec2", "ivec3", "ivec4" ].findIndex((value: string) => value === type) >= 0; 
+        const isIntegerType = [ 'int', 'ivec2', 'ivec3', 'ivec4' ].findIndex((value: string) => value === type) >= 0; 
 
-        let flattenLiteral = (source: LiteralNumber | LiteralValue | undefined) => {
+        const flattenLiteral = (source: LiteralNumber | LiteralValue | undefined) => {
             if (source !== undefined) {
-                let flattenRecurse = (source: LiteralNumber | LiteralValue) => {
+                const flattenRecurse = (source: LiteralNumber | LiteralValue) => {
                     if (source.Type === ObjectType.Number) {
                         return [ source.Value ];
                     }
                     else {
                         let result: number[] = [];
-                        for (let value of source.Value) {
+                        for (const value of source.Value) {
                             result = result.concat(flattenRecurse(value));
                         }
                         return result;
@@ -366,12 +373,12 @@ export class ShaderParser {
             }
         };
 
-        let defaultAsNumber = flattenLiteral(defaultvalue);
-        let minValueAsNumber = flattenLiteral(minValue);
-        let maxValueAsNumber = flattenLiteral(maxValue);
-        let stepValueAsNumber = flattenLiteral(stepValue) || (isIntegerType ? [ 1.0 ] : undefined);
+        const defaultAsNumber = flattenLiteral(defaultvalue);
+        const minValueAsNumber = flattenLiteral(minValue);
+        const maxValueAsNumber = flattenLiteral(maxValue);
+        const stepValueAsNumber = flattenLiteral(stepValue) || (isIntegerType ? [ 1.0 ] : undefined);
         
-        let uniform: Uniform = {
+        const uniform: Uniform = {
             Type: ObjectType.Uniform,
             Name: name,
             Typename: type,
@@ -384,11 +391,11 @@ export class ShaderParser {
     }
 
     private getValue(): LiteralNumber | LiteralValue | ErrorObject {
-        let beginPos = this.stream.pos(); 
+        const beginPos = this.stream.pos(); 
 
         let nextToken = this.lexer.peek();
         if (nextToken === undefined) {
-            return this.makeError(`Expected a number, a type or '{' but got end-of-file`);
+            return this.makeError('Expected a number, a type or \'{\' but got end-of-file');
         }
         if (nextToken.type !== TokenType.Integer && nextToken.type !== TokenType.Float && nextToken.type !== TokenType.Type && (nextToken.value !== '[' || nextToken.value !== '{')) {
             return this.makeError(`Expected a number, a type or '{' but got ${nextToken.value}`);
@@ -396,8 +403,8 @@ export class ShaderParser {
 
         if (nextToken.type === TokenType.Integer || nextToken.type === TokenType.Float) {
             this.lexer.next();
-            let number = nextToken.value as number;
-            let numberObject: LiteralNumber = {
+            const number = nextToken.value as number;
+            const numberObject: LiteralNumber = {
                 Type: ObjectType.Number,
                 ValueType: nextToken.type === TokenType.Integer ? 'int' : 'float',
                 LiteralString: this.stream.code().substring(beginPos, this.stream.pos()).trim(),
@@ -407,22 +414,22 @@ export class ShaderParser {
         }
         else if (nextToken.type === TokenType.Type) {
             this.lexer.next();
-            let type = nextToken.value as string;
+            const type = nextToken.value as string;
 
             // TODO: Check if type is array type
 
-            let expectedType = type[0] === 'i' ? 'int' : 'float';
-            let expectedSize = parseInt(type[type.length - 1]);
+            const expectedType = type[0] === 'i' ? 'int' : 'float';
+            const expectedSize = parseInt(type[type.length - 1]);
 
             nextToken = this.lexer.next();
             if (nextToken === undefined) {
-                return this.makeError(`Expected "(" but got end-of-file`);
+                return this.makeError('Expected "(" but got end-of-file');
             }
             if (nextToken.value !== '(') {
                 return this.makeError(`Expected "(" but got ${nextToken.value}`);
             }
 
-            let firstValue = this.getValue();
+            const firstValue = this.getValue();
             if (firstValue.Type === ObjectType.Error) {
                 return firstValue;
             }
@@ -430,18 +437,18 @@ export class ShaderParser {
                 return this.makeError(`Expected value assignable to type ${expectedType} but got ${firstValue.LiteralString} which is of type ${firstValue.Type}`);
             }
 
-            let values: LiteralNumber[] | LiteralValue[] = firstValue.Type === ObjectType.Number ? [ firstValue ] : [ firstValue ];
+            const values: LiteralNumber[] | LiteralValue[] = firstValue.Type === ObjectType.Number ? [ firstValue ] : [ firstValue ];
 
             for (let i = 1; i < expectedSize; i++) {
                 nextToken = this.lexer.next();
                 if (nextToken === undefined) {
-                    return this.makeError(`Expected "," but got end-of-file`);
+                    return this.makeError('Expected "," but got end-of-file');
                 }
                 if (nextToken.value !== ',') {
                     return this.makeError(`Expected "," but got "${nextToken.value}"`);
                 }
 
-                let nextValue = this.getValue();
+                const nextValue = this.getValue();
                 if (nextValue.Type === ObjectType.Error) {
                     return nextValue;
                 }
@@ -460,13 +467,13 @@ export class ShaderParser {
 
             nextToken = this.lexer.next();
             if (nextToken === undefined) {
-                return this.makeError(`Expected ")" but got end-of-file`);
+                return this.makeError('Expected ")" but got end-of-file');
             }
             if (nextToken.value !== ')') {
                 return this.makeError(`Expected ")" but got ${nextToken.value}`);
             }
 
-            let valueObject: LiteralValue = {
+            const valueObject: LiteralValue = {
                 Type: ObjectType.Value,
                 ValueType: type,
                 LiteralString: this.stream.code().substring(beginPos, this.stream.pos()).trim(),
@@ -480,32 +487,32 @@ export class ShaderParser {
     }
 
     private getArray(): LiteralValue | ErrorObject {
-        let beginPos = this.stream.pos(); 
+        const beginPos = this.stream.pos(); 
 
         let nextToken = this.lexer.next();
         if (nextToken === undefined) {
-            return this.makeError(`Expected "{" after "in" but got end-of-file`);
+            return this.makeError('Expected "{" after "in" but got end-of-file');
         }
-        if (nextToken.value !== '[' && nextToken.value !== "{") {
+        if (nextToken.value !== '[' && nextToken.value !== '{') {
             return this.makeError(`Expected "{" after "in" but got ${nextToken.value}`);
         }
 
-        let closePunc = nextToken.value === '[' ? ']' : '}';
+        const closePunc = nextToken.value === '[' ? ']' : '}';
 
         let currentValue = this.getValue();
         if (currentValue.Type === ObjectType.Error) {
             return currentValue;
         }
 
-        let type = currentValue.ValueType;
-        let values: LiteralNumber[] | LiteralValue[] = currentValue.Type === ObjectType.Number ? [ currentValue ] : [ currentValue ];
+        const type = currentValue.ValueType;
+        const values: LiteralNumber[] | LiteralValue[] = currentValue.Type === ObjectType.Number ? [ currentValue ] : [ currentValue ];
         
-        while (true) {
+        for (;;) {
             nextToken = this.lexer.next();
             if (nextToken === undefined) {
                 return this.makeError(`Expected "," or "}" after "${currentValue.LiteralString}" but got end-of-file`);
             }
-            if (nextToken.value !== "," && nextToken.value !== closePunc) {
+            if (nextToken.value !== ',' && nextToken.value !== closePunc) {
                 return this.makeError(`Expected "," or "}" after "${currentValue.LiteralString}" but ${nextToken.value}`);
             }
             if (nextToken.value === closePunc) {
@@ -529,7 +536,7 @@ export class ShaderParser {
             }
         }
 
-        let valueObject: LiteralValue = {
+        const valueObject: LiteralValue = {
             Type: ObjectType.Value,
             ValueType: `${type}[${values.length}]`,
             LiteralString: this.stream.code().substring(beginPos, this.stream.pos()).trim(),
@@ -539,12 +546,12 @@ export class ShaderParser {
     }
 
     private makeError(message: string): ErrorObject {
-        let lastRange = this.lexer.getLastRange();
-        let lastRangeSize = lastRange.End - lastRange.Begin;
-        let currentColumn = this.stream.column();
-        let lastRangeColumn = currentColumn - lastRangeSize;
-        let lastRangeHighlight = `${' '.repeat(lastRangeColumn - 1)}^${'~'.repeat(lastRangeSize)}^`;
-        let error: ErrorObject = {
+        const lastRange = this.lexer.getLastRange();
+        const lastRangeSize = lastRange.End - lastRange.Begin;
+        const currentColumn = this.stream.column();
+        const lastRangeColumn = currentColumn - lastRangeSize;
+        const lastRangeHighlight = `${' '.repeat(lastRangeColumn - 1)}^${'~'.repeat(lastRangeSize)}^`;
+        const error: ErrorObject = {
             Type: ObjectType.Error,
             Message: message + `\n${this.lexer.getCurrentLine()}\n${lastRangeHighlight}`
         };
@@ -556,7 +563,7 @@ export class ShaderParser {
             return [ `float[${type[type.length - 1]}]`, true ];
         }
         else if (type === 'color3') {
-            return [ `float[3]`, true ];
+            return [ 'float[3]', true ];
         }
         else if (type.indexOf('ivec') === 0) {
             return [ `int[${type[type.length - 1]}]`, true ];
@@ -576,35 +583,35 @@ export class ShaderParser {
             return false;
         }
 
-        let [ leftMappedType, leftIsVecType ] = this.mapVecTypesToArrayTypes(leftType);
-        let [ rightMappedType, rightIsVecType ] = this.mapVecTypesToArrayTypes(rightType);
+        const [ leftMappedType, leftIsVecType ] = this.mapVecTypesToArrayTypes(leftType);
+        const [ rightMappedType ] = this.mapVecTypesToArrayTypes(rightType);
 
         type TypeDesc = {
             BaseTypeName: string,
             ArraySizes: number[]
         };
-        let getTypeDesc = (typeName: string): TypeDesc => {
-            let elements = typeName.split('[');
-            let stripped_elements = elements.map((element: string, index: number) => {
+        const getTypeDesc = (typeName: string): TypeDesc => {
+            const elements = typeName.split('[');
+            const stripped_elements = elements.map((element: string, index: number) => {
                 if (index == 0)
-                    return element
+                    return element;
                 return element.slice(0, -1);
             });
-            let baseTypeName = stripped_elements.shift();
-            let arraySizes = stripped_elements.map(s => Number(s));
+            const baseTypeName = stripped_elements.shift();
+            const arraySizes = stripped_elements.map(s => Number(s));
             return {
-                BaseTypeName: baseTypeName || "error",
+                BaseTypeName: baseTypeName || 'error',
                 ArraySizes: arraySizes
-            }
+            };
         };
-        let leftTypeDesc = getTypeDesc(leftMappedType as string);
-        let rightTypeDesc = getTypeDesc(rightMappedType as string);
+        const leftTypeDesc = getTypeDesc(leftMappedType as string);
+        const rightTypeDesc = getTypeDesc(rightMappedType as string);
 
-        let leftIsArray = leftTypeDesc.ArraySizes.length > 0;
-        let rightIsArray = rightTypeDesc.ArraySizes.length > 0;
+        const leftIsArray = leftTypeDesc.ArraySizes.length > 0;
+        const rightIsArray = rightTypeDesc.ArraySizes.length > 0;
 
         if (leftIsArray || rightIsArray) {
-            let arrayElementTypesAssignable = this.testAssignable(leftTypeDesc.BaseTypeName, rightTypeDesc.BaseTypeName);
+            const arrayElementTypesAssignable = this.testAssignable(leftTypeDesc.BaseTypeName, rightTypeDesc.BaseTypeName);
             if (!arrayElementTypesAssignable) {
                 return false;
             }
@@ -621,17 +628,17 @@ export class ShaderParser {
             return false;
         }
 
-        let leftUndefinedArraySize = leftTypeDesc.ArraySizes.indexOf(0);
+        const leftUndefinedArraySize = leftTypeDesc.ArraySizes.indexOf(0);
         if (leftUndefinedArraySize >= 0 && leftUndefinedArraySize < leftTypeDesc.ArraySizes.length - 1) {
             return false;
         }
 
-        let rightUndefinedArraySize = rightTypeDesc.ArraySizes.indexOf(0);
+        const rightUndefinedArraySize = rightTypeDesc.ArraySizes.indexOf(0);
         if (rightUndefinedArraySize >= 0 && rightUndefinedArraySize < rightTypeDesc.ArraySizes.length - 1) {
             return false;
         }
 
-        let arraySizesMatch = leftTypeDesc.ArraySizes.every((arraySize: number, index: number) => arraySize == 0 || arraySize == rightTypeDesc.ArraySizes[0]);
+        const arraySizesMatch = leftTypeDesc.ArraySizes.every((arraySize: number) => arraySize == 0 || arraySize == rightTypeDesc.ArraySizes[0]);
         return arraySizesMatch;
     }
 }

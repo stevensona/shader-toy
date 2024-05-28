@@ -16,7 +16,7 @@ export enum TokenType {
 }
 export type Token = {
     type: TokenType,
-    value: any
+    value: any // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 
 export type LineRange = {
@@ -61,7 +61,7 @@ export class ShaderLexer {
         return this.currentPeek;
     }
     public next(): Token | undefined {
-        let token = this.peek();
+        const token = this.peek();
         this.currentPeek = undefined;
         this.currentRange.Begin = this.currentPeekRange.Begin;
         this.currentRange.End = this.currentPeekRange.End;
@@ -75,11 +75,12 @@ export class ShaderLexer {
     private static preprocessor_keywords = [
         'include',
         'iKeyboard',
+        'iFirstPersonControls',
         'iUniform',
         'StrictCompatibility'
     ];
     private is_preprocessor_keyword(val: string) {
-        let idx = ShaderLexer.preprocessor_keywords.indexOf(val);
+        const idx = ShaderLexer.preprocessor_keywords.indexOf(val);
         if (idx >= 0) {
             return true;
         }
@@ -113,43 +114,43 @@ export class ShaderLexer {
         return ShaderLexer.types.indexOf(val) >= 0;
     }
     private static is_quotation(val: string) {
-        return "'\"".indexOf(val) >= 0;
+        return '\'"'.indexOf(val) >= 0;
     }
     private static is_digit(val: string) {
         return /[0-9]/i.test(val);
     }
     private static is_non_digit_number_element(val: string) {
-        return "-+.".indexOf(val) >= 0;
+        return '-+.'.indexOf(val) >= 0;
     }
     private static is_number_sign(val: string) {
-        return "-+".indexOf(val) >= 0;
+        return '-+'.indexOf(val) >= 0;
     }
     private static is_number_start(val: string) {
         return this.is_digit(val) || this.is_non_digit_number_element(val);
     }
     private static is_exponent_start(val: string) {
-        return "eE".indexOf(val) >= 0;
+        return 'eE'.indexOf(val) >= 0;
     }
     private static is_preprocessor_start(val: string) {
-        return val === "#";
+        return val === '#';
     }
     private static is_identifier_start(val: string) {
         return /[a-z_]/i.test(val);
     }
     private static is_identifier(val: string) {
-        return ShaderLexer.is_identifier_start(val) || /[0-9]/i.test(val) || "_".indexOf(val) >= 0;
+        return ShaderLexer.is_identifier_start(val) || /[0-9]/i.test(val) || '_'.indexOf(val) >= 0;
     }
     private static is_operator(val: string) {
-        return "=*/+-%~&|<>?!^".indexOf(val) >= 0;
+        return '=*/+-%~&|<>?!^'.indexOf(val) >= 0;
     }
     private static is_punctuation(val: string) {
-        return ".,:;()[]{}".indexOf(val) >= 0;
+        return '.,:;()[]{}'.indexOf(val) >= 0;
     }
     private static is_whitespace(val: string) {
-        return " \t\r\n\\".indexOf(val) >= 0;
+        return ' \t\r\n\\'.indexOf(val) >= 0;
     }
     private static is_endline(val: string) {
-        return "\n".indexOf(val) >= 0;
+        return '\n'.indexOf(val) >= 0;
     }
     private static not(predicate: (_: string) => boolean) {
         return (val: string) => {
@@ -158,8 +159,8 @@ export class ShaderLexer {
     }
 
     private skip_whitespace_and_comments() {
-        while (true) {
-            let current_pos = this.stream.pos();
+        for (;;) {
+            const current_pos = this.stream.pos();
 
             // Skip whitespace
             this.next_while(ShaderLexer.is_whitespace);
@@ -199,7 +200,7 @@ export class ShaderLexer {
 
         this.currentPeekRange.Begin = this.stream.pos();
 
-        let next_peek = this.stream.peek();
+        const next_peek = this.stream.peek();
         if (ShaderLexer.is_quotation(next_peek)) {
             return this.next_string(next_peek);
         }
@@ -226,7 +227,7 @@ export class ShaderLexer {
         }
         if (ShaderLexer.is_preprocessor_start(next_peek)) {
             this.stream.next();
-            let identifier = this.next_identifier();
+            const identifier = this.next_identifier();
             if (identifier !== undefined && this.is_preprocessor_keyword(identifier.value)) {
                 identifier.type = TokenType.PreprocessorKeyword;
                 return identifier;
@@ -273,9 +274,9 @@ export class ShaderLexer {
         let has_dot = false;
         let has_exponent = false;
         let previous_was_exponent = false;
-        let number = this.next_while((val: string) => {
-            let previously_had_exponent = false;
-            let return_val = (() => {
+        const number = this.next_while((val: string) => {
+            const previously_had_exponent = false;
+            const return_val = (() => {
                 if (val === '.') {
                     if (has_dot || has_exponent) {
                         return false;
@@ -301,14 +302,14 @@ export class ShaderLexer {
             previous_was_exponent = previously_had_exponent ? false : has_exponent;
             return return_val;
         });
-        let parsedNumber = parseFloat(number);
+        const parsedNumber = parseFloat(number);
         return {
             type: has_dot || has_exponent ? TokenType.Float : TokenType.Integer,
             value: parsedNumber
         };
     }
     private next_identifier(): Token {
-        let id = this.next_while(ShaderLexer.is_identifier);
+        const id = this.next_while(ShaderLexer.is_identifier);
         let type = TokenType.Identifier;
         if (this.is_keyword(id)) {
             type = TokenType.Keyword;
@@ -326,7 +327,7 @@ export class ShaderLexer {
         let str = '';
         this.stream.next();
         while (!this.stream.eof()) {
-            let val = this.stream.next();
+            const val = this.stream.next();
             if (escaped) {
                 str += val;
                 escaped = false;
