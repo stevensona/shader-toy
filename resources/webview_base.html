@@ -92,6 +92,7 @@
 <script src="<!-- Three.js -->"></script>
 <!-- Stats.js -->
 <!-- dat.gui -->
+<!-- CCapture.js -->
 
 <canvas id="canvas"></canvas>
 
@@ -236,6 +237,7 @@
     let frameCounter = 0;
     let recorder = null;
     let recordingTimeout = null;
+    let offlineRecording = false;
 
     // Audio Init
     // Audio Resume
@@ -396,6 +398,10 @@
             }
         }
 
+        if (offlineRecording) {
+            recorder.capture(canvas);
+        }
+
         frameCounter++;
     }
     function forceAspectRatio(width, height) {
@@ -482,6 +488,48 @@
         }
     }
     function recordAction() {
+        if (typeof CCapture !== 'undefined') {
+            recordCCapture();
+        } else {
+            recordMediaRecorder();
+        }
+    }
+    function recordCCapture() {
+        let maxDuration = <!-- Record Max Duration -->;
+        let targetFrameRate = <!-- Record Target Framerate -->;
+        let format = <!-- Record Offline Format -->;
+        let quality = <!-- Record Offline Quality -->;
+        let extension = format == "png" || format == "jpg" ? "tar" : format;
+
+        let recordButton = document.getElementById("record");
+        if (recorder == null) {
+            recordButton.classList.add('recording');
+
+            offlineRecording = true;
+            recorder = new CCapture( {
+                format: format,
+                quality: quality,
+                timeLimit: maxDuration,
+                framerate: targetFrameRate,
+            } );
+            recorder.start();
+        }
+        else {
+            recordButton.classList.remove('recording');
+
+            recorder.stop();
+            recorder.save((blob) => {
+                let a = document.createElement('a');
+                let url = URL.createObjectURL(blob);
+                a.href = url;
+                a.download = `shadertoy.${extension}`;
+                a.click();
+            } );
+            recorder = null;
+            offlineRecording = false;
+        }
+    }
+    function recordMediaRecorder() {
         let recordButton = document.getElementById("record");
         if (recordingTimeout != null) {
             clearTimeout(recordingTimeout);
@@ -493,8 +541,9 @@
             let videoContainer = <!-- Record Video Container -->;
             let videoCodec = <!-- Record Video Codec -->;
             let maxDuration = <!-- Record Max Duration -->;
+            let targetFrameRate = <!-- Record Target Framerate -->;
 
-            let stream = canvas.captureStream(<!-- Record Target Framerate -->);
+            let stream = canvas.captureStream(targetFrameRate);
             let recorderOptions = {
                 videoBitsPerSecond: <!-- Record Video Bit Rate -->,
                 mimeType: `video/${videoContainer};codecs=${videoCodec}`

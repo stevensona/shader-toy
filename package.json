@@ -134,6 +134,21 @@
                     "default": 0,
                     "description": "Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again."
                 },
+                "shader-toy.recordOffline": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable high-quality offline recording."
+                },
+                "shader-toy.recordOfflineFormat": {
+                    "type": "string",
+                    "default": "webm",
+                    "description": "Offline recording quality. Possible value are webm, gif, png and jpg."
+                },
+                "shader-toy.recordOfflineQuality": {
+                    "type": "number",
+                    "default": 80,
+                    "description": "Offline recording format. 0 is lowest and 100 highest. Applies when format is webm or jpg."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,
