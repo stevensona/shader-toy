@@ -67,6 +67,10 @@ import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamb
 
 import { removeDuplicates } from './utility';
 import { RecordTargetFramerateExtension } from './extensions/user_interface/record_target_framerate_extension';
+import { RecordVideoContainerExtension } from './extensions/user_interface/record_video_container_extension';
+import { RecordVideoCodecExtension } from './extensions/user_interface/record_video_codec_extension';
+import { RecordVideoBitRateExtension } from './extensions/user_interface/record_video_bit_rate_extension';
+import { RecordMaxDurationExtension } from './extensions/user_interface/record_max_duration_extension';
 
 export class WebviewContentProvider {
     private context: Context;
@@ -384,9 +388,25 @@ export class WebviewContentProvider {
         const forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
 
-        const recordTargetFramerate = this.context.getConfig<number>('shader-toy.recordTargetFramerate') || 30;
+        const recordTargetFramerate = this.context.getConfig<number>('recordTargetFramerate') || 30;
         const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
         this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let stream = canvas.captureStream(<!-- Record Target Framerate -->);', '<!-- Record Target Framerate -->');
+
+        const recordVideoContainer = this.context.getConfig<string>('recordVideoContainer') || "webm";
+        const recordVideoContainerExtension = new RecordVideoContainerExtension(recordVideoContainer);
+        this.webviewAssembler.addReplaceModule(recordVideoContainerExtension, 'let videoContainer = <!-- Record Video Container -->;', '<!-- Record Video Container -->');
+
+        const recordVideoCodec = this.context.getConfig<string>('recordVideoCodec') || "vp8";
+        const recordVideoCodecExtension = new RecordVideoCodecExtension(recordVideoCodec);
+        this.webviewAssembler.addReplaceModule(recordVideoCodecExtension, 'let videoCodec = <!-- Record Video Codec -->;', '<!-- Record Video Codec -->');
+
+        const recordVideoBitRate = this.context.getConfig<number>('recordVideoBitRate') || 2500000;
+        const recordVideoBitRateExtension = new RecordVideoBitRateExtension(recordVideoBitRate);
+        this.webviewAssembler.addReplaceModule(recordVideoBitRateExtension, 'videoBitsPerSecond: <!-- Record Video Bit Rate -->,', '<!-- Record Video Bit Rate -->');
+
+        const recordMaxDuration = this.context.getConfig<number>('recordMaxDuration') || 0;
+        const recordMaxDurationExtension = new RecordMaxDurationExtension(recordMaxDuration);
+        this.webviewAssembler.addReplaceModule(recordMaxDurationExtension, 'let maxDuration = <!-- Record Max Duration -->;', '<!-- Record Max Duration -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Reload Logic

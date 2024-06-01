@@ -113,6 +113,27 @@
                     "default": 30,
                     "description": "Framerate that is targeted when using the record button."
                 },
+                "shader-toy.recordVideoContainer": {
+                    "type": "string",
+                    "default": "webm",
+                    "description": "Video file container. Currently only webm is supported, but mp4support is coming."
+                },
+                "shader-toy.recordVideoCodec": {
+                    "type": "string",
+                    "default": "vp8",
+                    "enum": ["vp8", "vp9", "h264", "avc1"],
+                    "description": "Video codec. vp8, vp9, h264 and avc1 are all supported. Default it vp8."
+                },
+                "shader-toy.recordVideoBitRate": {
+                    "type": "number",
+                    "default": 2500000,
+                    "description": "Video encoding bit rate in bits/seconds."
+                },
+                "shader-toy.recordMaxDuration": {
+                    "type": "number",
+                    "default": 0,
+                    "description": "Maximum recording duration in seconds. 0 (the default) will keep recording until the record button is pressed again."
+                },
                 "shader-toy.showPauseButton": {
                     "type": "boolean",
                     "default": true,

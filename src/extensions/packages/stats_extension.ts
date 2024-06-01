@@ -34,6 +34,8 @@ export class StatsExtension implements WebviewExtension {
 let stats = new Stats();
 compileTimePanel = stats.addPanel(new Stats.Panel('CT MS', '#ff8', '#221'));
 stats.showPanel(1);
+stats.${domElement}.style.removeProperty('top');
+stats.${domElement}.style.bottom = '0px';
 document.body.appendChild(stats.${domElement});
 requestAnimationFrame(function loop() {
     stats.update();

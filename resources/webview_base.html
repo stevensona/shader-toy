@@ -235,6 +235,7 @@
     let normalizedMouse = new THREE.Vector2(<!-- Start Normalized Mouse -->);
     let frameCounter = 0;
     let recorder = null;
+    let recordingTimeout = null;
 
     // Audio Init
     // Audio Resume
@@ -418,10 +419,14 @@
     }
     function computeSize() {
         
+        let forcedResolutions = [<!-- Forced Resolution -->];
+        let zoom = forcedResolutions[0] > 0 ? 1.0/window.devicePixelRatio : 1.0;
+        canvas.style.zoom = zoom;
+
         // Compute forced aspect ratio and align canvas
         resolution = forceAspectRatio(window.innerWidth, window.innerHeight);
-        canvas.style.left = `${(window.innerWidth - resolution.x) / 2}px`;
-        canvas.style.top = `${(window.innerHeight - resolution.y) / 2}px`;
+        canvas.style.left = `${(window.innerWidth - resolution.x*zoom) / 2}px`;
+        canvas.style.top = `${(window.innerHeight - resolution.y*zoom) / 2}px`;
 
         for (let buffer of buffers) {
             if (buffer.Target) {
@@ -478,12 +483,21 @@
     }
     function recordAction() {
         let recordButton = document.getElementById("record");
+        if (recordingTimeout != null) {
+            clearTimeout(recordingTimeout);
+            recordingTimeout = null;
+        }
         if (recorder == null) {
             recordButton.classList.add('recording');
 
+            let videoContainer = <!-- Record Video Container -->;
+            let videoCodec = <!-- Record Video Codec -->;
+            let maxDuration = <!-- Record Max Duration -->;
+
             let stream = canvas.captureStream(<!-- Record Target Framerate -->);
             let recorderOptions = {
-                mimeType: "video/webm"
+                videoBitsPerSecond: <!-- Record Video Bit Rate -->,
+                mimeType: `video/${videoContainer};codecs=${videoCodec}`
             };
             recorder = new MediaRecorder(stream, recorderOptions);
             recorder.start();
@@ -491,9 +505,18 @@
                 let a = document.createElement('a');
                 let url = URL.createObjectURL(evt.data);
                 a.href = url;
-                a.download = 'shadertoy.webm';
+                a.download = `shadertoy.${videoContainer}`;
                 a.click();
             };
+
+            if (maxDuration > 0) {
+                recordingTimeout = setTimeout(() => {
+                    recordButton.classList.remove('recording');
+                    recorder.stop();
+                    recorder = null;
+                    recordingTimeout = null;
+                }, maxDuration*1000);
+            }
         }
         else {
             recordButton.classList.remove('recording');
