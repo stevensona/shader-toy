@@ -199,7 +199,7 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
-### 0.11.4
+### 0.11.3
 * Added `shader-toy.recordVideoContainer` (set video file container).
 * Added `shader-toy.recordVideoCodec` (set video codec).
 * Added `shader-toy.recordVideoBitRate` (set recording bit rate).
@@ -209,9 +209,7 @@ Contributions of any kind are welcome and encouraged.
 * Added `shader-toy.recordOffline` to switch between real-time and offline rendering.
 * Added `shader-toy.recordOfflineFormat`. Used in conjunction with `shader-toy.recordOffline`
 * Added `shader-toy.recordOfflineQuality`. Used in conjunction with `shader-toy.recordOffline`
-
-### 0.11.3
-* Added option to reload on save,
+* Added `shader-toy.reloadOnSaveFile` option to reload on save,
 * fixed a bug where glslify would never find modules.
 
 ### 0.11.2
