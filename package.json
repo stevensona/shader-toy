@@ -274,7 +274,7 @@
         "mocha": "^10.2.0",
         "ts-loader": "^9.4.3",
         "typescript": "^5.4.5",
-        "webpack": "^5.87.0",
+        "webpack": "^5.94.0",
         "webpack-cli": "^5.1.4"
     },
     "icon": "resources/thumb.png"
