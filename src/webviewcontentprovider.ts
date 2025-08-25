@@ -394,6 +394,7 @@ export class WebviewContentProvider {
         const forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution') || [-1, -1];
         const forcedScreenshotResolutionExtension = new ForcedScreenshotResolutionExtension(forcedScreenshotResolution);
         this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedScreenshotResolution = [<!-- Forced Screenshot Resolution -->];', '<!-- Forced Screenshot Resolution -->');
+        this.webviewAssembler.addReplaceModule(forcedScreenshotResolutionExtension, 'let forcedResolutions = [<!-- Forced Resolution -->];', '<!-- Forced Resolution -->');
 
         const recordTargetFramerate = this.context.getConfig<number>('recordTargetFramerate') || 30;
         const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);

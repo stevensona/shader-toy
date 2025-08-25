@@ -1,7 +1,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as mime from 'mime';
+import mime from 'mime';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as Types from './typenames';

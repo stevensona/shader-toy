@@ -2,7 +2,7 @@
     "name": "shader-toy",
     "displayName": "Shader Toy",
     "description": "Live preview of GLSL shaders similar to shadertoy",
-    "version": "0.11.1",
+    "version": "0.11.3",
     "publisher": "stevensona",
     "license": "MIT",
     "repository": {
@@ -255,27 +255,27 @@
         "format": "eslint --fix \"src/**\" --config .eslintrc.json"
     },
     "dependencies": {
-        "compare-versions": "^5.0.3",
+        "compare-versions": "^6.1.1",
         "glslify": "^7.1.1",
-        "mime": "^3.0.0"
+        "mime": "^4.0.7"
     },
     "devDependencies": {
-        "@types/glob": "^8.1.0",
-        "@types/mime": "^3.0.1",
-        "@types/mocha": "^10.0.1",
-        "@types/node": "^20.3.1",
-        "@types/vscode": "^1.79.1",
-        "@typescript-eslint/eslint-plugin": "^6.7.0",
-        "@typescript-eslint/parser": "^6.7.0",
-        "@vscode/test-electron": "^2.4.0",
-        "@vscode/vsce": "^2.21.0",
-        "eslint": "^8.49.0",
-        "glob": "^10.2.7",
-        "mocha": "^10.2.0",
-        "ts-loader": "^9.4.3",
-        "typescript": "^5.4.5",
-        "webpack": "^5.87.0",
-        "webpack-cli": "^5.1.4"
+        "@types/glob": "^9.0.0",
+        "@types/mime": "^4.0.0",
+        "@types/mocha": "^10.0.10",
+        "@types/node": "^24.3.0",
+        "@types/vscode": "^1.103.0",
+        "@typescript-eslint/eslint-plugin": "^8.40.0",
+        "@typescript-eslint/parser": "^8.40.0",
+        "@vscode/test-electron": "^2.5.2",
+        "@vscode/vsce": "^3.6.0",
+        "eslint": "^8.40.0",
+        "glob": "^11.0.3",
+        "mocha": "^11.7.1",
+        "ts-loader": "^9.5.4",
+        "typescript": "^5.9.2",
+        "webpack": "^5.101.3",
+        "webpack-cli": "^6.0.1"
     },
     "icon": "resources/thumb.png"
 }
