@@ -199,6 +199,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.11.31
+* Fixed error code lines diagnostics with multi-level includes support
+
 ### 0.11.3
 * Added `shader-toy.recordVideoContainer` (set video file container).
 * Added `shader-toy.recordVideoCodec` (set video codec).
