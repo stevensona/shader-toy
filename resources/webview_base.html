@@ -118,6 +118,7 @@
     };
 
     let currentShader = {};
+    var sourceIdToFile = {};
     // Error Callback
 
     // Development feature: Output warnings from third-party libraries
@@ -247,6 +248,13 @@
     let commonIncludes = [];
     // Includes
 
+    // Map GLSL #line "source string numbers" to include file paths.
+    // Source id 0 is the current shader file; include sources are 1..N.
+    sourceIdToFile = {};
+    for (let i = 0; i < commonIncludes.length; i++) {
+        sourceIdToFile[i + 1] = commonIncludes[i].File;
+    }
+
     // WebGL2 inserts more lines into the shader
     if (isWebGL2) {
         for (let buffer of buffers) {
@@ -294,8 +302,7 @@
         currentShader = {
             Name: include.Name,
             File: include.File,
-            // add two for version and precision lines
-            LineOffset: <!-- Preamble Line Numbers --> + 2
+            LineOffset: 0
         };
         // Test Compile Included Files
     }
@@ -304,7 +311,7 @@
         currentShader = {
             Name: buffer.Name,
             File: buffer.File,
-            LineOffset: buffer.LineOffset
+            LineOffset: 0
         };
         quad.material = buffer.Shader;
         renderer.setRenderTarget(buffer.Target);
@@ -332,6 +339,8 @@
 
     function compileFragShader(gl, fsSource) {
         const fs = gl.createShader(gl.FRAGMENT_SHADER);
+        // Normalize our "self" sentinel source-id (65535) for standalone compiles.
+        fsSource = (fsSource || '').replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
         gl.shaderSource(fs, fsSource);
         gl.compileShader(fs);
         if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
