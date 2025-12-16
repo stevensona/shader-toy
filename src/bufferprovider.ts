@@ -281,8 +281,16 @@ void main() {
             }
             else {
                 // If there is no void main() in the shader we assume it is a shader-toy style shader
-                const mainPos = code.search(/void\s+main\s*\(\s*\)\s*\{/g);
-                const mainImagePos = code.search(/void\s+mainImage\s*\(\s*out\s+vec4\s+\w+,\s*(in\s)?\s*vec2\s+\w+\s*\)\s*\{/g);
+                // IMPORTANT: avoid matching commented-out code like `// void main() {}`.
+                // This check only determines whether we should inject a wrapper `main()`.
+                const codeForSearch = code
+                    // block comments
+                    .replace(/\/\*[\s\S]*?\*\//g, '')
+                    // line comments
+                    .replace(/\/\/.*$/gm, '');
+
+                const mainPos = codeForSearch.search(/void\s+main\s*\(\s*\)\s*\{/g);
+                const mainImagePos = codeForSearch.search(/void\s+mainImage\s*\(\s*out\s+vec4\s+\w+,\s*(in\s)?\s*vec2\s+\w+\s*\)\s*\{/g);
                 if (mainPos === -1 && mainImagePos >= 0) {
                     insertMainImageCode();
                 }
@@ -327,7 +335,25 @@ void main() {
                 code = glsl.compile(code, {basedir: baseDir});
             }
             catch (e) {
-                vscode.window.showErrorMessage((e as Error).message);
+                const rawMessage = (e as Error).message || String(e);
+                // Make the most common failure mode actionable: missing dependency modules.
+                // Example: "Cannot find module 'glsl-noise/simplex/2d'".
+                const missingModuleMatch = rawMessage.match(/Cannot find module ['"]([^'"]+)['"]/i);
+                if (missingModuleMatch) {
+                    const requested = missingModuleMatch[1];
+                    // Suggest installing the top-level package name (best-effort heuristic).
+                    const packageName = requested.startsWith('@')
+                        ? requested.split('/').slice(0, 2).join('/')
+                        : requested.split('/')[0];
+                    vscode.window.showErrorMessage(
+                        `glslify could not resolve '${requested}'. ` +
+                        `Install the dependency in your workspace (e.g. 'npm i ${packageName}') ` +
+                        `or adjust the require() path. (basedir: ${baseDir})`
+                    );
+                }
+                else {
+                    vscode.window.showErrorMessage(`glslify failed: ${rawMessage}`);
+                }
             }
         }
 

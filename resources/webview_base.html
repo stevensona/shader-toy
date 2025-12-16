@@ -107,6 +107,28 @@
     }
     var compileTimePanel;
 
+    // Show fatal JS errors in the WebView to avoid a silent blank screen.
+    {
+        const showWebviewError = (title, err) => {
+            try {
+                const messageElement = document.getElementById('message');
+                if (!messageElement) return;
+                const detail = (err && (err.stack || err.message)) ? (err.stack || err.message) : String(err);
+                messageElement.innerText = `${title}\n${detail}`;
+            } catch {
+                // ignore
+            }
+        };
+
+        window.addEventListener('error', (event) => {
+            showWebviewError('WebView error', event?.error || event?.message || event);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            showWebviewError('Unhandled promise rejection', event?.reason || event);
+        });
+    }
+
     let revealError = function(line, file) {
         if (vscode) {
             vscode.postMessage({
