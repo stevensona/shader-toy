@@ -7,10 +7,10 @@
         root.shaderCompile = {};
     }
 
-    // Central place for any future #line / sentinel normalization.
-    // On master today this is effectively a no-op.
+    // Central place for any #line / sentinel normalization.
     root.shaderCompile.normalizeLineDirectives = function (source) {
-        return source || '';
+        // Normalize our "self" sentinel source-id (65535) for compiles.
+        return (source || '').replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
     };
 
     root.shaderCompile.compileFragShader = function (gl, fsSource) {

@@ -246,7 +246,10 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Shader Preamble
         const preambleExtension = new ShaderPreambleExtension();
+        // Keep this resilient: if the template line changes (e.g. WebGL2 adds extra lines),
+        // make sure we still replace the placeholder token so the generated JS stays valid.
         this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)', '<!-- Preamble Line Numbers -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Custom Uniforms
