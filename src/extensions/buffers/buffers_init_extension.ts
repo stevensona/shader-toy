@@ -25,8 +25,8 @@ export class BuffersInitExtension implements WebviewExtension {
 
             this.content += `\
 buffers.push({
-    Name: '${buffer.Name}',
-    File: '${buffer.File}',
+    Name: ${JSON.stringify(buffer.Name)},
+    File: ${JSON.stringify(buffer.File)},
     LineOffset: ${buffer.LineOffset},
     Target: ${target},
     ChannelResolution: Array(10).fill(new THREE.Vector3(0,0,0)),
@@ -34,7 +34,7 @@ buffers.push({
     PingPongChannel: ${buffer.SelfChannel},
     Dependents: ${JSON.stringify(buffer.Dependents)},
     Shader: new THREE.ShaderMaterial({
-        fragmentShader: document.getElementById('${buffer.Name}').textContent,
+        fragmentShader: document.getElementById(${JSON.stringify(buffer.Name)}).textContent,
         depthWrite: false,
         depthTest: false,
         uniforms: {
