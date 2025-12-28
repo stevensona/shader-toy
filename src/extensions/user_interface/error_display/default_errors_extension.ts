@@ -6,7 +6,7 @@ export class DefaultErrorsExtension implements WebviewExtension {
     public generateContent(): string {
         return `\
 (() => {
-    // Optional hook for feature branches (e.g. WebGL2/iVertex) to rewrite
+    // Optional hook for feature extensions (e.g. WebGL2/iVertex) to rewrite
     // compiler errors without forking the core error display logic.
     // Expected signature:
     //   window.shaderToyRewriteGlslError({ sid, lineNumber, file, error, currentShader })
@@ -46,9 +46,11 @@ export class DefaultErrorsExtension implements WebviewExtension {
                                 if (rewritten.error !== undefined) error = rewritten.error;
                             }
                         }
-
-                    let lineHighlight = "<a class='error' unselectable onclick='revealError(" + lineNumber + ", " + JSON.stringify(file) + ")'>Line " + lineNumber + "</a>";
-                    return '<li>' + lineHighlight + ': ' + error + ' <span>(' + file + ')</span></li>';
+                    if (typeof lineNumber === 'number' && lineNumber >= 1) {
+                        let lineHighlight = "<a class='error' unselectable onclick='revealError(" + lineNumber + ", " + JSON.stringify(file) + ")'>Line " + lineNumber + "</a>";
+                        return '<li>' + lineHighlight + ': ' + error + ' <span>(' + file + ')</span></li>';
+                    }
+                    return '<li>' + error + ' <span>(' + file + ')</span></li>';
                 });
 
                 $('#message').append(\`<h3>Shader failed to compile - \${currentShader.Name} </h3>\`);
