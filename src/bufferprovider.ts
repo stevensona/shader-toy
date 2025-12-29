@@ -181,6 +181,10 @@ export class BufferProvider {
         // (Includes are compiled separately; those are normalized in the webview compile helper.)
         code = code.replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
 
+        // Normalize any "self" source-id sentinel to 0 for top-level compilation units.
+        // (Includes are compiled separately; those are normalized in the webview compile helper.)
+        code = code.replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
+
         const lineOffset = boxedLineOffset.Value;
         let vertexFile: string | undefined = undefined;
         let vertexCode: string | undefined = undefined;
