@@ -27,12 +27,29 @@ type InputTextureSettings = {
     TypeLine?: number,
 };
 
+// GLSL `#line` supports a "source string number". We use a sentinel for "this current file"
+// so nested includes can be re-mapped correctly when an included file is inlined into a parent.
+const SELF_SOURCE_ID = 65535;
+
 export class BufferProvider {
     private context: Context;
     private visitedFiles: string[];
     constructor(context: Context) {
         this.context = context;
         this.visitedFiles = [];
+    }
+
+    private looksLikeStandaloneVertexShader(code: string): boolean {
+        // Heuristic only: we only want to catch the common case of a vertex shader being
+        // opened directly for preview (where the extension assumes fragment-stage by default).
+        // Keep this conservative to avoid false positives.
+        const withoutBlockComments = code.replace(/\/\*[\s\S]*?\*\//g, '');
+        const withoutLineComments = withoutBlockComments.replace(/\/\/.*$/gm, '');
+        const stripped = withoutLineComments;
+
+        const hasVertexBuiltins = /\bgl_Position\b|\bgl_VertexID\b|\bgl_InstanceID\b|\bgl_PointSize\b/.test(stripped);
+        const hasFragmentSignals = /\bmainImage\b|\bgl_FragCoord\b|\bgl_FragColor\b|\bGLSL_FRAGCOLOR\b/.test(stripped);
+        return hasVertexBuiltins && !hasFragmentSignals;
     }
 
     public async parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
@@ -127,7 +144,29 @@ export class BufferProvider {
         }
         this.visitedFiles.push(file);
 
+        // If the entry shader looks like a vertex shader but is being previewed standalone,
+        // show a clear diagnostic instead of letting it compile as a fragment shader.
+        if (rootFile === file && this.looksLikeStandaloneVertexShader(code)) {
+            this.showErrorAtLine(
+                file,
+                'This file looks like a vertex shader. Standalone preview assumes a fragment shader; use #iVertex from a fragment pass to reference this file.',
+                1
+            );
+
+            // Replace with a minimal fragment stub that fails reliably with a descriptive marker.
+            // NOTE: GLSL ES does not support `#error`, so use an invalid statement and translate
+            // the resulting compiler message in the WebView error renderer.
+            code = [
+                'void mainImage(out vec4 fragColor, in vec2 fragCoord) {',
+                '    ERROR_IVERTEX_SOURCE;',
+                '    fragColor = vec4(0.0);',
+                '}'
+            ].join('\n');
+        }
+
         const boxedLineOffset: Types.BoxedValue<number> = { Value: 0 };
+        const boxedVertexShaderFile: Types.BoxedValue<string | undefined> = { Value: undefined };
+        const boxedVertexShaderLine: Types.BoxedValue<number | undefined> = { Value: undefined };
         const pendingTextures: InputTexture[] = [];
         const pendingTextureSettings = new Map<ChannelId, InputTextureSettings>();
         const pendingUniforms: Types.UniformDefinition[] = [];
@@ -136,9 +175,79 @@ export class BufferProvider {
         const boxedFirstPersonControls: Types.BoxedValue<boolean> = { Value: false };
         const strictComp: Types.BoxedValue<boolean> = { Value: false };
 
-        code = await this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
+        code = await this.transformCode(rootFile, file, code, boxedLineOffset, boxedVertexShaderFile, boxedVertexShaderLine, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
+
+        // Normalize any "self" source-id sentinel to 0 for top-level compilation units.
+        // (Includes are compiled separately; those are normalized in the webview compile helper.)
+        code = code.replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
+
+        // Normalize any "self" source-id sentinel to 0 for top-level compilation units.
+        // (Includes are compiled separately; those are normalized in the webview compile helper.)
+        code = code.replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
 
         const lineOffset = boxedLineOffset.Value;
+        let vertexFile: string | undefined = undefined;
+        let vertexCode: string | undefined = undefined;
+        let vertexLineOffset: number | undefined = undefined;
+
+        if (boxedVertexShaderFile.Value !== undefined) {
+            vertexFile = boxedVertexShaderFile.Value;
+            vertexLineOffset = lineOffset;
+            const vertexFileRead = await this.readShaderFile(vertexFile);
+            if (vertexFileRead.success === false) {
+                this.showErrorAtLine(file, `Could not open vertex shader file: ${vertexFile}`, boxedVertexShaderLine.Value ?? 0);
+                vertexFile = undefined;
+                vertexLineOffset = undefined;
+            }
+            else {
+                vertexCode = Buffer.from(vertexFileRead.bufferCode).toString();
+
+                // Mirror fragment behavior: strip a leading #version, since THREE manages it.
+                const versionPos = vertexCode.search(/^#version/g);
+                if (versionPos === 0) {
+                    const newLinePos = vertexCode.search('\n');
+                    const versionDirective = vertexCode.substring(versionPos, newLinePos - 1);
+                    vertexCode = vertexCode.replace(versionDirective, '');
+                    this.showInformationAtLine(vertexFile, `Version directive '${versionDirective}' ignored by shader-toy extension`, 0);
+                }
+
+                // Apply the same include / #line mapping pipeline as fragment shaders so that
+                // vertex-stage compile errors point at the right file/line.
+                // (We intentionally do not propagate textures/uniforms/etc from vertex files.)
+                const vertexLineOffsetBox: Types.BoxedValue<number> = { Value: 0 };
+                const vertexVertexShaderFile: Types.BoxedValue<string | undefined> = { Value: undefined };
+                const vertexVertexShaderLine: Types.BoxedValue<number | undefined> = { Value: undefined };
+                const vertexPendingTextures: InputTexture[] = [];
+                const vertexPendingTextureSettings = new Map<ChannelId, InputTextureSettings>();
+                const vertexPendingUniforms: Types.UniformDefinition[] = [];
+                const vertexIncludes: Types.IncludeDefinition[] = [];
+                const vertexUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
+                const vertexUsesFirstPersonControls: Types.BoxedValue<boolean> = { Value: false };
+                const vertexStrictComp: Types.BoxedValue<boolean> = { Value: false };
+
+                vertexCode = await this.transformCode(
+                    rootFile,
+                    vertexFile,
+                    vertexCode,
+                    vertexLineOffsetBox,
+                    vertexVertexShaderFile,
+                    vertexVertexShaderLine,
+                    vertexPendingTextures,
+                    vertexPendingTextureSettings,
+                    vertexPendingUniforms,
+                    vertexIncludes,
+                    commonIncludes,
+                    vertexUsesKeyboard,
+                    vertexUsesFirstPersonControls,
+                    vertexStrictComp,
+                    generateStandalone
+                );
+
+                if (!vertexCode.startsWith('#line')) {
+                    vertexCode = `#line 1 0\n${vertexCode}`;
+                }
+            }
+        }
         const textures: Types.TextureDefinition[] = [];
         const audios: Types.AudioDefinition[] = [];
         const uniforms: Types.UniformDefinition[] = [];
@@ -272,7 +381,7 @@ export class BufferProvider {
                 code += `
 void main() {
     vec2 fragCoord = gl_FragCoord.xy;
-    mainImage(gl_FragColor, fragCoord);
+    mainImage(GLSL_FRAGCOLOR, fragCoord);
 }`;
             };
 
@@ -362,6 +471,9 @@ void main() {
             Name: this.makeName(file),
             File: file,
             Code: code,
+            VertexFile: vertexFile,
+            VertexCode: vertexCode,
+            VertexLineOffset: vertexLineOffset,
             Includes: includes,
             TextureInputs: textures,
             AudioInputs: audios,
@@ -375,7 +487,7 @@ void main() {
         });
     }
 
-    private async transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>,
+    private async transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, vertexShaderFile: Types.BoxedValue<string | undefined>, vertexShaderLine: Types.BoxedValue<number | undefined>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>,
         uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, usesFirstPersonControls: Types.BoxedValue<boolean>, strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): Promise<string> {
 
         const addTextureSettingIfNew = (channel: number) => {
@@ -489,6 +601,10 @@ void main() {
             case ObjectType.Include: {
                 const includeFile = (await this.context.mapUserPath(nextObject.Path, file)).file;
 
+                // Capture the include directive line number in the original (pre-mutation) file.
+                // ShaderStream.originalLine() is 1-based.
+                const includeDirectiveLine = parser.line();
+
                 let sharedIncludeIndex = sharedIncludes.findIndex((value: Types.IncludeDefinition) => {
                     if (value.File === includeFile) {
                         return true;
@@ -500,7 +616,9 @@ void main() {
                     const includeCode = await this.readShaderFile(includeFile);
                     if (includeCode.success) {
                         const include_line_offset: Types.BoxedValue<number> = { Value: 0 };
-                        const transformedIncludeCode = await this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
+                        const include_vertex_file: Types.BoxedValue<string | undefined> = { Value: undefined };
+                        const include_vertex_line: Types.BoxedValue<number | undefined> = { Value: undefined };
+                        const transformedIncludeCode = await this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, include_vertex_file, include_vertex_line, textures, textureSettings,
                             uniforms, includes, sharedIncludes, usesKeyboard, usesFirstPersonControls, strictComp, generateStandalone);
                         const newInclude: Types.IncludeDefinition = {
                             Name: this.makeName(includeFile),
@@ -519,10 +637,91 @@ void main() {
                 if (sharedIncludeIndex >= 0) {
                     const include = sharedIncludes[sharedIncludeIndex];
                     includes.push(include);
-                    lineOffset.Value += include.LineCount - 1;
-                    replaceLastObject(include.Code);
+
+                    // Assign a "source string number" so WebGL error logs can be mapped back to
+                    // the correct include file.
+                    // - Source 0 is the current (top-level) buffer file.
+                    // - Includes are 1..N following sharedIncludes order.
+                    const includeSourceId = sharedIncludeIndex + 1;
+
+                    // Re-map any "self" markers inside the included file to this include's source id.
+                    // This is required for nested includes, so that errors in intermediate includes
+                    // are not attributed to the outermost shader.
+                    const includeCodeForInline = include.Code.replace(
+                        /#line\s+(\d+)\s+65535/g,
+                        `#line $1 ${includeSourceId}`
+                    );
+
+                    // Expand includes while keeping compile error line numbers meaningful:
+                    // - Inside the included file content: start at line 1 for that file.
+                    // - After the include: resume numbering at the line after the include directive
+                    //   in the current file (using the self sentinel).
+                    // Note: do NOT end with an extra newline; the original '\n' after the include
+                    // directive remains in the source.
+                    const injected = `#line 1 ${includeSourceId}\n${includeCodeForInline}\n#line ${includeDirectiveLine + 1} ${SELF_SOURCE_ID}`;
+                    replaceLastObject(injected);
                 }
 
+                break;
+            }
+            case ObjectType.Vertex: {
+                const line = parser.line();
+                const glslVersionConfig = this.context.getConfig<string>('glslVersion');
+                const isWebGL2Mode = (glslVersionConfig === 'WebGL2');
+                if (!isWebGL2Mode) {
+                    this.showErrorAtLine(file, 'Custom vertex shaders (#iVertex) require shader-toy.glslVersion set to "WebGL2".', line);
+                    removeLastObject();
+                    break;
+                }
+
+                let userPath = nextObject.Path;
+                const normalized = userPath.replace('file://', '');
+                if (normalized === 'self') {
+                    this.showErrorAtLine(file, '"#iVertex \"self\"" is not supported. Use "#iVertex \"default\"" or point to a .glsl file.', line);
+                    removeLastObject();
+                    break;
+                }
+                if (normalized === 'default') {
+                    vertexShaderFile.Value = undefined;
+                    vertexShaderLine.Value = undefined;
+                    removeLastObject();
+                    break;
+                }
+
+                // Only local files are supported for MVP.
+                let local = false;
+                try {
+                    const vertexUrl = new URL(userPath);
+                    if (vertexUrl.protocol === 'file:') {
+                        local = true;
+                    }
+                }
+                catch {
+                    local = true;
+                }
+                if (!local) {
+                    this.showErrorAtLine(file, '#iVertex only supports local files (file://...) for now.', line);
+                    removeLastObject();
+                    break;
+                }
+
+                userPath = userPath.replace('file://', '');
+                const mapped = await this.context.mapUserPath(userPath, file);
+                const vertexFile = mapped.file;
+
+                if (path.extname(vertexFile).toLowerCase() !== '.glsl') {
+                    this.showErrorAtLine(file, `#iVertex expects a .glsl file, got "${userPath}"`, line);
+                    removeLastObject();
+                    break;
+                }
+
+                if (vertexShaderFile.Value !== undefined) {
+                    this.showWarningAtLine(file, '#iVertex was specified multiple times; the last one wins.', line);
+                }
+
+                vertexShaderFile.Value = vertexFile;
+                vertexShaderLine.Value = line;
+                removeLastObject();
                 break;
             }
             case ObjectType.Uniform:

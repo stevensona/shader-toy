@@ -233,10 +233,78 @@
         }
     });
 
+    // GLSL version selection
+    // Values: 'Default' | 'WebGL2'
+    let glslVersionSetting = '<!-- GLSL Version -->';
+    if (glslVersionSetting !== 'Default' && glslVersionSetting !== 'WebGL2') {
+        glslVersionSetting = 'Default';
+    }
+
+    let glslUseVersion3 = (glslVersionSetting === 'WebGL2');
+
     let canvas = document.getElementById('canvas');
-    let gl = canvas.getContext('webgl2');
-    let isWebGL2 = gl != null;
-    if (gl == null) gl = canvas.getContext('webgl');
+    let gl = null;
+    if (glslUseVersion3) {
+        // WebGL2 mode: do not fall back to WebGL1.
+        gl = canvas.getContext('webgl2');
+    }
+    else {
+        // Default mode: prefer WebGL2, but fall back to WebGL1.
+        gl = canvas.getContext('webgl2');
+        if (gl == null) gl = canvas.getContext('webgl', { antialias: true, preserveDrawingBuffer: true });
+    }
+
+    let isWebGL2 = gl != null && (typeof WebGL2RenderingContext !== 'undefined') && (gl instanceof WebGL2RenderingContext);
+    if (gl == null) {
+        const msg = glslUseVersion3
+            ? 'WebGL2 is required for shader-toy.glslVersion = "WebGL2", but it is not available in this WebView.'
+            : 'WebGL is not available in this WebView (cannot create webgl2/webgl context).';
+        console.error(msg);
+        const messageElement = document.getElementById('message');
+        if (messageElement) {
+            messageElement.innerText = msg;
+        }
+        throw new Error(msg);
+    }
+
+    function prepareFragmentShader(source) {
+        // This function is called before handing the shader source to THREE.
+        // THREE will still inject its own #version/precision/defines depending on glslVersion.
+        if (glslUseVersion3) {
+            return (
+                '#ifdef gl_FragColor\n' +
+                '#define GLSL_FRAGCOLOR gl_FragColor\n' +
+                '#else\n' +
+                'layout(location = 0) out highp vec4 layoutFragColor;\n' +
+                '#define gl_FragColor layoutFragColor\n' +
+                '#define GLSL_FRAGCOLOR layoutFragColor\n' +
+                '#endif\n' +
+                '#define texture2D texture\n' +
+                '#define textureCube texture\n' +
+                '\n' + source
+            );
+        }
+        return (
+            '#define GLSL_FRAGCOLOR gl_FragColor\n' +
+            '\n' + source
+        );
+    }
+
+    function prepareVertexShader(source) {
+        // MVP: custom vertex shaders are only supported with GLSL 300 ES.
+        if (!glslUseVersion3) {
+            const msg = 'Custom vertex shaders (#iVertex) require shader-toy.glslVersion = "WebGL2".';
+            console.error(msg);
+            throw new Error(msg);
+        }
+
+        // Match fragment shims where practical.
+        return (
+            '#define texture2D texture\n' +
+            '#define textureCube texture\n' +
+            '\n' + source
+        );
+    }
     let supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
     let supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
     let framebufferType = THREE.UnsignedByteType;
@@ -261,10 +329,16 @@
     let commonIncludes = [];
     // Includes
 
+    // Include-only compilation wrapper line count: precision line (always) + optional #version.
+    let includeHeaderLines = glslUseVersion3 ? 2 : 1;
+
     // WebGL2 inserts more lines into the shader
     if (isWebGL2) {
         for (let buffer of buffers) {
             buffer.LineOffset += 16;
+            if (buffer.VertexLineOffset !== undefined) {
+                buffer.VertexLineOffset += 16;
+            }
         }
     }
 
@@ -304,22 +378,45 @@
     // Run every shader once to check for compile errors
     let compileTimeStart = performance.now();
     let failed=0;
+    const failedBufferNames = new Set();
     for (let include of commonIncludes) {
         currentShader = {
             Name: include.Name,
             File: include.File,
-            // add two for version and precision lines
-            LineOffset: <!-- Preamble Line Numbers --> + 2
+            // add for wrapper lines inserted by compileFragShader
+            LineOffset: <!-- Preamble Line Numbers --> + includeHeaderLines
         };
         // Test Compile Included Files
     }
 
     for (let buffer of buffers) {
+        // If a custom vertex shader is provided, compile it first with a trivial fragment
+        // shader so errors map to the vertex file (not the fragment file).
+        if (buffer.VertexShaderElementId !== undefined) {
+            currentShader = {
+                Name: buffer.Name + ' (vertex)',
+                File: buffer.VertexFile,
+                LineOffset: buffer.VertexLineOffset
+            };
+
+            const vertexSource = prepareVertexShader(document.getElementById(buffer.VertexShaderElementId).textContent);
+
+            // Compile the vertex shader directly so we can reliably detect failure.
+            // If it fails, skip compiling the buffer's fragment shader to avoid a duplicate
+            // error report attributed to the fragment file.
+            if (!compileVertShader(gl, vertexSource)) {
+                failed++;
+                failedBufferNames.add(buffer.Name);
+                continue;
+            }
+        }
+
         currentShader = {
             Name: buffer.Name,
             File: buffer.File,
             LineOffset: buffer.LineOffset
         };
+
         quad.material = buffer.Shader;
         renderer.setRenderTarget(buffer.Target);
         renderer.render(scene, camera);
@@ -352,11 +449,38 @@
 
         // Fallback (portable preview): keep legacy behavior when module scripts are not available.
         const fs = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fs, fsSource);
+        // Includes are snippets; compile them by wrapping in a minimal fragment shader.
+        // IMPORTANT: #version must be the first statement when used.
+        // Normalize our "self" sentinel source-id (65535) for standalone compiles.
+        fsSource = (fsSource || '').replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
+        // Includes are snippets; compile them by wrapping in a minimal fragment shader.
+        // IMPORTANT: #version must be the first statement when used.
+        const header = glslUseVersion3
+            ? '#version 300 es\nprecision highp float;\n'
+            : 'precision highp float;\n';
+        const wrapped = `${header}${fsSource}\nvoid main() {}\n`;
+        gl.shaderSource(fs, wrapped);
         gl.compileShader(fs);
         if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
             const fragmentLog = gl.getShaderInfoLog(fs);
             console.error('THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog);
+            return false;
+        }
+        return true;
+    }
+
+    function compileVertShader(gl, vsSource) {
+        const vs = gl.createShader(gl.VERTEX_SHADER);
+        // IMPORTANT: #version must be the first statement when used.
+        const header = glslUseVersion3
+            ? '#version 300 es\nprecision highp float;\n'
+            : 'precision highp float;\n';
+        const wrapped = `${header}${vsSource}`;
+        gl.shaderSource(vs, wrapped);
+        gl.compileShader(vs);
+        if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+            const vertexLog = gl.getShaderInfoLog(vs);
+            console.error('THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, vertexLog);
             return false;
         }
         return true;
@@ -380,6 +504,9 @@
         // Audio Update
 
         for (let buffer of buffers) {
+            if (failedBufferNames.has(buffer.Name)) {
+                continue;
+            }
             buffer.Shader.uniforms['iResolution'].value = resolution;
             buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
             buffer.Shader.uniforms['iTime'].value = time;

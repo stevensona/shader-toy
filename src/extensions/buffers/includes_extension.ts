@@ -15,11 +15,9 @@ export class IncludesExtension implements WebviewExtension {
     private processBuffers(includes: Types.IncludeDefinition[], preambleExtension: ShaderPreambleExtension) {
         for (const include of includes) {
             this.content += `\
-<script id='${include.Name}' type='x-shader/x-fragment'>#version 300 es
-    precision highp float;
-    ${preambleExtension.getShaderPreamble()}
-    ${include.Code}
-    void main() {}
+<script id='${include.Name}' type='x-shader/x-fragment'>
+${preambleExtension.getShaderPreamble()}
+${include.Code}
 </script>`;
         }
     }

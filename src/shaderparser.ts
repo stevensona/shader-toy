@@ -6,6 +6,7 @@ import { ShaderLexer, Token, TokenType, LineRange } from './shaderlexer';
 
 export enum ObjectType {
     Include,
+    Vertex,
     Texture,
     TextureMagFilter,
     TextureMinFilter,
@@ -21,6 +22,10 @@ export enum ObjectType {
 }
 type Include = {
     Type: ObjectType.Include,
+    Path: string
+};
+type Vertex = {
+    Type: ObjectType.Vertex,
     Path: string
 };
 type Texture = {
@@ -83,7 +88,7 @@ type ErrorObject = {
     Message: string
 };
 type TextureObject = Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType;
-type ParseObject = Include | TextureObject | Uniform | Keyboard | FirstPersonControls | StrictCompatibility;
+type ParseObject = Include | Vertex | TextureObject | Uniform | Keyboard | FirstPersonControls | StrictCompatibility;
 
 export class ShaderParser {
     private stream: ShaderStream;
@@ -133,6 +138,9 @@ export class ShaderParser {
         case 'include':
             returnObject = this.getInclude();
             break;
+        case 'iVertex':
+            returnObject = this.getVertex();
+            break;
         case 'iKeyboard':
             returnObject = { Type: ObjectType.Keyboard };
             break;
@@ -175,6 +183,23 @@ export class ShaderParser {
             Path: tokenValue
         };
         return include;
+    }
+
+    private getVertex(): Vertex | ErrorObject {
+        const nextToken = this.lexer.next();
+        if (nextToken === undefined) {
+            return this.makeError('Expected string after "iVertex" but got end-of-file');
+        }
+        if (nextToken.type !== TokenType.String) {
+            return this.makeError(`Expected string after "iVertex" but got "${nextToken.value}"`);
+        }
+
+        const tokenValue = nextToken.value as string;
+        const vertex: Vertex = {
+            Type: ObjectType.Vertex,
+            Path: tokenValue
+        };
+        return vertex;
     }
 
     private getTextureObject(previous: Token): Texture | TextureMagFilter | TextureMinFilter | TextureWrapMode | TextureType | ErrorObject {

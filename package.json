@@ -193,6 +193,16 @@
                     "type": "boolean",
                     "default": false,
                     "description": "This setting will assume your shaders follow the standards set on the online version of ShaderToy, e.g. you have a mainImage function defined. Use this if you have issues with shaders from shadertoy.com in the VSCode extension, but not if you regularly use shaders defining a regular main function."
+                },
+
+                "shader-toy.glslVersion": {
+                    "type": "string",
+                    "enum": [
+                        "Default",
+                        "WebGL2"
+                    ],
+                    "default": "Default",
+                    "description": "Rendering mode for shader compilation. Default matches original behavior with WebGL2->WebGL1 fallback; WebGL2 forces GLSL 300 ES/WebGL2-only (enables #iVertex)."
                 }
             }
         },

@@ -15,6 +15,7 @@ import { InitialFlyControlPositionExtension } from './extensions/initial_fly_con
 import { InitialFlyControlRotationExtension } from './extensions/initial_fly_control_rotation_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
+import { GlslVersionExtension, type GlslVersionSetting } from './extensions/glsl_version_extension';
 import { ForcedScreenshotResolutionExtension } from './extensions/forced_screenshot_resolution_extension';
 
 import { ShaderPreambleExtension } from './extensions/preamble_extension';
@@ -47,6 +48,7 @@ import { SequencerButtonExtension } from './extensions/user_interface/sequencer_
 
 import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
+import { IvertexErrorRewriteExtension } from './extensions/user_interface/error_display/ivertex_error_rewrite_extension';
 import { GlslifyErrorsExtension } from './extensions/user_interface/error_display/glslify_errors_extension';
 
 import { PauseWholeRenderExtension } from './extensions/pause_whole_render_extension';
@@ -125,7 +127,7 @@ export class WebviewContentProvider {
                     this.buffers.push({
                         Name: 'final-blit',
                         File: 'final-blit',
-                        Code: 'void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }',
+                        Code: 'void main() { GLSL_FRAGCOLOR = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }',
                         TextureInputs: [{
                             Channel: 0,
                             File: '',
@@ -231,6 +233,15 @@ export class WebviewContentProvider {
         this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // GLSL Version
+        const glslVersionConfig = this.context.getConfig<string>('glslVersion');
+        const glslVersionSetting: GlslVersionSetting = (glslVersionConfig === 'WebGL2')
+            ? 'WebGL2'
+            : 'Default';
+        const glslVersionExtension = new GlslVersionExtension(glslVersionSetting);
+        this.webviewAssembler.addReplaceModule(glslVersionExtension, "let glslVersionSetting = '<!-- GLSL Version -->';", '<!-- GLSL Version -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard
         let keyboardShaderExtension: KeyboardShaderExtension | undefined;
         if (useKeyboard) {
@@ -249,7 +260,11 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Shader Preamble
         const preambleExtension = new ShaderPreambleExtension();
+        // Keep this resilient: if the template line changes (e.g. WebGL2 adds extra lines),
+        // make sure we still replace the placeholder token so the generated JS stays valid.
         this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)', '<!-- Preamble Line Numbers -->');
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + includeHeaderLines', '<!-- Preamble Line Numbers -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Custom Uniforms
@@ -481,6 +496,13 @@ export class WebviewContentProvider {
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Error Handling
+        // WebGL2/iVertex add-on: translate controlled compile markers (e.g. standalone vertex preview) into a friendly message.
+        // Insert before the error callback module so the hook is available when the error display IIFE runs.
+        if (glslVersionSetting === 'WebGL2') {
+            const ivertexErrorRewriteExtension = new IvertexErrorRewriteExtension();
+            this.webviewAssembler.addWebviewModule(ivertexErrorRewriteExtension, 'let currentShader = {};');
+        }
+
         let errorsExtension: WebviewExtension;
         if (this.context.getConfig<boolean>('enableGlslifySupport')) {
             errorsExtension = new GlslifyErrorsExtension();

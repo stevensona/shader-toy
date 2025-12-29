@@ -25,16 +25,21 @@ export class BuffersInitExtension implements WebviewExtension {
 
             this.content += `\
 buffers.push({
-    Name: '${buffer.Name}',
-    File: '${buffer.File}',
+    Name: ${JSON.stringify(buffer.Name)},
+    File: ${JSON.stringify(buffer.File)},
     LineOffset: ${buffer.LineOffset},
+    VertexFile: ${buffer.VertexFile !== undefined ? `'${buffer.VertexFile}'` : 'undefined'},
+    VertexLineOffset: ${buffer.VertexLineOffset !== undefined ? `${buffer.VertexLineOffset}` : 'undefined'},
+    VertexShaderElementId: ${buffer.VertexCode !== undefined ? `'${buffer.Name}_vertex'` : 'undefined'},
     Target: ${target},
     ChannelResolution: Array(10).fill(new THREE.Vector3(0,0,0)),
     PingPongTarget: ${pingPongTarget},
     PingPongChannel: ${buffer.SelfChannel},
     Dependents: ${JSON.stringify(buffer.Dependents)},
     Shader: new THREE.ShaderMaterial({
-        fragmentShader: document.getElementById('${buffer.Name}').textContent,
+        glslVersion: glslUseVersion3 ? THREE.GLSL3 : THREE.GLSL1,
+        vertexShader: ${buffer.VertexCode !== undefined ? `prepareVertexShader(document.getElementById(${JSON.stringify(buffer.Name + '_vertex')}).textContent)` : 'undefined'},
+        fragmentShader: prepareFragmentShader(document.getElementById(${JSON.stringify(buffer.Name)}).textContent),
         depthWrite: false,
         depthTest: false,
         uniforms: {
