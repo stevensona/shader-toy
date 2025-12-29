@@ -41,6 +41,9 @@ import { RecordButtonStyleExtension } from './extensions/user_interface/record_b
 import { RecordButtonExtension } from './extensions/user_interface/record_button_extension';
 import { ReloadButtonStyleExtension } from './extensions/user_interface/reload_button_style_extension';
 import { ReloadButtonExtension } from './extensions/user_interface/reload_button_extension';
+import { SequencerInitExtension } from './extensions/user_interface/sequencer_init_extension';
+import { SequencerButtonStyleExtension } from './extensions/user_interface/sequencer_button_style_extension';
+import { SequencerButtonExtension } from './extensions/user_interface/sequencer_button_extension';
 
 import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
@@ -365,6 +368,13 @@ export class WebviewContentProvider {
             const webviewRenderLoop = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/render_loop.js');
             this.webviewAssembler.addReplaceModule(webviewRenderLoop, '<script src="<!-- Webview render_loop.js -->"></script>', '<!-- Webview render_loop.js -->');
         }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Sequencer (separate panel)
+        {
+            const sequencerInitExtension = new SequencerInitExtension();
+            this.webviewAssembler.addWebviewModule(sequencerInitExtension, '// Sequencer Init');
+        }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
@@ -415,6 +425,13 @@ export class WebviewContentProvider {
                 const recordButtonExtension = new RecordButtonExtension();
                 this.webviewAssembler.addWebviewModule(recordButtonExtension, '<!-- Record Element -->');
             }
+
+            // Sequencer toggle button (always available in webview mode)
+            const sequencerButtonStyleExtension = new SequencerButtonStyleExtension(getWebviewResourcePath);
+            this.webviewAssembler.addWebviewModule(sequencerButtonStyleExtension, '/* Sequencer Button Style */');
+
+            const sequencerButtonExtension = new SequencerButtonExtension();
+            this.webviewAssembler.addWebviewModule(sequencerButtonExtension, '<!-- Sequencer Button Element -->');
         }
 
         const forcedScreenshotResolution = this.context.getConfig<[number, number]>('screenshotResolution') || [-1, -1];
