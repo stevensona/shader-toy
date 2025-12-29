@@ -100,6 +100,15 @@
 
 <!-- FlyControls -->
 
+<!-- Webview Modules -->
+<script src="<!-- Webview runtime_env.js -->"></script>
+<script src="<!-- Webview glsl_error_hook.js -->"></script>
+<script src="<!-- Webview shader_compile.js -->"></script>
+<script src="<!-- Webview ui_controls.js -->"></script>
+<script src="<!-- Webview gl_context.js -->"></script>
+<script src="<!-- Webview time_input.js -->"></script>
+<script src="<!-- Webview render_loop.js -->"></script>
+
 <script type="text/javascript">
     let vscode = undefined;
     if (typeof acquireVsCodeApi === 'function') {
@@ -331,12 +340,18 @@
     }
 
     function compileFragShader(gl, fsSource) {
+        // Prefer module implementation (resources/webview/shader_compile.js) if present.
+        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.compileFragShader) {
+            return window.ShaderToy.shaderCompile.compileFragShader(gl, fsSource);
+        }
+
+        // Fallback (portable preview): keep legacy behavior when module scripts are not available.
         const fs = gl.createShader(gl.FRAGMENT_SHADER);
         gl.shaderSource(fs, fsSource);
         gl.compileShader(fs);
         if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
             const fragmentLog = gl.getShaderInfoLog(fs);
-            console.error( 'THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog );
+            console.error('THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog);
             return false;
         }
         return true;

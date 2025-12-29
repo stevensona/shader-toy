@@ -31,6 +31,8 @@ import { StatsExtension } from './extensions/packages/stats_extension';
 import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 import { CCaptureExtension } from './extensions/packages/ccapture_extension';
 
+import { WebviewModuleScriptExtension } from './extensions/webview_module_script_extension';
+
 import { PauseButtonStyleExtension } from './extensions/user_interface/pause_button_style_extension';
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
 import { ScreenshotButtonStyleExtension } from './extensions/user_interface/screenshot_button_style_extension';
@@ -338,6 +340,30 @@ export class WebviewContentProvider {
 
             const threeExtension = new ThreeExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addReplaceModule(threeExtension, '<script src="<!-- Three.js -->"></script>', '<!-- Three.js -->');
+
+            // Webview runtime split (resources/webview/*)
+            // In VS Code webview mode these resolve to extension resources.
+            // In portable preview mode they become empty data URLs to avoid broken fetches.
+            const webviewRuntimeEnv = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/runtime_env.js');
+            this.webviewAssembler.addReplaceModule(webviewRuntimeEnv, '<script src="<!-- Webview runtime_env.js -->"></script>', '<!-- Webview runtime_env.js -->');
+
+            const webviewGlslErrorHook = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/glsl_error_hook.js');
+            this.webviewAssembler.addReplaceModule(webviewGlslErrorHook, '<script src="<!-- Webview glsl_error_hook.js -->"></script>', '<!-- Webview glsl_error_hook.js -->');
+
+            const webviewShaderCompile = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/shader_compile.js');
+            this.webviewAssembler.addReplaceModule(webviewShaderCompile, '<script src="<!-- Webview shader_compile.js -->"></script>', '<!-- Webview shader_compile.js -->');
+
+            const webviewUiControls = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/ui_controls.js');
+            this.webviewAssembler.addReplaceModule(webviewUiControls, '<script src="<!-- Webview ui_controls.js -->"></script>', '<!-- Webview ui_controls.js -->');
+
+            const webviewGlContext = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/gl_context.js');
+            this.webviewAssembler.addReplaceModule(webviewGlContext, '<script src="<!-- Webview gl_context.js -->"></script>', '<!-- Webview gl_context.js -->');
+
+            const webviewTimeInput = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/time_input.js');
+            this.webviewAssembler.addReplaceModule(webviewTimeInput, '<script src="<!-- Webview time_input.js -->"></script>', '<!-- Webview time_input.js -->');
+
+            const webviewRenderLoop = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/render_loop.js');
+            this.webviewAssembler.addReplaceModule(webviewRenderLoop, '<script src="<!-- Webview render_loop.js -->"></script>', '<!-- Webview render_loop.js -->');
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
