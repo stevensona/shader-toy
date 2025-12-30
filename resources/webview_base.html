@@ -75,6 +75,8 @@
         
         /* Record Button Style */
 
+        /* Sequencer Button Style */
+
         /* Reload Button Style */
     </style>
 </head>
@@ -86,6 +88,7 @@
     </div>
     <!-- Screenshot Element -->
     <!-- Record Element -->
+    <!-- Sequencer Button Element -->
     <!-- Reload Element -->
 </body>
 <script src="<!-- JQuery.js -->"></script>
@@ -128,6 +131,8 @@
 
     let currentShader = {};
     // Error Callback
+
+    // Sequencer Init
 
     // Development feature: Output warnings from third-party libraries
     // console.warn = function (message) {
@@ -437,6 +442,12 @@
     }
 
     function compileFragShader(gl, fsSource) {
+        // Prefer module implementation (resources/webview/shader_compile.js) if present.
+        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.compileFragShader) {
+            return window.ShaderToy.shaderCompile.compileFragShader(gl, fsSource);
+        }
+
+        // Fallback (portable preview): keep legacy behavior when module scripts are not available.
         const fs = gl.createShader(gl.FRAGMENT_SHADER);
         // Includes are snippets; compile them by wrapping in a minimal fragment shader.
         // IMPORTANT: #version must be the first statement when used.

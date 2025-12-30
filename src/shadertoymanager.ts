@@ -10,10 +10,14 @@ import { removeDuplicates } from './utility';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
-    OnDidDispose: () => void
+    StartingData: RenderStartingData,
+    Sequencer?: SequencerWebview
 };
-type StaticWebview = Webview & {
-    Document: vscode.TextDocument
+type StaticWebview = Webview & { Document: vscode.TextDocument };
+
+type SequencerWebview = {
+    Panel: vscode.WebviewPanel,
+    Parent: Webview
 };
 
 export class ShaderToyManager {
@@ -43,17 +47,23 @@ export class ShaderToyManager {
             this.context.activeEditor = vscode.window.activeTextEditor;
         }
 
+        let carriedSequencer: SequencerWebview | undefined;
         if (this.webviewPanel) {
+            carriedSequencer = this.webviewPanel.Sequencer;
+            this.webviewPanel.Sequencer = undefined;
             this.webviewPanel.Panel.dispose();
         }
         const newWebviewPanel = this.createWebview('GLSL Preview', undefined);
         this.webviewPanel = {
             Panel: newWebviewPanel,
-            OnDidDispose: () => {
-                this.webviewPanel = undefined;
-            }
+            StartingData: this.cloneStartingData(this.startingData),
         };
-        newWebviewPanel.onDidDispose(this.webviewPanel.OnDidDispose);
+        this.attachDynamicDispose(newWebviewPanel);
+
+        if (carriedSequencer) {
+            carriedSequencer.Parent = this.webviewPanel;
+            this.webviewPanel.Sequencer = carriedSequencer;
+        }
         if (this.context.activeEditor !== undefined) {
             this.webviewPanel = await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
         }
@@ -67,21 +77,14 @@ export class ShaderToyManager {
             const document = vscode.window.activeTextEditor.document;
             if (this.staticWebviews.find((webview: StaticWebview) => { return webview.Document === document; }) === undefined) {
                 const newWebviewPanel = this.createWebview('Static GLSL Preview', undefined);
-                const onDidDispose = () => {
-                    const staticWebview = this.staticWebviews.find((webview: StaticWebview) => { return webview.Panel === newWebviewPanel; });
-                    if (staticWebview !== undefined) {
-                        const index = this.staticWebviews.indexOf(staticWebview);
-                        this.staticWebviews.splice(index, 1);
-                    }
-                };
                 this.staticWebviews.push({
                     Panel: newWebviewPanel,
-                    OnDidDispose: onDidDispose,
-                    Document: document
+                    StartingData: this.cloneStartingData(this.startingData),
+                    Document: document,
                 });
                 const staticWebview = this.staticWebviews[this.staticWebviews.length - 1];
                 this.staticWebviews[this.staticWebviews.length - 1] = await this.updateWebview(staticWebview, vscode.window.activeTextEditor.document);
-                newWebviewPanel.onDidDispose(onDidDispose);
+                this.attachStaticDispose(newWebviewPanel);
             }
         }
     };
@@ -152,9 +155,340 @@ export class ShaderToyManager {
         const paused = this.startingData.Paused;
         this.startingData = new RenderStartingData();
         this.startingData.Paused = paused;
+
+        if (this.webviewPanel) {
+            const dynamicPaused = this.webviewPanel.StartingData.Paused;
+            this.webviewPanel.StartingData = new RenderStartingData();
+            this.webviewPanel.StartingData.Paused = dynamicPaused;
+        }
     };
     private resetPauseState = () => {
         this.startingData.Paused = false;
+
+        if (this.webviewPanel) {
+            this.webviewPanel.StartingData.Paused = false;
+        }
+    };
+
+    private cloneStartingData = (source: RenderStartingData): RenderStartingData => {
+        const data = new RenderStartingData();
+        data.Time = source.Time;
+        data.Paused = source.Paused;
+        data.Mouse = source.Mouse;
+        data.NormalizedMouse = source.NormalizedMouse;
+        data.Keys = source.Keys;
+        data.FlyControlPosition = source.FlyControlPosition;
+        data.FlyControlRotation = source.FlyControlRotation;
+
+        data.UniformsGui.Open = source.UniformsGui.Open;
+        data.UniformsGui.Values = new Map(source.UniformsGui.Values);
+        return data;
+    };
+
+    private getOwningPreview = (panel: vscode.WebviewPanel): Webview | undefined => {
+        if (this.webviewPanel && this.webviewPanel.Panel === panel) {
+            return this.webviewPanel;
+        }
+        const staticWebview = this.staticWebviews.find((w) => w.Panel === panel);
+        return staticWebview;
+    };
+
+    private attachDynamicDispose = (panel: vscode.WebviewPanel) => {
+        panel.onDidDispose(() => {
+            if (!this.webviewPanel || this.webviewPanel.Panel !== panel) {
+                return;
+            }
+            if (this.webviewPanel.Sequencer) {
+                this.webviewPanel.Sequencer.Panel.dispose();
+                this.webviewPanel.Sequencer = undefined;
+            }
+            this.webviewPanel = undefined;
+        });
+    };
+
+    private attachStaticDispose = (panel: vscode.WebviewPanel) => {
+        panel.onDidDispose(() => {
+            const staticWebview = this.staticWebviews.find((w) => w.Panel === panel);
+            if (!staticWebview) {
+                return;
+            }
+            if (staticWebview.Sequencer) {
+                staticWebview.Sequencer.Panel.dispose();
+                staticWebview.Sequencer = undefined;
+            }
+            const index = this.staticWebviews.indexOf(staticWebview);
+            this.staticWebviews.splice(index, 1);
+        });
+    };
+
+    private setSequencerActiveOnPreview = (preview: Webview, active: boolean) => {
+        preview.Panel.webview.postMessage({
+            command: 'sequencerState',
+            active: active
+        });
+    };
+
+    private toggleSequencerPanel = async (sourcePanel: vscode.WebviewPanel) => {
+        const preview = this.getOwningPreview(sourcePanel);
+        if (!preview) {
+            return;
+        }
+
+        if (preview.Sequencer) {
+            preview.Sequencer.Panel.dispose();
+            preview.Sequencer = undefined;
+            this.setSequencerActiveOnPreview(preview, false);
+            return;
+        }
+
+        const sequencerPanel = await this.createSequencerWebview(preview);
+        preview.Sequencer = sequencerPanel;
+        this.setSequencerActiveOnPreview(preview, true);
+
+        // Seed current time.
+        sequencerPanel.Panel.webview.postMessage({
+            command: 'syncTime',
+            time: preview.StartingData.Time
+        });
+    };
+
+    private runBestEffortEditorCommand = async (command: string, args?: unknown): Promise<boolean> => {
+        try {
+            await vscode.commands.executeCommand(command, args);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    private ensureTLayout = async (): Promise<boolean> => {
+        // Goal: keep two editors side-by-side on the top row (code left, preview right)
+        // and create a bottom row group that spans the full width.
+        // There is no stable public API that guarantees this shape across all versions,
+        // so we try a few schema variants.
+        const variants: Array<{ orientation: any, topOrientation: any }> = [
+            { orientation: 1, topOrientation: 0 },
+            { orientation: 0, topOrientation: 1 },
+            { orientation: 'vertical', topOrientation: 'horizontal' },
+            { orientation: 'horizontal', topOrientation: 'vertical' },
+        ];
+
+        for (const v of variants) {
+            const layout = {
+                orientation: v.orientation,
+                groups: [
+                    {
+                        size: 0.7,
+                        orientation: v.topOrientation,
+                        groups: [
+                            { size: 0.5 },
+                            { size: 0.5 },
+                        ],
+                    },
+                    { size: 0.3 },
+                ],
+            };
+
+            if (await this.runBestEffortEditorCommand('vscode.setEditorLayout', layout)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    private tryPlaceSequencerBelow = (panelToMove: vscode.WebviewPanel): void => {
+        // Best-effort only: VS Code controls editor group layout.
+        // These commands are UI-driven and can fail depending on VS Code version/layout.
+        setTimeout(() => {
+            const run = async () => {
+                const tryCommand = this.runBestEffortEditorCommand;
+
+                // Ensure the sequencer webview is the active editor.
+                try {
+                    panelToMove.reveal(panelToMove.viewColumn, false);
+                } catch {
+                    // ignore
+                }
+
+                // First try: if a below group already exists, just move the sequencer.
+                if (
+                    (await tryCommand('workbench.action.moveEditorToBelowGroup')) ||
+                    (await tryCommand('moveActiveEditor', { to: 'down', by: 'group' })) ||
+                    (await tryCommand('workbench.action.moveActiveEditor', { to: 'down', by: 'group' }))
+                ) {
+                    return;
+                }
+
+                // Second try: shape the layout into a "T" (two columns on top, one group below).
+                // This avoids forcing a global "two rows" layout which tends to move the preview.
+                await this.ensureTLayout();
+
+                if (
+                    (await tryCommand('workbench.action.moveEditorToBelowGroup')) ||
+                    (await tryCommand('moveActiveEditor', { to: 'down', by: 'group' })) ||
+                    (await tryCommand('workbench.action.moveActiveEditor', { to: 'down', by: 'group' }))
+                ) {
+                    return;
+                }
+
+                // Last resort: create a group below and then attempt the move again.
+                await tryCommand('workbench.action.newGroupBelow');
+                await tryCommand('workbench.action.moveEditorToBelowGroup');
+            };
+
+            void run();
+        }, 150);
+    };
+
+    private createSequencerWebview = async (preview: Webview): Promise<SequencerWebview> => {
+        const extensionRoot = vscode.Uri.file(this.context.getVscodeExtensionContext().extensionPath);
+
+        // Best-effort: create the sequencer in a wide bottom group by
+        // 1) making the preview the active editor
+        // 2) switching to a "T" layout (two columns on top, one group below)
+        // 3) focusing the below group
+        // 4) creating the panel in the active group
+        try {
+            preview.Panel.reveal(preview.Panel.viewColumn, false);
+        } catch {
+            // ignore
+        }
+
+        await this.ensureTLayout();
+        // Focus the below group if available (command ids differ across versions).
+        await this.runBestEffortEditorCommand('workbench.action.focusBelowGroup');
+        await this.runBestEffortEditorCommand('workbench.action.focusDownGroup');
+
+        const panel = vscode.window.createWebviewPanel(
+            'shadertoy-sequencer',
+            'Sequencer',
+            { viewColumn: vscode.ViewColumn.Active, preserveFocus: false },
+            {
+                enableScripts: true,
+                localResourceRoots: [extensionRoot]
+            }
+        );
+
+        panel.iconPath = this.context.getResourceUri('thumb.png');
+
+        // If we still ended up in the top row, attempt the move-below fallbacks.
+        if (
+            panel.viewColumn === undefined ||
+            panel.viewColumn === vscode.ViewColumn.One ||
+            panel.viewColumn === vscode.ViewColumn.Two
+        ) {
+            this.tryPlaceSequencerBelow(panel);
+        }
+
+        const timelineSrc = this.context.getWebviewResourcePath(panel.webview, 'animation-timeline.min.js');
+
+        panel.webview.html = `\
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+    #sequencer { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="sequencer"></div>
+  <script src="${timelineSrc}"></script>
+  <script>
+    (function () {
+      const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : undefined;
+      const host = document.getElementById('sequencer');
+      if (!host || typeof timelineModule === 'undefined' || !timelineModule.Timeline) {
+        return;
+      }
+
+      const timeline = new timelineModule.Timeline({ id: host });
+      timeline.setModel({ rows: [{ keyframes: [] }] });
+      timeline._formatUnitsText = (val) => {
+        const seconds = (val || 0) / 1000;
+        return seconds.toFixed(2) + ' s';
+      };
+
+      let syncing = false;
+
+      timeline.onTimeChanged((event) => {
+        if (!event || syncing) return;
+        try {
+          if (timelineModule.TimelineEventSource && event.source !== timelineModule.TimelineEventSource.User) {
+            return;
+          }
+        } catch { /* ignore */ }
+
+        const newTime = (event.val || 0) / 1000.0;
+        if (vscode) {
+          vscode.postMessage({ command: 'sequencerSetTime', time: newTime });
+        }
+      });
+
+      window.addEventListener('message', (event) => {
+        const message = event && event.data ? event.data : undefined;
+        if (!message || !message.command) return;
+
+        if (message.command === 'syncTime') {
+          syncing = true;
+          try {
+            timeline.setTime((message.time || 0) * 1000);
+          } catch { /* ignore */ }
+          syncing = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>`;
+
+        const sequencer: SequencerWebview = {
+            Panel: panel,
+            Parent: preview
+        };
+
+        panel.onDidDispose(() => {
+            const parent = sequencer.Parent;
+            // Only clear if still attached.
+            if (parent.Sequencer && parent.Sequencer.Panel === panel) {
+                parent.Sequencer = undefined;
+                this.setSequencerActiveOnPreview(parent, false);
+            }
+        });
+
+        panel.webview.onDidReceiveMessage(
+            (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+                if (!message || !message.command) {
+                    return;
+                }
+
+                switch (message.command) {
+                case 'sequencerSetTime':
+                    {
+                        const parent = sequencer.Parent;
+                        const newTime = message.time || 0;
+                        parent.StartingData.Time = newTime;
+
+                        // Keep legacy default in sync for portable preview and new panels.
+                        if (this.webviewPanel && parent === this.webviewPanel) {
+                            this.startingData.Time = newTime;
+                        }
+
+                        parent.Panel.webview.postMessage({
+                            command: 'setTime',
+                            time: newTime
+                        });
+                        return;
+                    }
+                }
+            },
+            undefined,
+            this.context.getVscodeExtensionContext().subscriptions
+        );
+
+        return sequencer;
     };
 
     private createWebview = (title: string, localResourceRoots: vscode.Uri[] | undefined) => {
@@ -175,6 +509,11 @@ export class ShaderToyManager {
         newWebviewPanel.iconPath = this.context.getResourceUri('thumb.png');
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+                if (message && message.command === 'toggleSequencerPanel') {
+                    this.toggleSequencerPanel(newWebviewPanel);
+                    return;
+                }
+
                 switch (message.command) {
                 case 'reloadWebview':
                     if (this.webviewPanel !== undefined && this.webviewPanel.Panel === newWebviewPanel && this.context.activeEditor !== undefined) {
@@ -189,28 +528,92 @@ export class ShaderToyManager {
                     }
                     return;
                 case 'updateTime':
-                    this.startingData.Time = message.time;
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.Time = message.time;
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.Time = message.time;
+                        }
+                        if (preview.Sequencer) {
+                            preview.Sequencer.Panel.webview.postMessage({
+                                command: 'syncTime',
+                                time: preview.StartingData.Time
+                            });
+                        }
+                    }
                     return;
+                }
                 case 'setPause':
-                    this.startingData.Paused = message.paused;
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.Paused = message.paused;
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.Paused = message.paused;
+                        }
+                    }
                     return;
+                }
                 case 'updateMouse':
-                    this.startingData.Mouse = message.mouse;
-                    this.startingData.NormalizedMouse = message.normalizedMouse;
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.Mouse = message.mouse;
+                        preview.StartingData.NormalizedMouse = message.normalizedMouse;
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.Mouse = message.mouse;
+                            this.startingData.NormalizedMouse = message.normalizedMouse;
+                        }
+                    }
                     return;
+                }
                 case 'updateKeyboard':
-                    this.startingData.Keys = message.keys;
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.Keys = message.keys;
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.Keys = message.keys;
+                        }
+                    }
                     return;
+                }
                 case 'updateFlyControlTransform':
-                    this.startingData.FlyControlPosition = message.position;
-                    this.startingData.FlyControlRotation = message.rotation;
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.FlyControlPosition = message.position;
+                        preview.StartingData.FlyControlRotation = message.rotation;
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.FlyControlPosition = message.position;
+                            this.startingData.FlyControlRotation = message.rotation;
+                        }
+                    }
                     return;
+                }
                 case 'updateUniformsGuiOpen':
-                    this.startingData.UniformsGui.Open = message.value;
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.UniformsGui.Open = message.value;
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.UniformsGui.Open = message.value;
+                        }
+                    }
                     return;
+                }
                 case 'updateUniformsGuiValue':
-                    this.startingData.UniformsGui.Values.set(message.name, message.value);
+                {
+                    const preview = this.getOwningPreview(newWebviewPanel);
+                    if (preview) {
+                        preview.StartingData.UniformsGui.Values.set(message.name, message.value);
+                        if (this.webviewPanel && preview === this.webviewPanel) {
+                            this.startingData.UniformsGui.Values.set(message.name, message.value);
+                        }
+                    }
                     return;
+                }
                 case 'showGlslDiagnostic':
                 {
                     const diagnosticBatch: DiagnosticBatch = message.diagnosticBatch;
@@ -276,12 +679,31 @@ export class ShaderToyManager {
         if (!previousHadAllLocalResourceRoots) {
             const localResourceRootsUri = localResourceRoots.map(localResourceRoot => vscode.Uri.file(localResourceRoot));
             const newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRootsUri);
-            webviewPanel.Panel.dispose();
-            newWebviewPanel.onDidDispose(webviewPanel.OnDidDispose);
+            const oldPanel = webviewPanel.Panel;
             webviewPanel.Panel = newWebviewPanel;
+            if ((webviewPanel as StaticWebview).Document !== undefined) {
+                this.attachStaticDispose(newWebviewPanel);
+            }
+            else {
+                this.attachDynamicDispose(newWebviewPanel);
+            }
+
+            // Keep sequencer (if open) attached to this preview wrapper.
+            if (webviewPanel.Sequencer) {
+                webviewPanel.Sequencer.Panel.webview.postMessage({
+                    command: 'syncTime',
+                    time: webviewPanel.StartingData.Time
+                });
+            }
+
+            oldPanel.dispose();
         }
 
-        webviewPanel.Panel.webview.html = await webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
+        webviewPanel.Panel.webview.html = await webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, webviewPanel.StartingData);
+
+        if (webviewPanel.Sequencer) {
+            this.setSequencerActiveOnPreview(webviewPanel, true);
+        }
         return webviewPanel;
     };
 }
