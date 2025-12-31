@@ -1,6 +1,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import * as Types from './typenames';
 import { Context } from './context';
 import { BufferProvider } from './bufferprovider';
@@ -176,6 +177,10 @@ export class WebviewContentProvider {
         const getWebviewResourcePath = webview !== undefined
             ? (relativePath: string) => this.context.getWebviewResourcePath(webview, relativePath)
             : (relativePath: string) => relativePath;
+        const getResourceText = (relativePath: string) => {
+            const resourcePath = this.context.getResourceUri(relativePath).fsPath;
+            return fs.readFileSync(resourcePath, 'utf8');
+        };
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Feature Check
@@ -343,27 +348,27 @@ export class WebviewContentProvider {
 
             // Webview runtime split (resources/webview/*)
             // In VS Code webview mode these resolve to extension resources.
-            // In portable preview mode they become empty data URLs to avoid broken fetches.
-            const webviewRuntimeEnv = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/runtime_env.js');
-            this.webviewAssembler.addReplaceModule(webviewRuntimeEnv, '<script src="<!-- Webview runtime_env.js -->"></script>', '<!-- Webview runtime_env.js -->');
+            // In portable preview mode we inline them so the generated HTML is self-contained.
+            const webviewRuntimeEnv = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/runtime_env.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewRuntimeEnv, '<!-- Webview runtime_env.js -->', '<!-- Webview runtime_env.js -->');
 
-            const webviewGlslErrorHook = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/glsl_error_hook.js');
-            this.webviewAssembler.addReplaceModule(webviewGlslErrorHook, '<script src="<!-- Webview glsl_error_hook.js -->"></script>', '<!-- Webview glsl_error_hook.js -->');
+            const webviewGlslErrorHook = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/glsl_error_hook.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewGlslErrorHook, '<!-- Webview glsl_error_hook.js -->', '<!-- Webview glsl_error_hook.js -->');
 
-            const webviewShaderCompile = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/shader_compile.js');
-            this.webviewAssembler.addReplaceModule(webviewShaderCompile, '<script src="<!-- Webview shader_compile.js -->"></script>', '<!-- Webview shader_compile.js -->');
+            const webviewShaderCompile = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/shader_compile.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewShaderCompile, '<!-- Webview shader_compile.js -->', '<!-- Webview shader_compile.js -->');
 
-            const webviewUiControls = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/ui_controls.js');
-            this.webviewAssembler.addReplaceModule(webviewUiControls, '<script src="<!-- Webview ui_controls.js -->"></script>', '<!-- Webview ui_controls.js -->');
+            const webviewUiControls = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/ui_controls.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewUiControls, '<!-- Webview ui_controls.js -->', '<!-- Webview ui_controls.js -->');
 
-            const webviewGlContext = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/gl_context.js');
-            this.webviewAssembler.addReplaceModule(webviewGlContext, '<script src="<!-- Webview gl_context.js -->"></script>', '<!-- Webview gl_context.js -->');
+            const webviewGlContext = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/gl_context.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewGlContext, '<!-- Webview gl_context.js -->', '<!-- Webview gl_context.js -->');
 
-            const webviewTimeInput = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/time_input.js');
-            this.webviewAssembler.addReplaceModule(webviewTimeInput, '<script src="<!-- Webview time_input.js -->"></script>', '<!-- Webview time_input.js -->');
+            const webviewTimeInput = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/time_input.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewTimeInput, '<!-- Webview time_input.js -->', '<!-- Webview time_input.js -->');
 
-            const webviewRenderLoop = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/render_loop.js');
-            this.webviewAssembler.addReplaceModule(webviewRenderLoop, '<script src="<!-- Webview render_loop.js -->"></script>', '<!-- Webview render_loop.js -->');
+            const webviewRenderLoop = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/render_loop.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewRenderLoop, '<!-- Webview render_loop.js -->', '<!-- Webview render_loop.js -->');
         }
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);

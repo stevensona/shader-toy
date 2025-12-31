@@ -4,6 +4,7 @@ import { WebviewExtension } from './webview_extension';
 
 export class WebviewModuleScriptExtension implements WebviewExtension {
     private getWebviewResourcePath: (relativePath: string) => string;
+    private getResourceText?: (relativePath: string) => string;
     private generateStandalone: boolean;
     private relativePath: string;
 
@@ -11,19 +12,26 @@ export class WebviewModuleScriptExtension implements WebviewExtension {
         getWebviewResourcePath: (relativePath: string) => string,
         generateStandalone: boolean,
         relativePath: string,
+        getResourceText?: (relativePath: string) => string,
     ) {
         this.getWebviewResourcePath = getWebviewResourcePath;
         this.generateStandalone = generateStandalone;
         this.relativePath = relativePath;
+        this.getResourceText = getResourceText;
     }
 
     public generateContent(): string {
-        // Portable preview writes the HTML next to the shader file and does not copy extension resources.
-        // Use an empty data URL so browsers don't try to fetch a missing local file.
         if (this.generateStandalone) {
-            return 'data:text/javascript,';
+            const text = this.getResourceText?.(this.relativePath);
+            if (!text) {
+                return '';
+            }
+
+            // Inline JS for portable previews so the generated HTML is self-contained.
+            return `<script type="text/javascript">\n${text}\n</script>`;
         }
 
-        return this.getWebviewResourcePath(this.relativePath);
+        const src = this.getWebviewResourcePath(this.relativePath);
+        return `<script src="${src}"></script>`;
     }
 }
