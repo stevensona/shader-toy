@@ -199,6 +199,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.11.4
+* Added float DDS (DX10) texture loading for `iChannel` inputs (including local files) and included LTC demo shaders.
+
 ### 0.11.3
 * Added `shader-toy.recordVideoContainer` (set video file container).
 * Added `shader-toy.recordVideoCodec` (set video codec).

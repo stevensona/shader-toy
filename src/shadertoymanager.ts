@@ -176,6 +176,69 @@ export class ShaderToyManager {
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 switch (message.command) {
+                case 'readDDSFile':
+                {
+                    const requestId: number = message.requestId;
+                    const file: string | undefined = message.file;
+
+                    const reply = (ok: boolean, payload: { base64?: string, error?: string }) => {
+                        newWebviewPanel.webview.postMessage({
+                            command: 'readDDSFileResult',
+                            requestId,
+                            ok,
+                            ...payload
+                        });
+                    };
+
+                    if (typeof requestId !== 'number' || typeof file !== 'string' || file.length === 0) {
+                        reply(false, { error: 'Invalid readDDSFile request' });
+                        return;
+                    }
+
+                    if (path.extname(file).toLowerCase() !== '.dds') {
+                        reply(false, { error: 'Only .dds files are supported by readDDSFile' });
+                        return;
+                    }
+
+                    const fileUri = vscode.Uri.file(file);
+                    const roots = newWebviewPanel.webview.options.localResourceRoots ?? [];
+
+                    const allowed = roots.some((root) => {
+                        if (root.scheme !== 'file') {
+                            return false;
+                        }
+
+                        const rootPath = root.fsPath;
+                        const filePath = fileUri.fsPath;
+
+                        // Normalize for Windows case-insensitive comparisons.
+                        const rel = path.relative(rootPath, filePath);
+                        if (!rel || rel === '') {
+                            return true;
+                        }
+                        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    if (!allowed) {
+                        reply(false, { error: 'Access denied: file is outside allowed webview roots' });
+                        return;
+                    }
+
+                    vscode.workspace.fs.readFile(fileUri)
+                        .then(
+                            (data) => {
+                                const base64 = Buffer.from(data).toString('base64');
+                                reply(true, { base64 });
+                            },
+                            (err: any) => {
+                                reply(false, { error: err?.message ? String(err.message) : 'Failed to read file' });
+                            }
+                        );
+                    return;
+                }
                 case 'reloadWebview':
                     if (this.webviewPanel !== undefined && this.webviewPanel.Panel === newWebviewPanel && this.context.activeEditor !== undefined) {
                         this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
