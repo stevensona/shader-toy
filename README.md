@@ -199,6 +199,9 @@ Contributions of any kind are welcome and encouraged.
 
 ## Release Notes
 
+### 0.11.5
+* Fixed error code lines diagnostics with multi-level includes support.
+
 ### 0.11.4
 * Added float DDS (DX10) texture loading for `iChannel` inputs (including local files) and included LTC demo shaders.
 
