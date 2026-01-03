@@ -28,10 +28,10 @@ export class DefaultErrorsExtension implements WebviewExtension {
                 }
             }
 
-                if (rawErrors !== undefined && currentShader) {
+            if (rawErrors !== undefined && currentShader) {
                 // Typical WebGL log format:
                 //   ERROR: <sourceId>:<line>: <message>
-                    let message = rawErrors.replace(/ERROR:\s*(\d+):(\d+):\W(.*?)(?:\n|$)/g, function(match, sourceId, line, error) {
+                let message = rawErrors.replace(/ERROR:\\s*(\\d+):(\\d+):\\W(.*?)(?:\\n|$)/g, function(match, sourceId, line, error) {
                         const sid = Number(sourceId);
                         let lineNumber = Number(line);
                         let file = (sid === 0)
