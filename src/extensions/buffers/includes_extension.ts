@@ -18,6 +18,7 @@ export class IncludesExtension implements WebviewExtension {
 <script id='${include.Name}' type='x-shader/x-fragment'>#version 300 es
     precision highp float;
     ${preambleExtension.getShaderPreamble()}
+    #line 1 0
     ${include.Code}
     void main() {}
 </script>`;

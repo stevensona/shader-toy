@@ -304,7 +304,7 @@
             Name: include.Name,
             File: include.File,
             // add two for version and precision lines
-            LineOffset: <!-- Preamble Line Numbers --> + 2
+            LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)
         };
         // Test Compile Included Files
     }
@@ -347,6 +347,8 @@
 
         // Fallback (portable preview): keep legacy behavior when module scripts are not available.
         const fs = gl.createShader(gl.FRAGMENT_SHADER);
+        // Normalize our "self" sentinel source-id (65535) for standalone compiles.
+        fsSource = (fsSource || '').replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
         gl.shaderSource(fs, fsSource);
         gl.compileShader(fs);
         if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {

@@ -25,6 +25,7 @@ export class ShadersExtension implements WebviewExtension {
 <script id='${buffer.Name}' type='x-shader/x-fragment'>
 ${preamble}
 ${keyboardShaderExtension !== undefined ? keyboardShaderExtension.getShaderPreamble() : ''}
+#line 1 0
 ${buffer.Code}
 </script>`;
         }
