@@ -233,7 +233,7 @@ export class ShaderToyManager {
                                 const base64 = Buffer.from(data).toString('base64');
                                 reply(true, { base64 });
                             },
-                            (err: any) => {
+                            (err: {message?: string}) => {
                                 reply(false, { error: err?.message ? String(err.message) : 'Failed to read file' });
                             }
                         );
