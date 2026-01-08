@@ -8,6 +8,9 @@ import * as Types from './typenames';
 import { Context } from './context';
 import { ShaderParser, ObjectType } from './shaderparser';
 import { URL } from 'url';
+import { SELF_SOURCE_ID } from './constants';
+
+export { SELF_SOURCE_ID } from './constants';
 
 type ChannelId = number;
 type InputTexture = {
@@ -27,9 +30,7 @@ type InputTextureSettings = {
     TypeLine?: number,
 };
 
-// GLSL `#line` supports a "source string number". We use a sentinel for "this current file"
-// so nested includes can be re-mapped correctly when an included file is inlined into a parent.
-const SELF_SOURCE_ID = 65535;
+
 
 export class BufferProvider {
     private context: Context;
@@ -144,7 +145,7 @@ export class BufferProvider {
 
         // Normalize any "self" source-id sentinel to 0 for top-level compilation units.
         // (Includes are compiled separately; those are normalized in the webview compile helper.)
-        code = code.replace(/#line\s+(\d+)\s+65535/g, '#line $1 0');
+        code = code.replace(new RegExp(`#line\\s+(\\d+)\\s+${SELF_SOURCE_ID}`, 'g'), '#line $1 0');
 
         const lineOffset = boxedLineOffset.Value;
         const textures: Types.TextureDefinition[] = [];
@@ -542,7 +543,7 @@ void main() {
                     // This is required for nested includes, so that errors in intermediate includes
                     // are not attributed to the outermost shader.
                     const includeCodeForInline = include.Code.replace(
-                        /#line\s+(\d+)\s+65535/g,
+                        new RegExp(`#line\\s+(\\d+)\\s+${SELF_SOURCE_ID}`, 'g'),
                         `#line $1 ${includeSourceId}`
                     );
 

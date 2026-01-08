@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vm from 'vm';
 
-import { BufferProvider } from '../src/bufferprovider';
+import { BufferProvider, SELF_SOURCE_ID } from '../src/bufferprovider';
 import { IncludesInitExtension } from '../src/extensions/buffers/includes_init_extension';
 import { DefaultErrorsExtension } from '../src/extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from '../src/extensions/user_interface/error_display/diagnostics_errors_extension';
@@ -53,7 +53,7 @@ suite('Error Lines Regression', () => {
         assert.ok(code.includes('#line 1 2'), 'Expected include to begin with "#line 1 2"');
 
         // Top-level compilation units should not contain the sentinel; it is normalized to sourceId 0.
-        assert.ok(!code.includes('65535'), 'Expected SELF_SOURCE_ID (65535) to be normalized away in final code');
+        assert.ok(!code.includes(String(SELF_SOURCE_ID)), `Expected SELF_SOURCE_ID (${SELF_SOURCE_ID}) to be normalized away in final code`);
     });
 
     test('Error display regex parses ERROR: <sid>:<line>: ... (and broken escaping is detectable)', () => {
