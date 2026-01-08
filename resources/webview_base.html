@@ -261,6 +261,7 @@
         : { gl: canvas.getContext('webgl2') || canvas.getContext('webgl'), isWebGL2: false };
     let gl = glContextInfo.gl;
     let isWebGL2 = glContextInfo.isWebGL2;
+    const WEBGL2_EXTRA_SHADER_LINES = <!-- WebGL2 Extra Shader Lines -->;
     let supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
     let supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
     let framebufferType = THREE.UnsignedByteType;
@@ -288,9 +289,9 @@
     // WebGL2 inserts more lines into the shader
     if (isWebGL2) {
         for (let buffer of buffers) {
-            buffer.LineOffset += 16;
+            buffer.LineOffset += WEBGL2_EXTRA_SHADER_LINES;
             if (buffer.VertexLineOffset !== undefined) {
-                buffer.VertexLineOffset += 16;
+                buffer.VertexLineOffset += WEBGL2_EXTRA_SHADER_LINES;
             }
         }
     }
@@ -337,7 +338,7 @@
             Name: include.Name,
             File: include.File,
             // add for wrapper lines inserted by compileFragShader
-            LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)
+            LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? WEBGL2_EXTRA_SHADER_LINES : 0)
         };
         // Test Compile Included Files
     }

@@ -14,6 +14,8 @@ import { InitialMouseExtension } from './extensions/initial_mouse_extension';
 import { InitialNormalizedMouseExtension } from './extensions/initial_normalized_mouse_extension';
 import { InitialFlyControlPositionExtension } from './extensions/initial_fly_control_position_extension';
 import { InitialFlyControlRotationExtension } from './extensions/initial_fly_control_rotation_extension';
+import { WEBGL2_EXTRA_SHADER_LINES } from './constants';
+import { Webgl2ExtraShaderLinesExtension } from './extensions/webgl2_extra_shader_lines_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
 import { GlslVersionExtension, type GlslVersionSetting } from './extensions/glsl_version_extension';
@@ -246,6 +248,11 @@ export class WebviewContentProvider {
         this.webviewAssembler.addReplaceModule(glslVersionExtension, "let glslVersionSetting = '<!-- GLSL Version -->';", '<!-- GLSL Version -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // WebGL2 extra line count (used for error line mapping)
+        const webgl2ExtraShaderLinesExtension = new Webgl2ExtraShaderLinesExtension(WEBGL2_EXTRA_SHADER_LINES);
+        this.webviewAssembler.addReplaceModule(webgl2ExtraShaderLinesExtension, 'const WEBGL2_EXTRA_SHADER_LINES = <!-- WebGL2 Extra Shader Lines -->;', '<!-- WebGL2 Extra Shader Lines -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard
         let keyboardShaderExtension: KeyboardShaderExtension | undefined;
         if (useKeyboard) {
@@ -267,7 +274,7 @@ export class WebviewContentProvider {
         // Keep this resilient: if the template line changes (e.g. WebGL2 adds extra lines),
         // make sure we still replace the placeholder token so the generated JS stays valid.
         this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
-        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)', '<!-- Preamble Line Numbers -->');
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? WEBGL2_EXTRA_SHADER_LINES : 0)', '<!-- Preamble Line Numbers -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Custom Uniforms
