@@ -6,7 +6,7 @@ export class DiagnosticsErrorsExtension implements WebviewExtension {
     public generateContent(): string {
         return `\
 (() => {
-    // Optional hook for feature branches (e.g. WebGL2/iVertex) to rewrite
+    // Optional hook for feature extensions (e.g. WebGL2/iVertex) to rewrite
     // compiler errors without forking the core diagnostics/error display logic.
     // Expected signature:
     //   window.shaderToyRewriteGlslError({ sid, lineNumber, file, error, currentShader })
@@ -52,13 +52,18 @@ export class DiagnosticsErrorsExtension implements WebviewExtension {
                         }
                     }
 
-                    if (diagnosticsByFile[file] === undefined) {
-                        diagnosticsByFile[file] = [];
-                    }
-                    diagnosticsByFile[file].push({ line: lineNumber, message: error });
+                    if (typeof lineNumber === 'number' && lineNumber >= 1) {
+                        if (diagnosticsByFile[file] === undefined) {
+                            diagnosticsByFile[file] = [];
+                        }
+                        diagnosticsByFile[file].push({ line: lineNumber, message: error });
 
-                    let lineHighlight = "<a class='error' unselectable onclick='revealError(" + lineNumber + ", " + JSON.stringify(file) + ")'>Line " + lineNumber + "</a>";
-                    message += '<li>' + lineHighlight + ': ' + error + ' <span>(' + file + ')</span></li>';
+                        let lineHighlight = "<a class='error' unselectable onclick='revealError(" + lineNumber + ", " + JSON.stringify(file) + ")'>Line " + lineNumber + "</a>";
+                        message += '<li>' + lineHighlight + ': ' + error + ' <span>(' + file + ')</span></li>';
+                    }
+                    else {
+                        message += '<li>' + error + ' <span>(' + file + ')</span></li>';
+                    }
                 }
 
                 if (vscode !== undefined) {

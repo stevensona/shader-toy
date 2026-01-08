@@ -150,11 +150,12 @@ suite('Error Lines Regression', () => {
 
         const templatePath = path.join(repoRoot, 'resources', 'webview_base.html');
         const template = fs.readFileSync(templatePath, 'utf8');
-        assert.ok(template.includes('LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)'));
+        assert.ok(template.includes('const WEBGL2_EXTRA_SHADER_LINES = <!-- WebGL2 Extra Shader Lines -->;'));
+        assert.ok(template.includes('LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? WEBGL2_EXTRA_SHADER_LINES : 0)'));
 
         const providerPath = path.join(repoRoot, 'src', 'webviewcontentprovider.ts');
         const providerSource = fs.readFileSync(providerPath, 'utf8');
         assert.ok(providerSource.includes("addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2'"));
-        assert.ok(providerSource.includes("addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)'"));
+        assert.ok(providerSource.includes("addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? WEBGL2_EXTRA_SHADER_LINES : 0)'"));
     });
 });

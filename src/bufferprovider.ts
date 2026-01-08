@@ -40,6 +40,16 @@ export class BufferProvider {
         this.visitedFiles = [];
     }
 
+    private looksLikeStandaloneVertexShader(code: string): boolean {
+        const withoutBlockComments = code.replace(/\/\*[\s\S]*?\*\//g, '');
+        const withoutLineComments = withoutBlockComments.replace(/\/\/.*$/gm, '');
+        const stripped = withoutLineComments;
+
+        const hasVertexBuiltins = /\bgl_Position\b|\bgl_VertexID\b|\bgl_InstanceID\b|\bgl_PointSize\b/.test(stripped);
+        const hasFragmentSignals = /\bmainImage\b|\bgl_FragCoord\b|\bgl_FragColor\b|\bGLSL_FRAGCOLOR\b/.test(stripped);
+        return hasVertexBuiltins && !hasFragmentSignals;
+    }
+
     public async parseShaderCode(file: string, code: string, buffers: Types.BufferDefinition[], commonIncludes: Types.IncludeDefinition[], generateStandalone: boolean) {
         await this.parseShaderCodeInternal(file, file, code, buffers, commonIncludes, generateStandalone);
 
@@ -132,7 +142,26 @@ export class BufferProvider {
         }
         this.visitedFiles.push(file);
 
+        if (rootFile === file && this.looksLikeStandaloneVertexShader(code)) {
+            this.showErrorAtLine(
+                file,
+                'This file looks like a vertex shader. Preview assumes a fragment shader; reference this file from a fragment pass using #iVertex.',
+                1
+            );
+
+            // Replace with a minimal fragment stub that fails reliably with a descriptive marker.
+            // NOTE: GLSL ES does not support `#error`.
+            code = [
+                'void mainImage(out vec4 fragColor, in vec2 fragCoord) {',
+                '    ERROR_IVERTEX_SOURCE;',
+                '    fragColor = vec4(0.0);',
+                '}'
+            ].join('\n');
+        }
+
         const boxedLineOffset: Types.BoxedValue<number> = { Value: 0 };
+        const boxedVertexShaderFile: Types.BoxedValue<string | undefined> = { Value: undefined };
+        const boxedVertexShaderLine: Types.BoxedValue<number | undefined> = { Value: undefined };
         const pendingTextures: InputTexture[] = [];
         const pendingTextureSettings = new Map<ChannelId, InputTextureSettings>();
         const pendingUniforms: Types.UniformDefinition[] = [];
@@ -141,13 +170,88 @@ export class BufferProvider {
         const boxedFirstPersonControls: Types.BoxedValue<boolean> = { Value: false };
         const strictComp: Types.BoxedValue<boolean> = { Value: false };
 
-        code = await this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
+        code = await this.transformCode(
+            rootFile,
+            file,
+            code,
+            boxedLineOffset,
+            boxedVertexShaderFile,
+            boxedVertexShaderLine,
+            pendingTextures,
+            pendingTextureSettings,
+            pendingUniforms,
+            includes,
+            commonIncludes,
+            boxedUsesKeyboard,
+            boxedFirstPersonControls,
+            strictComp,
+            generateStandalone
+        );
 
         // Normalize any "self" source-id sentinel to 0 for top-level compilation units.
         // (Includes are compiled separately; those are normalized in the webview compile helper.)
         code = code.replace(new RegExp(`#line\\s+(\\d+)\\s+${SELF_SOURCE_ID}`, 'g'), '#line $1 0');
 
         const lineOffset = boxedLineOffset.Value;
+        let vertexFile: string | undefined = undefined;
+        let vertexCode: string | undefined = undefined;
+        let vertexLineOffset: number | undefined = undefined;
+
+        if (boxedVertexShaderFile.Value !== undefined) {
+            vertexFile = boxedVertexShaderFile.Value;
+            vertexLineOffset = lineOffset;
+
+            const vertexFileRead = await this.readShaderFile(vertexFile);
+            if (vertexFileRead.success === false) {
+                this.showErrorAtLine(file, `Could not open vertex shader file: ${vertexFile}`, boxedVertexShaderLine.Value ?? 0);
+                vertexFile = undefined;
+                vertexLineOffset = undefined;
+            }
+            else {
+                vertexCode = Buffer.from(vertexFileRead.bufferCode).toString();
+
+                const versionPos = vertexCode.search(/^#version/g);
+                if (versionPos === 0) {
+                    const newLinePos = vertexCode.search('\n');
+                    const versionDirective = vertexCode.substring(versionPos, newLinePos - 1);
+                    vertexCode = vertexCode.replace(versionDirective, '');
+                    this.showInformationAtLine(vertexFile, `Version directive '${versionDirective}' ignored by shader-toy extension`, 0);
+                }
+
+                const vertexLineOffsetBox: Types.BoxedValue<number> = { Value: 0 };
+                const vertexVertexShaderFile: Types.BoxedValue<string | undefined> = { Value: undefined };
+                const vertexVertexShaderLine: Types.BoxedValue<number | undefined> = { Value: undefined };
+                const vertexPendingTextures: InputTexture[] = [];
+                const vertexPendingTextureSettings = new Map<ChannelId, InputTextureSettings>();
+                const vertexPendingUniforms: Types.UniformDefinition[] = [];
+                const vertexIncludes: Types.IncludeDefinition[] = [];
+                const vertexUsesKeyboard: Types.BoxedValue<boolean> = { Value: false };
+                const vertexUsesFirstPersonControls: Types.BoxedValue<boolean> = { Value: false };
+                const vertexStrictComp: Types.BoxedValue<boolean> = { Value: false };
+
+                vertexCode = await this.transformCode(
+                    rootFile,
+                    vertexFile,
+                    vertexCode,
+                    vertexLineOffsetBox,
+                    vertexVertexShaderFile,
+                    vertexVertexShaderLine,
+                    vertexPendingTextures,
+                    vertexPendingTextureSettings,
+                    vertexPendingUniforms,
+                    vertexIncludes,
+                    commonIncludes,
+                    vertexUsesKeyboard,
+                    vertexUsesFirstPersonControls,
+                    vertexStrictComp,
+                    generateStandalone
+                );
+
+                if (!vertexCode.startsWith('#line')) {
+                    vertexCode = `#line 1 0\n${vertexCode}`;
+                }
+            }
+        }
         const textures: Types.TextureDefinition[] = [];
         const audios: Types.AudioDefinition[] = [];
         const uniforms: Types.UniformDefinition[] = [];
@@ -281,7 +385,7 @@ export class BufferProvider {
                 code += `
 void main() {
     vec2 fragCoord = gl_FragCoord.xy;
-    mainImage(gl_FragColor, fragCoord);
+    mainImage(GLSL_FRAGCOLOR, fragCoord);
 }`;
             };
 
@@ -371,6 +475,9 @@ void main() {
             Name: this.makeName(file),
             File: file,
             Code: code,
+            VertexFile: vertexFile,
+            VertexCode: vertexCode,
+            VertexLineOffset: vertexLineOffset,
             Includes: includes,
             TextureInputs: textures,
             AudioInputs: audios,
@@ -384,8 +491,23 @@ void main() {
         });
     }
 
-    private async transformCode(rootFile: string, file: string, code: string, lineOffset: Types.BoxedValue<number>, textures: InputTexture[], textureSettings: Map<ChannelId, InputTextureSettings>,
-        uniforms: Types.UniformDefinition[], includes: Types.IncludeDefinition[], sharedIncludes: Types.IncludeDefinition[], usesKeyboard: Types.BoxedValue<boolean>, usesFirstPersonControls: Types.BoxedValue<boolean>, strictComp: Types.BoxedValue<boolean>, generateStandalone: boolean): Promise<string> {
+    private async transformCode(
+        rootFile: string,
+        file: string,
+        code: string,
+        lineOffset: Types.BoxedValue<number>,
+        vertexShaderFile: Types.BoxedValue<string | undefined>,
+        vertexShaderLine: Types.BoxedValue<number | undefined>,
+        textures: InputTexture[],
+        textureSettings: Map<ChannelId, InputTextureSettings>,
+        uniforms: Types.UniformDefinition[],
+        includes: Types.IncludeDefinition[],
+        sharedIncludes: Types.IncludeDefinition[],
+        usesKeyboard: Types.BoxedValue<boolean>,
+        usesFirstPersonControls: Types.BoxedValue<boolean>,
+        strictComp: Types.BoxedValue<boolean>,
+        generateStandalone: boolean
+    ): Promise<string> {
 
         const addTextureSettingIfNew = (channel: number) => {
             if (textureSettings.get(channel) === undefined) {
@@ -513,8 +635,25 @@ void main() {
                     const includeCode = await this.readShaderFile(includeFile);
                     if (includeCode.success) {
                         const include_line_offset: Types.BoxedValue<number> = { Value: 0 };
-                        const transformedIncludeCode = await this.transformCode(rootFile, includeFile, includeCode.bufferCode, include_line_offset, textures, textureSettings,
-                            uniforms, includes, sharedIncludes, usesKeyboard, usesFirstPersonControls, strictComp, generateStandalone);
+                        const include_vertex_file: Types.BoxedValue<string | undefined> = { Value: undefined };
+                        const include_vertex_line: Types.BoxedValue<number | undefined> = { Value: undefined };
+                        const transformedIncludeCode = await this.transformCode(
+                            rootFile,
+                            includeFile,
+                            includeCode.bufferCode,
+                            include_line_offset,
+                            include_vertex_file,
+                            include_vertex_line,
+                            textures,
+                            textureSettings,
+                            uniforms,
+                            includes,
+                            sharedIncludes,
+                            usesKeyboard,
+                            usesFirstPersonControls,
+                            strictComp,
+                            generateStandalone
+                        );
                         const newInclude: Types.IncludeDefinition = {
                             Name: this.makeName(includeFile),
                             File: includeFile,
@@ -557,6 +696,65 @@ void main() {
                     replaceLastObject(injected);
                 }
 
+                break;
+            }
+            case ObjectType.Vertex: {
+                const line = parser.line();
+                const glslVersionConfig = this.context.getConfig<string>('webglVersion');
+                const isGlslVersion3Mode = (glslVersionConfig === 'WebGL2');
+                if (!isGlslVersion3Mode) {
+                    this.showErrorAtLine(file, 'Custom vertex shaders (#iVertex) require shader-toy.webglVersion set to "WebGL2".', line);
+                    removeLastObject();
+                    break;
+                }
+
+                let userPath = nextObject.Path;
+                const normalized = userPath.replace('file://', '');
+                if (normalized === 'self') {
+                    this.showErrorAtLine(file, '"#iVertex \"self\"" is not supported. Use "#iVertex \"default\"" or point to a .glsl file.', line);
+                    removeLastObject();
+                    break;
+                }
+                if (normalized === 'default') {
+                    vertexShaderFile.Value = undefined;
+                    vertexShaderLine.Value = undefined;
+                    removeLastObject();
+                    break;
+                }
+
+                let local = false;
+                try {
+                    const vertexUrl = new URL(userPath);
+                    if (vertexUrl.protocol === 'file:') {
+                        local = true;
+                    }
+                }
+                catch {
+                    local = true;
+                }
+                if (!local) {
+                    this.showErrorAtLine(file, '#iVertex only supports local files (file://...) for now.', line);
+                    removeLastObject();
+                    break;
+                }
+
+                userPath = userPath.replace('file://', '');
+                const mapped = await this.context.mapUserPath(userPath, file);
+                const mappedVertexFile = mapped.file;
+
+                if (path.extname(mappedVertexFile).toLowerCase() !== '.glsl') {
+                    this.showErrorAtLine(file, `#iVertex expects a .glsl file, got "${userPath}"`, line);
+                    removeLastObject();
+                    break;
+                }
+
+                if (vertexShaderFile.Value !== undefined) {
+                    this.showWarningAtLine(file, '#iVertex was specified multiple times; the last one wins.', line);
+                }
+
+                vertexShaderFile.Value = mappedVertexFile;
+                vertexShaderLine.Value = line;
+                removeLastObject();
                 break;
             }
             case ObjectType.Uniform:

@@ -28,6 +28,15 @@ ${keyboardShaderExtension !== undefined ? keyboardShaderExtension.getShaderPream
 #line 1 0
 ${buffer.Code}
 </script>`;
+
+            if (buffer.VertexCode !== undefined) {
+                this.content += `\
+<script id='${buffer.Name}_vertex' type='x-shader/x-vertex'>
+${preamble}
+${keyboardShaderExtension !== undefined ? keyboardShaderExtension.getShaderPreamble() : ''}
+${buffer.VertexCode}
+</script>`;
+            }
         }
     }
 

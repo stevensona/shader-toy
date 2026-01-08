@@ -37,6 +37,15 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
+                "shader-toy.webglVersion": {
+                    "type": "string",
+                    "default": "Default",
+                    "enum": [
+                        "Default",
+                        "WebGL2"
+                    ],
+                    "description": "Select the WebGL mode. Default prefers WebGL2 but falls back to WebGL1. WebGL2 uses GLSL 300 ES and enables #iVertex."
+                },
                 "shader-toy.showCompileErrorsAsDiagnostics": {
                     "type": "boolean",
                     "default": true,
