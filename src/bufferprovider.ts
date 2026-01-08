@@ -8,6 +8,9 @@ import * as Types from './typenames';
 import { Context } from './context';
 import { ShaderParser, ObjectType } from './shaderparser';
 import { URL } from 'url';
+import { SELF_SOURCE_ID } from './constants';
+
+export { SELF_SOURCE_ID } from './constants';
 
 type ChannelId = number;
 type InputTexture = {
@@ -26,6 +29,8 @@ type InputTextureSettings = {
     Type?: Types.TextureType
     TypeLine?: number,
 };
+
+
 
 export class BufferProvider {
     private context: Context;
@@ -137,6 +142,10 @@ export class BufferProvider {
         const strictComp: Types.BoxedValue<boolean> = { Value: false };
 
         code = await this.transformCode(rootFile, file, code, boxedLineOffset, pendingTextures, pendingTextureSettings, pendingUniforms, includes, commonIncludes, boxedUsesKeyboard, boxedFirstPersonControls, strictComp, generateStandalone);
+
+        // Normalize any "self" source-id sentinel to 0 for top-level compilation units.
+        // (Includes are compiled separately; those are normalized in the webview compile helper.)
+        code = code.replace(new RegExp(`#line\\s+(\\d+)\\s+${SELF_SOURCE_ID}`, 'g'), '#line $1 0');
 
         const lineOffset = boxedLineOffset.Value;
         const textures: Types.TextureDefinition[] = [];
@@ -489,6 +498,10 @@ void main() {
             case ObjectType.Include: {
                 const includeFile = (await this.context.mapUserPath(nextObject.Path, file)).file;
 
+                // Capture the include directive line number in the original (pre-mutation) file.
+                // ShaderStream.originalLine() is 1-based.
+                const includeDirectiveLine = parser.line();
+
                 let sharedIncludeIndex = sharedIncludes.findIndex((value: Types.IncludeDefinition) => {
                     if (value.File === includeFile) {
                         return true;
@@ -519,8 +532,29 @@ void main() {
                 if (sharedIncludeIndex >= 0) {
                     const include = sharedIncludes[sharedIncludeIndex];
                     includes.push(include);
-                    lineOffset.Value += include.LineCount - 1;
-                    replaceLastObject(include.Code);
+
+                    // Assign a "source string number" so WebGL error logs can be mapped back to
+                    // the correct include file.
+                    // - Source 0 is the current (top-level) buffer file.
+                    // - Includes are 1..N following sharedIncludes order.
+                    const includeSourceId = sharedIncludeIndex + 1;
+
+                    // Re-map any "self" markers inside the included file to this include's source id.
+                    // This is required for nested includes, so that errors in intermediate includes
+                    // are not attributed to the outermost shader.
+                    const includeCodeForInline = include.Code.replace(
+                        new RegExp(`#line\\s+(\\d+)\\s+${SELF_SOURCE_ID}`, 'g'),
+                        `#line $1 ${includeSourceId}`
+                    );
+
+                    // Expand includes while keeping compile error line numbers meaningful:
+                    // - Inside the included file content: start at line 1 for that file.
+                    // - After the include: resume numbering at the line after the include directive
+                    //   in the current file (using the self sentinel).
+                    // Note: do NOT end with an extra newline; the original '\n' after the include
+                    // directive remains in the source.
+                    const injected = `#line 1 ${includeSourceId}\n${includeCodeForInline}\n#line ${includeDirectiveLine + 1} ${SELF_SOURCE_ID}`;
+                    replaceLastObject(injected);
                 }
 
                 break;

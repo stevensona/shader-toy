@@ -100,6 +100,11 @@
 
 <!-- FlyControls -->
 
+<script type="text/javascript">
+    window.ShaderToy = window.ShaderToy || {};
+    window.ShaderToy.SELF_SOURCE_ID = <!-- Self Source Id -->;
+</script>
+
 <!-- Webview Modules -->
 <!-- Webview runtime_env.js -->
 <!-- Webview glsl_error_hook.js -->
@@ -304,7 +309,7 @@
             Name: include.Name,
             File: include.File,
             // add two for version and precision lines
-            LineOffset: <!-- Preamble Line Numbers --> + 2
+            LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)
         };
         // Test Compile Included Files
     }
@@ -347,6 +352,11 @@
 
         // Fallback (portable preview): keep legacy behavior when module scripts are not available.
         const fs = gl.createShader(gl.FRAGMENT_SHADER);
+        // Normalize our "self" sentinel source-id for standalone compiles.
+            const selfSourceId = Number(window.ShaderToy && window.ShaderToy.SELF_SOURCE_ID);
+            if (Number.isFinite(selfSourceId)) {
+                fsSource = (fsSource || '').replace(new RegExp(`#line\\s+(\\d+)\\s+${selfSourceId}`, 'g'), '#line $1 0');
+            }
         gl.shaderSource(fs, fsSource);
         gl.compileShader(fs);
         if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {

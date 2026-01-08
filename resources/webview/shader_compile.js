@@ -2,15 +2,21 @@
     'use strict';
 
     const root = global.ShaderToy = global.ShaderToy || {};
+    const SELF_SOURCE_ID = Number(root.SELF_SOURCE_ID);
 
     if (!root.shaderCompile) {
         root.shaderCompile = {};
     }
 
-    // Central place for any future #line / sentinel normalization.
-    // On master today this is effectively a no-op.
+    // Central place for any #line / sentinel normalization.
     root.shaderCompile.normalizeLineDirectives = function (source) {
-        return source || '';
+        if (!Number.isFinite(SELF_SOURCE_ID)) {
+            console.warn('ShaderToy: SELF_SOURCE_ID is not set; skipping #line normalization');
+            return source || '';
+        }
+
+        // Normalize our "self" sentinel source-id for compiles.
+        return (source || '').replace(new RegExp(`#line\\s+(\\d+)\\s+${SELF_SOURCE_ID}`, 'g'), '#line $1 0');
     };
 
     root.shaderCompile.compileFragShader = function (gl, fsSource) {

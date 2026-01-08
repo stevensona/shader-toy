@@ -203,6 +203,7 @@ Contributions of any kind are welcome and encouraged.
 * Added float DDS (DX10) texture loading for `iChannel` inputs (including local files) and included LTC demo shaders.
 * Improved diagnostics when using glslify.
 * Added diagnostics when there is a js error happening in the webview, rather than the user ending up with a black screen.
+* Fixed error code lines diagnostics with multi-level includes support.
 
 ### 0.11.3
 * Added `shader-toy.recordVideoContainer` (set video file container).

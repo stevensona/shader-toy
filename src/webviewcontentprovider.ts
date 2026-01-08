@@ -33,6 +33,8 @@ import { DatGuiExtension } from './extensions/packages/dat_gui_extension';
 import { CCaptureExtension } from './extensions/packages/ccapture_extension';
 
 import { WebviewModuleScriptExtension } from './extensions/webview_module_script_extension';
+import { SELF_SOURCE_ID } from './constants';
+import { SelfSourceIdExtension } from './extensions/self_source_id_extension';
 
 import { PauseButtonStyleExtension } from './extensions/user_interface/pause_button_style_extension';
 import { PauseButtonExtension } from './extensions/user_interface/pause_button_extension';
@@ -251,7 +253,10 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Shader Preamble
         const preambleExtension = new ShaderPreambleExtension();
+        // Keep this resilient: if the template line changes (e.g. WebGL2 adds extra lines),
+        // make sure we still replace the placeholder token so the generated JS stays valid.
         this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2', '<!-- Preamble Line Numbers -->');
+        this.webviewAssembler.addReplaceModule(preambleExtension, 'LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)', '<!-- Preamble Line Numbers -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Custom Uniforms
@@ -370,6 +375,10 @@ export class WebviewContentProvider {
             const webviewRenderLoop = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/render_loop.js', getResourceText);
             this.webviewAssembler.addReplaceModule(webviewRenderLoop, '<!-- Webview render_loop.js -->', '<!-- Webview render_loop.js -->');
         }
+
+        // Keep the GLSL #line "self" sentinel source-id consistent between extension and webview.
+        const selfSourceIdExtension = new SelfSourceIdExtension(SELF_SOURCE_ID);
+        this.webviewAssembler.addReplaceModule(selfSourceIdExtension, 'window.ShaderToy.SELF_SOURCE_ID = <!-- Self Source Id -->;', '<!-- Self Source Id -->');
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
