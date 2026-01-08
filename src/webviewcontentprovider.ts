@@ -16,6 +16,7 @@ import { InitialFlyControlPositionExtension } from './extensions/initial_fly_con
 import { InitialFlyControlRotationExtension } from './extensions/initial_fly_control_rotation_extension';
 
 import { ForcedAspectExtension } from './extensions/forced_aspect_extension';
+import { GlslVersionExtension, type GlslVersionSetting } from './extensions/glsl_version_extension';
 import { ForcedScreenshotResolutionExtension } from './extensions/forced_screenshot_resolution_extension';
 
 import { ShaderPreambleExtension } from './extensions/preamble_extension';
@@ -47,6 +48,7 @@ import { ReloadButtonExtension } from './extensions/user_interface/reload_button
 
 import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
+import { IvertexErrorRewriteExtension } from './extensions/user_interface/error_display/ivertex_error_rewrite_extension';
 import { GlslifyErrorsExtension } from './extensions/user_interface/error_display/glslify_errors_extension';
 
 import { PauseWholeRenderExtension } from './extensions/pause_whole_render_extension';
@@ -125,7 +127,7 @@ export class WebviewContentProvider {
                     this.buffers.push({
                         Name: 'final-blit',
                         File: 'final-blit',
-                        Code: 'void main() { gl_FragColor = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }',
+                        Code: 'void main() { GLSL_FRAGCOLOR = texture2D(iChannel0, gl_FragCoord.xy / iResolution.xy); }',
                         TextureInputs: [{
                             Channel: 0,
                             File: '',
@@ -235,6 +237,15 @@ export class WebviewContentProvider {
         this.webviewAssembler.addReplaceModule(forcedAspectExtension, 'let forcedAspects = [<!-- Forced Aspect -->];', '<!-- Forced Aspect -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // GLSL Version (driven by shader-toy.webglVersion)
+        const glslVersionConfig = this.context.getConfig<string>('webglVersion');
+        const glslVersionSetting: GlslVersionSetting = (glslVersionConfig === 'WebGL2')
+            ? 'WebGL2'
+            : 'Default';
+        const glslVersionExtension = new GlslVersionExtension(glslVersionSetting);
+        this.webviewAssembler.addReplaceModule(glslVersionExtension, "let glslVersionSetting = '<!-- GLSL Version -->';", '<!-- GLSL Version -->');
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Keyboard
         let keyboardShaderExtension: KeyboardShaderExtension | undefined;
         if (useKeyboard) {
@@ -275,9 +286,9 @@ export class WebviewContentProvider {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Fix up line offsets
         {
-            const webglPlusThreeJsLineNumbers = 107;
+            const glslPlusThreeJsLineNumbers = 107;
             for (const buffer of this.buffers) {
-                buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + webglPlusThreeJsLineNumbers;
+                buffer.LineOffset += preambleExtension.getShaderPreambleLineNumbers() + glslPlusThreeJsLineNumbers;
                 if (buffer.UsesKeyboard && keyboardShaderExtension !== undefined) {
                     buffer.LineOffset += keyboardShaderExtension.getShaderPreambleLineNumbers();
                 }
@@ -487,6 +498,11 @@ export class WebviewContentProvider {
         }
         else {
             errorsExtension = new DefaultErrorsExtension();
+        }
+
+        if (glslVersionSetting === 'WebGL2') {
+            const ivertexErrorRewriteExtension = new IvertexErrorRewriteExtension();
+            this.webviewAssembler.addWebviewModule(ivertexErrorRewriteExtension, '// Error Callback');
         }
         this.webviewAssembler.addWebviewModule(errorsExtension, '// Error Callback');
 
