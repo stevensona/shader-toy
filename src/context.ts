@@ -44,6 +44,10 @@ export class Context {
 
         let file = await (async (file: string) => {
             const fileCandidates: string[] = [];
+            // Best-effort fallback path to return when the file doesn't exist.
+            // This avoids returning undefined (which can crash path.normalize)
+            // and allows downstream loaders to surface a proper error.
+            let fallbackFile = file;
 
             const exists = async (file: string) => {
                 const singleFileExists = async (file: string) => {
@@ -98,6 +102,7 @@ export class Context {
             {
                 const fileCandidate = [sourcePath, file].join('/');
                 fileCandidates.push(fileCandidate);
+                fallbackFile = fileCandidate;
                 if (await exists(fileCandidate)) {
                     return fileCandidate;
                 }
@@ -121,11 +126,17 @@ export class Context {
                     vscode.window.showErrorMessage(`Multiple candidates for file '${userPath}' were found in your workspace folders, first option was picked: '${workspaceFileCandidates[0]}'`);
                 }
 
-                return workspaceFileCandidates[0];
+                if (workspaceFileCandidates.length > 0) {
+                    return workspaceFileCandidates[0];
+                }
+
+                // If the file doesn't exist in any workspace folder, fall back to a deterministic
+                // candidate (relative-to-sourcePath) so callers can proceed without crashing.
+                // The error below will make the situation visible.
             }
 
             vscode.window.showErrorMessage(`File '${userPath}' was not found, paths that were tried were\n\t${fileCandidates.join('\n\t')}`);
-            return file;
+            return fallbackFile;
         })(userPath);
 
         file = path.normalize(file);
