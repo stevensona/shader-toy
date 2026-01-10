@@ -23,8 +23,28 @@
         ? global.document.getElementById('sequencer_play_pause')
         : undefined;
 
+    const loopButton = global.document && global.document.getElementById
+        ? global.document.getElementById('sequencer_loop')
+        : undefined;
+
+    const exportButton = global.document && global.document.getElementById
+        ? global.document.getElementById('sequencer_export')
+        : undefined;
+
+    const importButton = global.document && global.document.getElementById
+        ? global.document.getElementById('sequencer_import')
+        : undefined;
+
     const timeLabel = global.document && global.document.getElementById
         ? global.document.getElementById('sequencer_time_label')
+        : undefined;
+
+    const scopeStartInput = global.document && global.document.getElementById
+        ? global.document.getElementById('sequencer_scope_start')
+        : undefined;
+
+    const scopeEndInput = global.document && global.document.getElementById
+        ? global.document.getElementById('sequencer_scope_end')
         : undefined;
 
     const trackSelect = global.document && global.document.getElementById
@@ -65,6 +85,7 @@
                 groupsDraggable: false,
                 keyframesDraggable: true,
                 timelineDraggable: true,
+                headerHeight: 48,
             });
         }
     } catch {
@@ -83,6 +104,8 @@
     let project = undefined;
     let valuesByTrackId = {};
     let selectedKey = undefined; // { trackId, keyId }
+
+    let loopEnabled = true;
 
     const beginScrub = () => {
         if (isScrubbing) {
@@ -254,7 +277,33 @@
         }
     };
 
+    const setLoopUi = (isLoop) => {
+        loopEnabled = !!isLoop;
+        if (loopButton) {
+            loopButton.textContent = loopEnabled ? 'Loop: On' : 'Loop: Off';
+        }
+    };
+
+    const setScopeUi = (startSec, endSec) => {
+        if (scopeStartInput) {
+            try {
+                scopeStartInput.value = (typeof startSec === 'number' && isFinite(startSec)) ? String(startSec) : '0';
+            } catch {
+                // ignore
+            }
+        }
+        if (scopeEndInput) {
+            try {
+                scopeEndInput.value = (typeof endSec === 'number' && isFinite(endSec)) ? String(endSec) : '10';
+            } catch {
+                // ignore
+            }
+        }
+    };
+
     setPausedUi(false);
+    setLoopUi(true);
+    setScopeUi(0, 10);
 
     if (playPauseButton) {
         playPauseButton.addEventListener('click', () => {
@@ -266,6 +315,79 @@
                 } catch {
                     // ignore
                 }
+            }
+        });
+    }
+
+    if (loopButton) {
+        loopButton.addEventListener('click', () => {
+            const nextLoop = !loopEnabled;
+            setLoopUi(nextLoop);
+            if (vscode) {
+                try {
+                    vscode.postMessage({ command: 'sequencerSetLoop', loop: nextLoop });
+                } catch {
+                    // ignore
+                }
+            }
+        });
+    }
+
+    const postScopeToHost = () => {
+        if (!vscode) {
+            return;
+        }
+        const startSec = scopeStartInput ? Number(String(scopeStartInput.value || '').trim()) : NaN;
+        const endSec = scopeEndInput ? Number(String(scopeEndInput.value || '').trim()) : NaN;
+        if (!isFinite(startSec) || !isFinite(endSec)) {
+            return;
+        }
+        try {
+            vscode.postMessage({ command: 'sequencerSetScope', startSec, endSec });
+        } catch {
+            // ignore
+        }
+    };
+
+    if (scopeStartInput) {
+        scopeStartInput.addEventListener('change', postScopeToHost);
+        scopeStartInput.addEventListener('keydown', (e) => {
+            if (e && e.key === 'Enter') {
+                postScopeToHost();
+            }
+        });
+    }
+    if (scopeEndInput) {
+        scopeEndInput.addEventListener('change', postScopeToHost);
+        scopeEndInput.addEventListener('keydown', (e) => {
+            if (e && e.key === 'Enter') {
+                postScopeToHost();
+            }
+        });
+    }
+
+    if (exportButton) {
+        exportButton.addEventListener('click', () => {
+            if (!vscode) {
+                return;
+            }
+            try {
+                vscode.postMessage({ command: 'sequencerExportProject' });
+            } catch {
+                // ignore
+            }
+        });
+    }
+
+    if (importButton) {
+        importButton.addEventListener('click', () => {
+            if (!vscode) {
+                return;
+            }
+            try {
+                vscode.postMessage({ command: 'sequencerImportProject' });
+            } catch {
+                // ignore
             }
         });
     }
@@ -394,6 +516,22 @@
         }
         case 'sequencerProject': {
             project = message.project;
+
+            // Update scope/loop UI.
+            try {
+                const p = project || {};
+                const loop = typeof p.loop === 'boolean' ? p.loop : true;
+                setLoopUi(loop);
+                const scope = p.timeScope;
+                if (scope && typeof scope.startSec === 'number' && typeof scope.endSec === 'number') {
+                    setScopeUi(scope.startSec, scope.endSec);
+                } else if (typeof p.durationSec === 'number' && isFinite(p.durationSec)) {
+                    setScopeUi(0, p.durationSec);
+                }
+            } catch {
+                // ignore
+            }
+
             rebuildTrackSelect();
             rebuildTimelineModel();
             refreshValueUiFromCurrentTrack();

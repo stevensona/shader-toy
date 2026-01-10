@@ -2,7 +2,7 @@
 
 import type { UniformDefinition } from '../typenames';
 
-export const SEQUENCER_SCHEMA_VERSION = '0.1.0' as const;
+export const SEQUENCER_SCHEMA_VERSION = '0.2.0' as const;
 
 export type SequencerSchemaVersion = typeof SEQUENCER_SCHEMA_VERSION;
 
@@ -12,8 +12,28 @@ export type SequencerOutOfRange = 'hold' | 'default';
 
 export type SequencerProject = {
 	schemaVersion: SequencerSchemaVersion;
+	projectId?: string;
 	displayFps: number;
+	/**
+	 * Playback scope for looping/stop behavior. Keys can still exist outside this range.
+	 */
+	timeScope?: {
+		startSec: number;
+		endSec: number;
+	};
+	/**
+	 * Legacy end-time field (kept for backward compatibility / older exports).
+	 */
 	durationSec?: number;
+	/**
+	 * When true (default), playback wraps to timeScope.startSec when reaching timeScope.endSec.
+	 * When false, playback pauses at the end.
+	 */
+	loop?: boolean;
+	snapSettings?: {
+		enabled?: boolean;
+		stepSec?: number;
+	};
 	defaults?: {
 		interpolation: SequencerInterpolation;
 		stepMode: SequencerStepMode;
@@ -47,6 +67,178 @@ export type SequencerKey = {
 	id: string;
 	t: number; // seconds
 	v: number; // float/int (int quantized at evaluation)
+	meta?: Record<string, unknown>;
+};
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> => {
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
+};
+
+const asNumber = (v: unknown): number | undefined => {
+	return (typeof v === 'number' && isFinite(v)) ? v : undefined;
+};
+
+const asString = (v: unknown): string | undefined => {
+	return (typeof v === 'string' && v.length > 0) ? v : undefined;
+};
+
+const normalizeKey = (raw: unknown, fallbackId: string): SequencerKey | undefined => {
+	if (!isPlainObject(raw)) {
+		return undefined;
+	}
+	const id = asString(raw.id) ?? fallbackId;
+	const t = asNumber(raw.t) ?? 0;
+	const v = asNumber(raw.v) ?? 0;
+	const meta = isPlainObject(raw.meta) ? raw.meta : undefined;
+	return { id, t, v, meta };
+};
+
+const normalizeTrack = (raw: unknown): SequencerTrack | undefined => {
+	if (!isPlainObject(raw)) {
+		return undefined;
+	}
+	const id = asString(raw.id);
+	const name = asString(raw.name) ?? id;
+	if (!id || !name) {
+		return undefined;
+	}
+
+	const targetObj = isPlainObject(raw.target) ? raw.target : undefined;
+	const kind = targetObj ? asString(targetObj.kind) : undefined;
+	const uniformName = targetObj ? asString(targetObj.uniformName) : undefined;
+	if (kind !== 'uniform' || !uniformName) {
+		return undefined;
+	}
+
+	const valueType = (raw.valueType === 'int' ? 'int' : 'float') as 'float' | 'int';
+	const defaultValue = asNumber(raw.defaultValue) ?? 0;
+	const minValue = asNumber(raw.minValue);
+	const maxValue = asNumber(raw.maxValue);
+	const stepValue = asNumber(raw.stepValue);
+
+	const interpolation = (raw.interpolation === 'step' || raw.interpolation === 'linear') ? raw.interpolation : undefined;
+	const stepMode = (raw.stepMode === 'holdLeft') ? raw.stepMode : undefined;
+	const outOfRange = (raw.outOfRange === 'hold' || raw.outOfRange === 'default') ? raw.outOfRange : undefined;
+
+	const keysRaw = Array.isArray(raw.keys) ? raw.keys : [];
+	const keys: SequencerKey[] = [];
+	for (let i = 0; i < keysRaw.length; i++) {
+		const k = normalizeKey(keysRaw[i], `k${i}`);
+		if (k) {
+			keys.push(k);
+		}
+	}
+	if (keys.length === 0) {
+		keys.push({ id: 'k0', t: 0, v: defaultValue });
+	}
+	sortKeysInPlace(keys);
+
+	return {
+		id,
+		name,
+		target: { kind: 'uniform', uniformName },
+		valueType,
+		defaultValue,
+		minValue,
+		maxValue,
+		stepValue,
+		interpolation,
+		stepMode,
+		outOfRange,
+		keys,
+	};
+};
+
+const normalizeDefaults = (raw: unknown): SequencerProject['defaults'] | undefined => {
+	if (!isPlainObject(raw)) {
+		return undefined;
+	}
+	const interpolation = (raw.interpolation === 'step' || raw.interpolation === 'linear') ? raw.interpolation : 'linear';
+	const stepMode = (raw.stepMode === 'holdLeft') ? raw.stepMode : 'holdLeft';
+	const outOfRange = (raw.outOfRange === 'hold' || raw.outOfRange === 'default') ? raw.outOfRange : 'hold';
+	return { interpolation, stepMode, outOfRange };
+};
+
+export const migrateSequencerProject = (raw: unknown): SequencerProject | undefined => {
+	// Accept persisted/imported objects for v0.1.0/v0.2.0 and normalize them.
+	if (!isPlainObject(raw)) {
+		return undefined;
+	}
+	const schemaVersion = asString(raw.schemaVersion);
+	if (schemaVersion !== '0.1.0' && schemaVersion !== '0.2.0') {
+		return undefined;
+	}
+
+	const displayFps = normalizeDisplayFps(asNumber(raw.displayFps));
+	const durationSec = asNumber(raw.durationSec);
+	const loop = typeof raw.loop === 'boolean' ? raw.loop : true;
+
+	let snapSettings: SequencerProject['snapSettings'] | undefined;
+	if (isPlainObject(raw.snapSettings)) {
+		snapSettings = {
+			enabled: typeof raw.snapSettings.enabled === 'boolean' ? raw.snapSettings.enabled : undefined,
+			stepSec: asNumber(raw.snapSettings.stepSec),
+		};
+	}
+
+	const defaults = normalizeDefaults(raw.defaults) ?? {
+		interpolation: 'linear',
+		stepMode: 'holdLeft',
+		outOfRange: 'hold',
+	};
+
+	const tracksRaw = Array.isArray(raw.tracks) ? raw.tracks : [];
+	const tracks: SequencerTrack[] = [];
+	for (const tr of tracksRaw) {
+		const t = normalizeTrack(tr);
+		if (t) {
+			tracks.push(t);
+		}
+	}
+
+	tracks.sort((a, b) => a.name.localeCompare(b.name));
+
+	// Normalize timeScope.
+	let startSec = 0;
+	let endSec: number | undefined = undefined;
+	if (isPlainObject(raw.timeScope)) {
+		startSec = asNumber(raw.timeScope.startSec) ?? startSec;
+		endSec = asNumber(raw.timeScope.endSec) ?? endSec;
+	}
+	// Legacy aliases.
+	if (endSec === undefined) {
+		endSec = durationSec;
+	}
+	if (typeof startSec !== 'number' || !isFinite(startSec)) {
+		startSec = 0;
+	}
+	if (typeof endSec !== 'number' || !isFinite(endSec)) {
+		// Default end: max key time, with a reasonable minimum span.
+		let maxKeyT = startSec;
+		for (const tr of tracks) {
+			for (const k of tr.keys) {
+				if (typeof k.t === 'number' && isFinite(k.t)) {
+					maxKeyT = Math.max(maxKeyT, k.t);
+				}
+			}
+		}
+		endSec = (maxKeyT > startSec) ? maxKeyT : (startSec + 10);
+	}
+	if (endSec <= startSec) {
+		endSec = startSec + 10;
+	}
+
+	return {
+		schemaVersion: SEQUENCER_SCHEMA_VERSION,
+		projectId: asString(raw.projectId),
+		displayFps,
+		timeScope: { startSec, endSec },
+		durationSec,
+		loop,
+		snapSettings,
+		defaults,
+		tracks,
+	};
 };
 
 export type SequencerTrackValuesByTrackId = Record<string, number>;
@@ -141,6 +333,8 @@ export const createSequencerProjectFromUniforms = (uniforms: UniformDefinition[]
 	return {
 		schemaVersion: SEQUENCER_SCHEMA_VERSION,
 		displayFps,
+		timeScope: { startSec: 0, endSec: 10 },
+		loop: true,
 		defaults: {
 			interpolation: 'linear',
 			stepMode: 'holdLeft',

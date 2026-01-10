@@ -18,6 +18,7 @@ import {
     moveKeyTime,
     setKeyValue,
     deleteKey,
+    migrateSequencerProject,
 } from './sequencer/sequencer_project';
 
 type Webview = {
@@ -44,11 +45,101 @@ export class ShaderToyManager {
 
     private sequencerProject: SequencerProject | undefined;
 
+    private getSequencerStorageKey = (doc: vscode.TextDocument): string => {
+        return `sequencerProject:${doc.uri.toString()}`;
+    };
+
+    private getDocumentForPanel = (panel: vscode.WebviewPanel): vscode.TextDocument | undefined => {
+        // Dynamic preview: use active editor.
+        if (this.webviewPanel && this.webviewPanel.Panel === panel) {
+            return this.context.activeEditor?.document;
+        }
+        // Static preview: use mapped document.
+        const s = this.staticWebviews.find((w) => w.Panel === panel);
+        return s?.Document;
+    };
+
+    private loadSequencerProjectForDocument = (doc: vscode.TextDocument): SequencerProject | undefined => {
+        try {
+            const raw = this.context.getVscodeExtensionContext().workspaceState.get<unknown>(this.getSequencerStorageKey(doc));
+            return migrateSequencerProject(raw);
+        } catch {
+            return undefined;
+        }
+    };
+
+    private saveSequencerProjectForDocument = async (doc: vscode.TextDocument, project: SequencerProject | undefined): Promise<void> => {
+        try {
+            if (!project) {
+                await this.context.getVscodeExtensionContext().workspaceState.update(this.getSequencerStorageKey(doc), undefined);
+                return;
+            }
+            await this.context.getVscodeExtensionContext().workspaceState.update(this.getSequencerStorageKey(doc), project);
+        } catch {
+            // ignore
+        }
+    };
+
+    private saveSequencerProjectForPanel = async (panel: vscode.WebviewPanel): Promise<void> => {
+        const doc = this.getDocumentForPanel(panel);
+        if (!doc) {
+            return;
+        }
+        await this.saveSequencerProjectForDocument(doc, this.sequencerProject);
+    };
+
     private lastSequencerAppliedAtMs = 0;
     private lastSequencerAppliedTime = Number.NaN;
 
     private sequencerScrubbing = false;
     private scrubRestorePaused = false;
+
+    // True only when we auto-paused because playback hit the end of the configured scope while loop was disabled.
+    private sequencerStoppedAtScopeEnd = false;
+
+    private restartPlaybackFromScopeStart = (startSec: number): void => {
+        const nextTime = Number(startSec);
+        if (!isFinite(nextTime)) {
+            return;
+        }
+
+        // Force a deterministic restart even if a stale updateTime tick arrives at the old (end) time.
+        // 1) pause everything
+        // 2) set time
+        // 3) apply sequencer
+        // 4) unpause shortly after
+        this.startingData.Paused = true;
+        this.setAllPreviewsPaused(true);
+
+        this.startingData.Time = nextTime;
+        this.setAllPreviewsTime(nextTime);
+        this.syncSequencerTime(nextTime, true);
+        this.applySequencerAtTime(nextTime);
+
+        try {
+            if (this.sequencerWebview) {
+                this.sequencerWebview.Panel.webview.postMessage({ command: 'syncPause', paused: true });
+            }
+        } catch {
+            // ignore
+        }
+
+        setTimeout(() => {
+            // If the user scrubbed/paused again in the meantime, don't fight them.
+            if (this.sequencerScrubbing) {
+                return;
+            }
+            this.startingData.Paused = false;
+            this.setAllPreviewsPaused(false);
+            try {
+                if (this.sequencerWebview) {
+                    this.sequencerWebview.Panel.webview.postMessage({ command: 'syncPause', paused: false });
+                }
+            } catch {
+                // ignore
+            }
+        }, 25);
+    };
 
     private formatGlslScalar = (typeName: 'float' | 'int', value: number): string => {
         if (typeName === 'int') {
@@ -482,6 +573,14 @@ export class ShaderToyManager {
 
         return {
             ...next,
+            // Preserve user settings that shouldn't be overwritten by re-deriving tracks from source.
+            loop: typeof prev.loop === 'boolean' ? prev.loop : next.loop,
+            timeScope: prev.timeScope ?? next.timeScope,
+            durationSec: (typeof prev.durationSec === 'number' && isFinite(prev.durationSec)) ? prev.durationSec : next.durationSec,
+            displayFps: (typeof prev.displayFps === 'number' && isFinite(prev.displayFps)) ? prev.displayFps : next.displayFps,
+            snapSettings: prev.snapSettings ?? next.snapSettings,
+            defaults: prev.defaults ?? next.defaults,
+            projectId: prev.projectId ?? next.projectId,
             tracks: next.tracks.map((t) => {
                 const existing = prevTracksById.get(t.id);
                 if (!existing) {
@@ -497,6 +596,52 @@ export class ShaderToyManager {
                 };
             })
         };
+    };
+
+    private getSequencerTimeScope = (): { startSec: number; endSec: number } | undefined => {
+        const p = this.sequencerProject;
+        if (!p || !p.timeScope) {
+            return undefined;
+        }
+        const startSec = Number(p.timeScope.startSec);
+        const endSec = Number(p.timeScope.endSec);
+        if (!isFinite(startSec) || !isFinite(endSec) || endSec <= startSec) {
+            return undefined;
+        }
+        return { startSec, endSec };
+    };
+
+    private wrapTimeIntoScope = (timeSec: number, scope: { startSec: number; endSec: number }): number => {
+        const span = scope.endSec - scope.startSec;
+        if (!(span > 0) || !isFinite(span) || !isFinite(timeSec)) {
+            return scope.startSec;
+        }
+        // Map into [startSec, endSec). If time is exactly at end, wrap to start.
+        let wrapped = scope.startSec + ((timeSec - scope.startSec) % span);
+        if (wrapped < scope.startSec) {
+            wrapped += span;
+        }
+        // Avoid returning endSec due to floating point quirks.
+        if (wrapped >= scope.endSec) {
+            wrapped = scope.startSec;
+        }
+        return wrapped;
+    };
+
+    private setAllPreviewsTime = (time: number): void => {
+        const payload = { command: 'setTime', time };
+        if (this.webviewPanel) {
+            this.webviewPanel.Panel.webview.postMessage(payload);
+        }
+        this.staticWebviews.forEach((w) => w.Panel.webview.postMessage(payload));
+    };
+
+    private setAllPreviewsPaused = (paused: boolean): void => {
+        const payload = { command: 'setPauseState', paused };
+        if (this.webviewPanel) {
+            this.webviewPanel.Panel.webview.postMessage(payload);
+        }
+        this.staticWebviews.forEach((w) => w.Panel.webview.postMessage(payload));
     };
 
     private createSequencerWebview = async (previewPanel: vscode.WebviewPanel): Promise<vscode.WebviewPanel> => {
@@ -546,7 +691,7 @@ export class ShaderToyManager {
         });
 
         panel.webview.onDidReceiveMessage(
-            (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+            async (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 if (!message || !message.command) {
                     return;
                 }
@@ -554,6 +699,9 @@ export class ShaderToyManager {
                 if (message.command === 'sequencerSetTime') {
                     const newTime = message.time || 0;
                     this.startingData.Time = newTime;
+
+                    // Manual time set cancels "stopped at end" state.
+                    this.sequencerStoppedAtScopeEnd = false;
 
                     // Update all active previews (dynamic + static) if they are open.
                     if (this.webviewPanel) {
@@ -572,6 +720,9 @@ export class ShaderToyManager {
                     this.sequencerScrubbing = true;
                     this.scrubRestorePaused = this.startingData.Paused;
                     this.startingData.Paused = true;
+
+                    // Scrubbing is a manual interaction; cancel "stopped at end" state.
+                    this.sequencerStoppedAtScopeEnd = false;
 
                     // Freeze preview time progression while the user is interacting.
                     if (this.webviewPanel) {
@@ -611,11 +762,18 @@ export class ShaderToyManager {
                     const paused: boolean = !!message.paused;
                     this.startingData.Paused = paused;
 
-                    // Explicitly set pause state in all active previews.
-                    if (this.webviewPanel) {
-                        this.webviewPanel.Panel.webview.postMessage({ command: 'setPauseState', paused });
+                    // If we previously auto-stopped at scope end (loop off), pressing Play should restart at scope start.
+                    if (!paused && this.sequencerStoppedAtScopeEnd && this.sequencerProject) {
+                        const scope = this.getSequencerTimeScope();
+                        const loop = typeof this.sequencerProject.loop === 'boolean' ? this.sequencerProject.loop : true;
+                        if (scope && !loop) {
+                            this.restartPlaybackFromScopeStart(scope.startSec);
+                        }
+                        this.sequencerStoppedAtScopeEnd = false;
                     }
-                    this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setPauseState', paused }));
+
+                    // Explicitly set pause state in all active previews.
+                    this.setAllPreviewsPaused(paused);
 
                     // Echo back to sequencer panel to keep UI consistent.
                     try {
@@ -623,6 +781,37 @@ export class ShaderToyManager {
                     } catch {
                         // ignore
                     }
+                    return;
+                }
+
+                if (message.command === 'sequencerSetLoop') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const loop: boolean = !!message.loop;
+                    this.sequencerProject = { ...this.sequencerProject, loop };
+                    this.postSequencerProject();
+                    void this.saveSequencerProjectForPanel(previewPanel);
+                    return;
+                }
+
+                if (message.command === 'sequencerSetScope') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const startSec = Number(message.startSec);
+                    const endSec = Number(message.endSec);
+                    if (!isFinite(startSec) || !isFinite(endSec)) {
+                        return;
+                    }
+                    const normalizedStart = startSec;
+                    const normalizedEnd = endSec > startSec ? endSec : (startSec + 0.001);
+                    this.sequencerProject = {
+                        ...this.sequencerProject,
+                        timeScope: { startSec: normalizedStart, endSec: normalizedEnd },
+                    };
+                    this.postSequencerProject();
+                    void this.saveSequencerProjectForPanel(previewPanel);
                     return;
                 }
 
@@ -639,6 +828,7 @@ export class ShaderToyManager {
                     this.sequencerProject = addOrReplaceKey(this.sequencerProject, trackId, { t, v });
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
+                    void this.saveSequencerProjectForPanel(previewPanel);
 
                     // Mirror the edit back into the shader source (like #iUniform sliders).
                     try {
@@ -665,6 +855,7 @@ export class ShaderToyManager {
                     this.sequencerProject = moveKeyTime(this.sequencerProject, trackId, keyId, t);
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
+                    void this.saveSequencerProjectForPanel(previewPanel);
                     return;
                 }
 
@@ -681,6 +872,7 @@ export class ShaderToyManager {
                     this.sequencerProject = setKeyValue(this.sequencerProject, trackId, keyId, v);
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
+                    void this.saveSequencerProjectForPanel(previewPanel);
 
                     // Mirror the edit back into the shader source (like #iUniform sliders).
                     try {
@@ -706,6 +898,81 @@ export class ShaderToyManager {
                     this.sequencerProject = deleteKey(this.sequencerProject, trackId, keyId);
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
+                    void this.saveSequencerProjectForPanel(previewPanel);
+                    return;
+                }
+
+                if (message.command === 'sequencerExportProject') {
+                    const doc = this.getDocumentForPanel(previewPanel);
+                    if (!doc || !this.sequencerProject) {
+                        return;
+                    }
+                    try {
+                        const defaultUri = vscode.Uri.file(doc.fileName + '.sequencer.json');
+                        const uri = await vscode.window.showSaveDialog({
+                            defaultUri,
+                            filters: { 'JSON': ['json'] }
+                        });
+                        if (!uri) {
+                            return;
+                        }
+                        const json = JSON.stringify(this.sequencerProject, null, 2);
+                        await vscode.workspace.fs.writeFile(uri, Buffer.from(json, 'utf8'));
+                    } catch (err: unknown) {
+                        const detail = (err && typeof err === 'object' && 'message' in err)
+                            ? String((err as { message?: unknown }).message)
+                            : String(err);
+                        vscode.window.showErrorMessage(`Shader Toy: failed to export sequencer project: ${detail}`);
+                    }
+                    return;
+                }
+
+                if (message.command === 'sequencerImportProject') {
+                    const doc = this.getDocumentForPanel(previewPanel);
+                    if (!doc) {
+                        return;
+                    }
+                    try {
+                        const picked = await vscode.window.showOpenDialog({
+                            canSelectMany: false,
+                            filters: { 'JSON': ['json'] }
+                        });
+                        const uri = picked && picked.length > 0 ? picked[0] : undefined;
+                        if (!uri) {
+                            return;
+                        }
+                        const bytes = await vscode.workspace.fs.readFile(uri);
+                        const text = Buffer.from(bytes).toString('utf8');
+                        const raw = JSON.parse(text);
+                        const imported = migrateSequencerProject(raw);
+                        if (!imported) {
+                            vscode.window.showErrorMessage('Shader Toy: invalid sequencer project JSON (unsupported schemaVersion or malformed)');
+                            return;
+                        }
+
+                        // Merge imported project with currently-available tracks for this document.
+                        // Imported keys/settings win where track ids match; unknown tracks are dropped.
+                        this.sequencerProject = imported;
+                        try {
+                            const webviewContentProvider = new WebviewContentProvider(this.context, doc.getText(), doc.fileName);
+                            await webviewContentProvider.parseShaderTree(false);
+                            const customUniforms: Types.UniformDefinition[] = webviewContentProvider.getCustomUniforms();
+                            const derived = createSequencerProjectFromUniforms(customUniforms, { displayFps: 60 });
+                            this.sequencerProject = this.mergeSequencerProject(derived);
+                        } catch {
+                            // If reparsing fails, keep the imported project as-is.
+                        }
+
+                        // Persist + refresh.
+                        await this.saveSequencerProjectForPanel(previewPanel);
+                        this.postSequencerProject();
+                        this.applySequencerAtTime(this.startingData.Time);
+                    } catch (err: unknown) {
+                        const detail = (err && typeof err === 'object' && 'message' in err)
+                            ? String((err as { message?: unknown }).message)
+                            : String(err);
+                        vscode.window.showErrorMessage(`Shader Toy: failed to import sequencer project: ${detail}`);
+                    }
                     return;
                 }
             },
@@ -824,7 +1091,49 @@ export class ShaderToyManager {
                         // While scrubbing, ignore preview time ticks so the playhead stays where the user puts it.
                         return;
                     }
-                    this.startingData.Time = message.time;
+                    {
+                        const rawTime = Number(message.time);
+                        let nextTime = isFinite(rawTime) ? rawTime : 0;
+
+                        // Enforce playback scope only while playing. Manual scrubs can go anywhere.
+                        if (!this.startingData.Paused && this.sequencerProject) {
+                            const scope = this.getSequencerTimeScope();
+                            if (scope) {
+                                const loop = typeof this.sequencerProject.loop === 'boolean' ? this.sequencerProject.loop : true;
+
+                                if (nextTime < scope.startSec) {
+                                    // If scope starts in the future, snap playback into it.
+                                    nextTime = scope.startSec;
+                                    this.setAllPreviewsTime(nextTime);
+                                    this.sequencerStoppedAtScopeEnd = false;
+                                } else if (nextTime >= scope.endSec) {
+                                    if (loop) {
+                                        nextTime = this.wrapTimeIntoScope(nextTime, scope);
+                                        this.setAllPreviewsTime(nextTime);
+                                        this.sequencerStoppedAtScopeEnd = false;
+                                    } else {
+                                        // Stop at end and pause everything.
+                                        nextTime = scope.endSec;
+                                        this.startingData.Paused = true;
+                                        this.sequencerStoppedAtScopeEnd = true;
+                                        this.setAllPreviewsTime(nextTime);
+                                        this.setAllPreviewsPaused(true);
+                                        try {
+                                            if (this.sequencerWebview) {
+                                                this.sequencerWebview.Panel.webview.postMessage({ command: 'syncPause', paused: true });
+                                            }
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }
+                                } else {
+                                    this.sequencerStoppedAtScopeEnd = false;
+                                }
+                            }
+                        }
+
+                        this.startingData.Time = nextTime;
+                    }
 
                     this.syncSequencerTime(this.startingData.Time, false);
 
@@ -843,6 +1152,16 @@ export class ShaderToyManager {
                     return;
                 case 'setPause':
                     this.startingData.Paused = message.paused;
+
+                    // If we previously auto-stopped at scope end (loop off), pressing Play in the preview should restart too.
+                    if (!this.startingData.Paused && this.sequencerStoppedAtScopeEnd && this.sequencerProject) {
+                        const scope = this.getSequencerTimeScope();
+                        const loop = typeof this.sequencerProject.loop === 'boolean' ? this.sequencerProject.loop : true;
+                        if (scope && !loop) {
+                            this.restartPlaybackFromScopeStart(scope.startSec);
+                        }
+                        this.sequencerStoppedAtScopeEnd = false;
+                    }
 
                     if (this.sequencerWebview) {
                         this.sequencerWebview.Panel.webview.postMessage({
@@ -920,7 +1239,12 @@ export class ShaderToyManager {
         try {
             const customUniforms: Types.UniformDefinition[] = webviewContentProvider.getCustomUniforms();
             const nextProject = createSequencerProjectFromUniforms(customUniforms, { displayFps: 60 });
+            const stored = this.loadSequencerProjectForDocument(document);
+            this.sequencerProject = stored;
             this.sequencerProject = this.mergeSequencerProject(nextProject);
+
+            // Persist so the sequencer survives VS Code restarts even before the first edit.
+            void this.saveSequencerProjectForDocument(document, this.sequencerProject);
 
             // Keep sequencer panel in sync if it's open for this preview.
             this.postSequencerProject();

@@ -21,9 +21,18 @@ export const getSequencerPanelHtml = (timelineSrc: string, panelScriptSrc: strin
 <body>
   <div id="toolbar">
     <button id="sequencer_play_pause" type="button">Play</button>
+    <button id="sequencer_loop" type="button">Loop: On</button>
+    <button id="sequencer_export" type="button">Export JSON</button>
+    <button id="sequencer_import" type="button">Import JSON</button>
     <span class="spacer"></span>
     <span>Time:</span>
     <span id="sequencer_time_label">0.00 s</span>
+
+    <span class="spacer"></span>
+    <label for="sequencer_scope_start">Start:</label>
+    <input id="sequencer_scope_start" type="number" step="any" style="width: 96px;" />
+    <label for="sequencer_scope_end">End:</label>
+    <input id="sequencer_scope_end" type="number" step="any" style="width: 96px;" />
 
     <span class="spacer"></span>
     <label for="sequencer_track_select">Track:</label>
