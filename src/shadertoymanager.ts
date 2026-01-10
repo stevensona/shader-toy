@@ -8,6 +8,7 @@ import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 import { removeDuplicates } from './utility';
 import { tryFocusOrCreateBelowGroup, tryMovePanelBelowGroup } from './sequencer/ux/vscode_ui_placement';
+import { getSequencerPanelHtml } from './sequencer/sequencer_panel_html';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
@@ -28,6 +29,8 @@ export class ShaderToyManager {
     startingData = new RenderStartingData();
 
     private sequencerWebview: SequencerWebview | undefined;
+    private lastSequencerTimeSyncAtMs = 0;
+    private lastSequencerTimeSynced = Number.NaN;
 
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
@@ -187,6 +190,33 @@ export class ShaderToyManager {
         });
     };
 
+    private syncSequencerTime = (time: number, force: boolean = false): void => {
+        if (!this.sequencerWebview) {
+            return;
+        }
+
+        const now = Date.now();
+        if (!force) {
+            if ((now - this.lastSequencerTimeSyncAtMs) < 33) {
+                return;
+            }
+            if (isFinite(this.lastSequencerTimeSynced) && Math.abs(time - this.lastSequencerTimeSynced) < 0.0005) {
+                return;
+            }
+        }
+
+        this.lastSequencerTimeSyncAtMs = now;
+        this.lastSequencerTimeSynced = time;
+        try {
+            this.sequencerWebview.Panel.webview.postMessage({
+                command: 'syncTime',
+                time
+            });
+        } catch {
+            // ignore
+        }
+    };
+
     private toggleSequencerPanel = async (sourcePanel: vscode.WebviewPanel) => {
         // Close
         if (this.sequencerWebview) {
@@ -212,9 +242,10 @@ export class ShaderToyManager {
         }
 
         this.setSequencerButtonState(sourcePanel, true);
+        this.syncSequencerTime(this.startingData.Time, true);
         sequencerPanel.webview.postMessage({
-            command: 'syncTime',
-            time: this.startingData.Time
+            command: 'syncPause',
+            paused: this.startingData.Paused
         });
     };
 
@@ -252,62 +283,9 @@ export class ShaderToyManager {
         }
 
         const timelineSrc = this.context.getWebviewResourcePath(panel.webview, 'animation-timeline.min.js');
-        panel.webview.html = `\
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-    #sequencer { width: 100%; height: 100%; }
-  </style>
-</head>
-<body>
-  <div id="sequencer"></div>
-  <script src="${timelineSrc}"></script>
-  <script>
-    (function () {
-      const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : undefined;
-      const host = document.getElementById('sequencer');
-      if (!host || typeof timelineModule === 'undefined' || !timelineModule.Timeline) {
-        return;
-      }
+        const sequencerPanelScriptSrc = this.context.getWebviewResourcePath(panel.webview, 'webview/sequencer_panel.js');
+        panel.webview.html = getSequencerPanelHtml(timelineSrc, sequencerPanelScriptSrc);
 
-      const timeline = new timelineModule.Timeline({ id: host });
-      timeline.setModel({ rows: [{ keyframes: [] }] });
-
-      let syncing = false;
-
-      timeline.onTimeChanged((event) => {
-        if (!event || syncing) return;
-        try {
-          if (timelineModule.TimelineEventSource && event.source !== timelineModule.TimelineEventSource.User) {
-            return;
-          }
-        } catch { /* ignore */ }
-
-        const newTime = (event.val || 0) / 1000.0;
-        if (vscode) {
-          vscode.postMessage({ command: 'sequencerSetTime', time: newTime });
-        }
-      });
-
-      window.addEventListener('message', (event) => {
-        const message = event && event.data ? event.data : undefined;
-        if (!message || !message.command) return;
-
-        if (message.command === 'syncTime') {
-          syncing = true;
-          try {
-            timeline.setTime((message.time || 0) * 1000);
-          } catch { /* ignore */ }
-          syncing = false;
-        }
-      });
-    })();
-  </script>
-</body>
-</html>`;
 
         panel.onDidDispose(() => {
             if (this.sequencerWebview && this.sequencerWebview.Panel === panel) {
@@ -332,6 +310,25 @@ export class ShaderToyManager {
                         this.webviewPanel.Panel.webview.postMessage({ command: 'setTime', time: newTime });
                     }
                     this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setTime', time: newTime }));
+                    return;
+                }
+
+                if (message.command === 'sequencerSetPaused') {
+                    const paused: boolean = !!message.paused;
+                    this.startingData.Paused = paused;
+
+                    // Explicitly set pause state in all active previews.
+                    if (this.webviewPanel) {
+                        this.webviewPanel.Panel.webview.postMessage({ command: 'setPauseState', paused });
+                    }
+                    this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setPauseState', paused }));
+
+                    // Echo back to sequencer panel to keep UI consistent.
+                    try {
+                        panel.webview.postMessage({ command: 'syncPause', paused });
+                    } catch {
+                        // ignore
+                    }
                     return;
                 }
             },
@@ -448,15 +445,17 @@ export class ShaderToyManager {
                 case 'updateTime':
                     this.startingData.Time = message.time;
 
-                    if (this.sequencerWebview) {
-                        this.sequencerWebview.Panel.webview.postMessage({
-                            command: 'syncTime',
-                            time: this.startingData.Time
-                        });
-                    }
+                    this.syncSequencerTime(this.startingData.Time, false);
                     return;
                 case 'setPause':
                     this.startingData.Paused = message.paused;
+
+                    if (this.sequencerWebview) {
+                        this.sequencerWebview.Panel.webview.postMessage({
+                            command: 'syncPause',
+                            paused: this.startingData.Paused
+                        });
+                    }
                     return;
                 case 'updateMouse':
                     this.startingData.Mouse = message.mouse;
@@ -555,7 +554,7 @@ export class ShaderToyManager {
 
         if (this.sequencerWebview && this.sequencerWebview.Parent === webviewPanel.Panel) {
             this.setSequencerButtonState(webviewPanel.Panel, true);
-            this.sequencerWebview.Panel.webview.postMessage({ command: 'syncTime', time: this.startingData.Time });
+            this.syncSequencerTime(this.startingData.Time, true);
         }
         return webviewPanel;
     };

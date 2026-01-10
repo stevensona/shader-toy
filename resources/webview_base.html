@@ -237,6 +237,24 @@
                     });
                 }
                 break;
+            case 'setPauseState': {
+                const nextPaused = !!message.paused;
+                const wasPaused = paused;
+                if (pauseButton) {
+                    pauseButton.checked = nextPaused;
+                }
+                paused = nextPaused;
+                forceRenderOneFrame = paused;
+
+                if (wasPaused && !paused) {
+                    // Audio Resume
+                    pausedTime += clock.getDelta();
+                }
+                else if (!wasPaused && paused) {
+                    // Audio Pause
+                }
+                break;
+            }
             case 'screenshot':
                 saveScreenshot();
                 break;
