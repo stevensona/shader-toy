@@ -45,6 +45,9 @@ import { RecordButtonExtension } from './extensions/user_interface/record_button
 import { ReloadButtonStyleExtension } from './extensions/user_interface/reload_button_style_extension';
 import { ReloadButtonExtension } from './extensions/user_interface/reload_button_extension';
 
+import { SequencerButtonStyleExtension } from './extensions/user_interface/sequencer_button_style_extension';
+import { SequencerButtonExtension } from './extensions/user_interface/sequencer_button_extension';
+
 import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
 import { GlslifyErrorsExtension } from './extensions/user_interface/error_display/glslify_errors_extension';
@@ -357,6 +360,9 @@ export class WebviewContentProvider {
             const webviewRuntimeEnv = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/runtime_env.js', getResourceText);
             this.webviewAssembler.addReplaceModule(webviewRuntimeEnv, '<!-- Webview runtime_env.js -->', '<!-- Webview runtime_env.js -->');
 
+            const webviewSequencerInit = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/sequencer_init.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewSequencerInit, '<!-- Webview sequencer_init.js -->', '<!-- Webview sequencer_init.js -->');
+
             const webviewGlslErrorHook = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/glsl_error_hook.js', getResourceText);
             this.webviewAssembler.addReplaceModule(webviewGlslErrorHook, '<!-- Webview glsl_error_hook.js -->', '<!-- Webview glsl_error_hook.js -->');
 
@@ -379,6 +385,7 @@ export class WebviewContentProvider {
         // Keep the GLSL #line "self" sentinel source-id consistent between extension and webview.
         const selfSourceIdExtension = new SelfSourceIdExtension(SELF_SOURCE_ID);
         this.webviewAssembler.addReplaceModule(selfSourceIdExtension, 'window.ShaderToy.SELF_SOURCE_ID = <!-- Self Source Id -->;', '<!-- Self Source Id -->');
+
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
@@ -398,6 +405,13 @@ export class WebviewContentProvider {
                 const pauseButtonExtension = new PauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
+
+            // Sequencer toggle button (always available in VS Code webview mode)
+            const sequencerButtonStyleExtension = new SequencerButtonStyleExtension(getWebviewResourcePath);
+            this.webviewAssembler.addWebviewModule(sequencerButtonStyleExtension, '/* Sequencer Button Style */');
+
+            const sequencerButtonExtension = new SequencerButtonExtension();
+            this.webviewAssembler.addWebviewModule(sequencerButtonExtension, '<!-- Sequencer Button Element -->');
         }
 
         if (this.context.getConfig<boolean>('pauseWholeRender')) {

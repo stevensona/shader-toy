@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html>
 <head>
     <style>
         html, body {
@@ -75,6 +77,8 @@
         
         /* Record Button Style */
 
+        /* Sequencer Button Style */
+
         /* Reload Button Style */
     </style>
 </head>
@@ -86,8 +90,9 @@
     </div>
     <!-- Screenshot Element -->
     <!-- Record Element -->
+    <!-- Sequencer Button Element -->
     <!-- Reload Element -->
-</body>
+
 <script src="<!-- JQuery.js -->"></script>
 <script src="<!-- Three.js -->"></script>
 <!-- Stats.js -->
@@ -107,6 +112,7 @@
 
 <!-- Webview Modules -->
 <!-- Webview runtime_env.js -->
+<!-- Webview sequencer_init.js -->
 <!-- Webview glsl_error_hook.js -->
 <!-- Webview shader_compile.js -->
 <!-- Webview ui_controls.js -->
@@ -116,8 +122,12 @@
 
 <script type="text/javascript">
     let vscode = undefined;
-    if (typeof acquireVsCodeApi === 'function') {
-        vscode = acquireVsCodeApi();
+    try {
+        if (window.ShaderToy && window.ShaderToy.env && typeof window.ShaderToy.env.getVscodeApi === 'function') {
+            vscode = window.ShaderToy.env.getVscodeApi();
+        }
+    } catch {
+        // ignore
     }
     var compileTimePanel;
 
@@ -672,3 +682,6 @@
 
     // Keyboard Callbacks
 </script>
+
+</body>
+</html>

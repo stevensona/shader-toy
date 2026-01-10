@@ -37,6 +37,11 @@
                     ],
                     "description": "Force the rendering into a specific aspect ratio. Set either to zero or negative to ignore."
                 },
+                "shader-toy.forceUX": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Force VS Code UI panel placement (UX). Disabling keeps panels in their default placement."
+                },
                 "shader-toy.showCompileErrorsAsDiagnostics": {
                     "type": "boolean",
                     "default": true,

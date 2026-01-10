@@ -7,6 +7,7 @@ import { RenderStartingData, DiagnosticBatch } from './typenames';
 import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 import { removeDuplicates } from './utility';
+import { tryFocusOrCreateBelowGroup, tryMovePanelBelowGroup } from './sequencer/ux/vscode_ui_placement';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
@@ -16,10 +17,17 @@ type StaticWebview = Webview & {
     Document: vscode.TextDocument
 };
 
+type SequencerWebview = {
+    Panel: vscode.WebviewPanel,
+    Parent: vscode.WebviewPanel
+};
+
 export class ShaderToyManager {
     context: Context;
 
     startingData = new RenderStartingData();
+
+    private sequencerWebview: SequencerWebview | undefined;
 
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
@@ -43,6 +51,7 @@ export class ShaderToyManager {
             this.context.activeEditor = vscode.window.activeTextEditor;
         }
 
+        const carriedSequencer = this.sequencerWebview;
         if (this.webviewPanel) {
             this.webviewPanel.Panel.dispose();
         }
@@ -50,10 +59,20 @@ export class ShaderToyManager {
         this.webviewPanel = {
             Panel: newWebviewPanel,
             OnDidDispose: () => {
+                if (this.sequencerWebview && this.sequencerWebview.Parent === newWebviewPanel) {
+                    this.sequencerWebview.Panel.dispose();
+                    this.sequencerWebview = undefined;
+                }
                 this.webviewPanel = undefined;
             }
         };
         newWebviewPanel.onDidDispose(this.webviewPanel.OnDidDispose);
+
+        if (carriedSequencer) {
+            carriedSequencer.Parent = newWebviewPanel;
+            this.sequencerWebview = carriedSequencer;
+        }
+
         if (this.context.activeEditor !== undefined) {
             this.webviewPanel = await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
         }
@@ -70,6 +89,10 @@ export class ShaderToyManager {
                 const onDidDispose = () => {
                     const staticWebview = this.staticWebviews.find((webview: StaticWebview) => { return webview.Panel === newWebviewPanel; });
                     if (staticWebview !== undefined) {
+                        if (this.sequencerWebview && this.sequencerWebview.Parent === newWebviewPanel) {
+                            this.sequencerWebview.Panel.dispose();
+                            this.sequencerWebview = undefined;
+                        }
                         const index = this.staticWebviews.indexOf(staticWebview);
                         this.staticWebviews.splice(index, 1);
                     }
@@ -157,7 +180,169 @@ export class ShaderToyManager {
         this.startingData.Paused = false;
     };
 
-    private createWebview = (title: string, localResourceRoots: vscode.Uri[] | undefined) => {
+    private setSequencerButtonState = (previewPanel: vscode.WebviewPanel, active: boolean) => {
+        previewPanel.webview.postMessage({
+            command: 'sequencerState',
+            active
+        });
+    };
+
+    private toggleSequencerPanel = async (sourcePanel: vscode.WebviewPanel) => {
+        // Close
+        if (this.sequencerWebview) {
+            const parent = this.sequencerWebview.Parent;
+            this.sequencerWebview.Panel.dispose();
+            this.sequencerWebview = undefined;
+            this.setSequencerButtonState(parent, false);
+            return;
+        }
+
+        // Open
+        const sequencerPanel = await this.createSequencerWebview(sourcePanel);
+        this.sequencerWebview = {
+            Panel: sequencerPanel,
+            Parent: sourcePanel,
+        };
+
+        try {
+            sequencerPanel.reveal(sequencerPanel.viewColumn, false);
+        }
+        catch {
+            // ignore
+        }
+
+        this.setSequencerButtonState(sourcePanel, true);
+        sequencerPanel.webview.postMessage({
+            command: 'syncTime',
+            time: this.startingData.Time
+        });
+    };
+
+    private createSequencerWebview = async (previewPanel: vscode.WebviewPanel): Promise<vscode.WebviewPanel> => {
+        const extensionRoot = vscode.Uri.file(this.context.getVscodeExtensionContext().extensionPath);
+
+        const forceUX = this.context.getConfig<boolean>('forceUX') !== false;
+
+        try {
+            previewPanel.reveal(previewPanel.viewColumn, false);
+        }
+        catch {
+            // ignore
+        }
+
+        // Best-effort: try to focus/create a below group before creating the panel.
+        if (forceUX) {
+            await tryFocusOrCreateBelowGroup();
+        }
+
+        const panel = vscode.window.createWebviewPanel(
+            'shadertoy-sequencer',
+            'Sequencer',
+            { viewColumn: vscode.ViewColumn.Active, preserveFocus: false },
+            {
+                enableScripts: true,
+                localResourceRoots: [extensionRoot]
+            }
+        );
+        panel.iconPath = this.context.getResourceUri('thumb.png');
+
+        // If we still ended up in the top row, attempt a move-below fallback.
+        if (forceUX && (panel.viewColumn === vscode.ViewColumn.One || panel.viewColumn === vscode.ViewColumn.Two)) {
+            tryMovePanelBelowGroup(panel);
+        }
+
+        const timelineSrc = this.context.getWebviewResourcePath(panel.webview, 'animation-timeline.min.js');
+        panel.webview.html = `\
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+    #sequencer { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="sequencer"></div>
+  <script src="${timelineSrc}"></script>
+  <script>
+    (function () {
+      const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : undefined;
+      const host = document.getElementById('sequencer');
+      if (!host || typeof timelineModule === 'undefined' || !timelineModule.Timeline) {
+        return;
+      }
+
+      const timeline = new timelineModule.Timeline({ id: host });
+      timeline.setModel({ rows: [{ keyframes: [] }] });
+
+      let syncing = false;
+
+      timeline.onTimeChanged((event) => {
+        if (!event || syncing) return;
+        try {
+          if (timelineModule.TimelineEventSource && event.source !== timelineModule.TimelineEventSource.User) {
+            return;
+          }
+        } catch { /* ignore */ }
+
+        const newTime = (event.val || 0) / 1000.0;
+        if (vscode) {
+          vscode.postMessage({ command: 'sequencerSetTime', time: newTime });
+        }
+      });
+
+      window.addEventListener('message', (event) => {
+        const message = event && event.data ? event.data : undefined;
+        if (!message || !message.command) return;
+
+        if (message.command === 'syncTime') {
+          syncing = true;
+          try {
+            timeline.setTime((message.time || 0) * 1000);
+          } catch { /* ignore */ }
+          syncing = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>`;
+
+        panel.onDidDispose(() => {
+            if (this.sequencerWebview && this.sequencerWebview.Panel === panel) {
+                const parent = this.sequencerWebview.Parent;
+                this.sequencerWebview = undefined;
+                this.setSequencerButtonState(parent, false);
+            }
+        });
+
+        panel.webview.onDidReceiveMessage(
+            (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+                if (!message || !message.command) {
+                    return;
+                }
+
+                if (message.command === 'sequencerSetTime') {
+                    const newTime = message.time || 0;
+                    this.startingData.Time = newTime;
+
+                    // Update all active previews (dynamic + static) if they are open.
+                    if (this.webviewPanel) {
+                        this.webviewPanel.Panel.webview.postMessage({ command: 'setTime', time: newTime });
+                    }
+                    this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setTime', time: newTime }));
+                    return;
+                }
+            },
+            undefined,
+            this.context.getVscodeExtensionContext().subscriptions
+        );
+
+        return panel;
+    };
+
+    private createWebview = (title: string, localResourceRoots: vscode.Uri[] | undefined, viewColumn: vscode.ViewColumn = vscode.ViewColumn.Two) => {
         if (localResourceRoots !== undefined) {
             const extensionRoot = vscode.Uri.file(this.context.getVscodeExtensionContext().extensionPath);
             localResourceRoots.push(extensionRoot);
@@ -169,12 +354,21 @@ export class ShaderToyManager {
         const newWebviewPanel = vscode.window.createWebviewPanel(
             'shadertoy',
             title,
-            { viewColumn: vscode.ViewColumn.Two, preserveFocus: true },
+            { viewColumn, preserveFocus: true },
             options
         );
         newWebviewPanel.iconPath = this.context.getResourceUri('thumb.png');
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+                if (message && message.command === 'toggleSequencerPanel') {
+                    void this.toggleSequencerPanel(newWebviewPanel).catch((err: unknown) => {
+                        const detail = (err && typeof err === 'object' && 'message' in err)
+                            ? String((err as { message?: unknown }).message)
+                            : String(err);
+                        vscode.window.showErrorMessage(`Shader Toy: failed to toggle Sequencer panel: ${detail}`);
+                    });
+                    return;
+                }
                 switch (message.command) {
                 case 'readDDSFile':
                 {
@@ -253,6 +447,13 @@ export class ShaderToyManager {
                     return;
                 case 'updateTime':
                     this.startingData.Time = message.time;
+
+                    if (this.sequencerWebview) {
+                        this.sequencerWebview.Panel.webview.postMessage({
+                            command: 'syncTime',
+                            time: this.startingData.Time
+                        });
+                    }
                     return;
                 case 'setPause':
                     this.startingData.Paused = message.paused;
@@ -338,13 +539,24 @@ export class ShaderToyManager {
         const previousHadAllLocalResourceRoots = localResourceRoots.every(localResourceRoot => previousHadLocalResourceRoot(vscode.Uri.file(localResourceRoot).toString()));
         if (!previousHadAllLocalResourceRoots) {
             const localResourceRootsUri = localResourceRoots.map(localResourceRoot => vscode.Uri.file(localResourceRoot));
-            const newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRootsUri);
-            webviewPanel.Panel.dispose();
+            const oldPanel = webviewPanel.Panel;
+            const currentViewColumn = oldPanel.viewColumn ?? vscode.ViewColumn.Two;
+            const newWebviewPanel = this.createWebview(webviewPanel.Panel.title, localResourceRootsUri, currentViewColumn);
+            oldPanel.dispose();
             newWebviewPanel.onDidDispose(webviewPanel.OnDidDispose);
             webviewPanel.Panel = newWebviewPanel;
+
+            if (this.sequencerWebview && this.sequencerWebview.Parent === oldPanel) {
+                this.sequencerWebview.Parent = newWebviewPanel;
+            }
         }
 
         webviewPanel.Panel.webview.html = await webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
+
+        if (this.sequencerWebview && this.sequencerWebview.Parent === webviewPanel.Panel) {
+            this.setSequencerButtonState(webviewPanel.Panel, true);
+            this.sequencerWebview.Panel.webview.postMessage({ command: 'syncTime', time: this.startingData.Time });
+        }
         return webviewPanel;
     };
 }
