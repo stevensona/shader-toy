@@ -77,6 +77,15 @@
             // These are defined in the main webview script block (webview_base.html)
             // and are used by the render loop.
             startingTime = newTime;
+            // Latch exact time so the next render frame doesn't advance it by a tiny delta
+            // before sync messages flow back.
+            try {
+                global.ShaderToy = global.ShaderToy || {};
+                global.ShaderToy.__forcedTime = newTime;
+            } catch {
+                // ignore
+            }
+
             pausedTime = 0.0;
             if (clock && typeof clock.start === 'function') {
                 clock.start();
@@ -85,6 +94,15 @@
             time = newTime;
             deltaTime = 0.0;
             forceRenderOneFrame = true;
+            return;
+        }
+        case 'renderOneFrame': {
+            // Request a single frame render even when pauseWholeRender is enabled.
+            try {
+                forceRenderOneFrame = true;
+            } catch {
+                // ignore
+            }
             return;
         }
         }

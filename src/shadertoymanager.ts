@@ -9,6 +9,16 @@ import { Context } from './context';
 import { removeDuplicates } from './utility';
 import { tryFocusOrCreateBelowGroup, tryMovePanelBelowGroup } from './sequencer/ux/vscode_ui_placement';
 import { getSequencerPanelHtml } from './sequencer/sequencer_panel_html';
+import type * as Types from './typenames';
+import {
+    SequencerProject,
+    createSequencerProjectFromUniforms,
+    evaluateProjectAtTime,
+    addOrReplaceKey,
+    moveKeyTime,
+    setKeyValue,
+    deleteKey,
+} from './sequencer/sequencer_project';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
@@ -31,6 +41,87 @@ export class ShaderToyManager {
     private sequencerWebview: SequencerWebview | undefined;
     private lastSequencerTimeSyncAtMs = 0;
     private lastSequencerTimeSynced = Number.NaN;
+
+    private sequencerProject: SequencerProject | undefined;
+
+    private lastSequencerAppliedAtMs = 0;
+    private lastSequencerAppliedTime = Number.NaN;
+
+    private sequencerScrubbing = false;
+    private scrubRestorePaused = false;
+
+    private formatGlslScalar = (typeName: 'float' | 'int', value: number): string => {
+        if (typeName === 'int') {
+            if (typeof value !== 'number' || !isFinite(value)) {
+                return '0';
+            }
+            return String(Math.round(value));
+        }
+        // float
+        if (typeof value !== 'number' || !isFinite(value)) {
+            return '0.0';
+        }
+        // Keep it readable and stable.
+        let s = value.toFixed(6);
+        s = s.replace(/0+$/, '');
+        s = s.replace(/\.$/, '');
+        if (!/[\.eE]/.test(s)) {
+            s += '.0';
+        }
+        if (s === '-0.0') {
+            s = '0.0';
+        }
+        return s;
+    };
+
+    private updateIUniformDefaultInDocument = async (panel: vscode.WebviewPanel, uniformName: string, value: number): Promise<void> => {
+        if (!uniformName) {
+            return;
+        }
+        const doc = (() => {
+            // Dynamic preview: use active editor.
+            if (this.webviewPanel && this.webviewPanel.Panel === panel) {
+                return this.context.activeEditor?.document;
+            }
+            // Static preview: use mapped document.
+            const s = this.staticWebviews.find((w) => w.Panel === panel);
+            return s?.Document;
+        })();
+
+        if (!doc) {
+            return;
+        }
+
+        const escapedName = uniformName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`^(\\s*#\\s*iUniform\\s+(float|int)\\s+${escapedName}\\s*=\\s*)([^\\s]+)(.*)$`);
+
+        const edit = new vscode.WorkspaceEdit();
+        let changed = false;
+
+        for (let i = 0; i < doc.lineCount; i++) {
+            const line = doc.lineAt(i);
+            const m = line.text.match(re);
+            if (!m) {
+                continue;
+            }
+            const typeName = (m[2] === 'int' ? 'int' : 'float') as 'float' | 'int';
+            const nextValue = this.formatGlslScalar(typeName, value);
+            const nextLine = `${m[1]}${nextValue}${m[4]}`;
+            if (nextLine !== line.text) {
+                edit.replace(doc.uri, line.range, nextLine);
+                changed = true;
+            }
+        }
+
+        if (!changed) {
+            return;
+        }
+        try {
+            await vscode.workspace.applyEdit(edit);
+        } catch {
+            // ignore
+        }
+    };
 
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
@@ -78,6 +169,13 @@ export class ShaderToyManager {
 
         if (this.context.activeEditor !== undefined) {
             this.webviewPanel = await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
+
+            // Default-on: show the sequencer panel for the active preview.
+            try {
+                await this.openSequencerPanelIfNeeded(this.webviewPanel.Panel);
+            } catch {
+                // ignore
+            }
         }
         else {
             vscode.window.showErrorMessage('Select a TextEditor to show GLSL Preview.');
@@ -108,6 +206,13 @@ export class ShaderToyManager {
                 const staticWebview = this.staticWebviews[this.staticWebviews.length - 1];
                 this.staticWebviews[this.staticWebviews.length - 1] = await this.updateWebview(staticWebview, vscode.window.activeTextEditor.document);
                 newWebviewPanel.onDidDispose(onDidDispose);
+
+                // Default-on: show the sequencer panel for the new static preview.
+                try {
+                    await this.openSequencerPanelIfNeeded(this.staticWebviews[this.staticWebviews.length - 1].Panel);
+                } catch {
+                    // ignore
+                }
             }
         }
     };
@@ -247,6 +352,151 @@ export class ShaderToyManager {
             command: 'syncPause',
             paused: this.startingData.Paused
         });
+
+        this.postSequencerProject();
+        this.applySequencerAtTime(this.startingData.Time);
+    };
+
+    private openSequencerPanelIfNeeded = async (sourcePanel: vscode.WebviewPanel): Promise<void> => {
+        // If a sequencer panel is already open for this preview, do nothing.
+        if (this.sequencerWebview && this.sequencerWebview.Parent === sourcePanel) {
+            return;
+        }
+
+        // If a sequencer panel is open for a different preview, close it.
+        if (this.sequencerWebview) {
+            const parent = this.sequencerWebview.Parent;
+            try {
+                this.sequencerWebview.Panel.dispose();
+            } catch {
+                // ignore
+            }
+            this.sequencerWebview = undefined;
+            try {
+                this.setSequencerButtonState(parent, false);
+            } catch {
+                // ignore
+            }
+        }
+
+        // Open
+        const sequencerPanel = await this.createSequencerWebview(sourcePanel);
+        this.sequencerWebview = {
+            Panel: sequencerPanel,
+            Parent: sourcePanel,
+        };
+
+        try {
+            sequencerPanel.reveal(sequencerPanel.viewColumn, false);
+        }
+        catch {
+            // ignore
+        }
+
+        this.setSequencerButtonState(sourcePanel, true);
+        this.syncSequencerTime(this.startingData.Time, true);
+        try {
+            sequencerPanel.webview.postMessage({
+                command: 'syncPause',
+                paused: this.startingData.Paused
+            });
+        } catch {
+            // ignore
+        }
+
+        this.postSequencerProject();
+        this.applySequencerAtTime(this.startingData.Time);
+    };
+
+    private postSequencerProject = (): void => {
+        if (!this.sequencerWebview || !this.sequencerProject) {
+            return;
+        }
+        try {
+            this.sequencerWebview.Panel.webview.postMessage({
+                command: 'sequencerProject',
+                project: this.sequencerProject,
+            });
+        } catch {
+            // ignore
+        }
+    };
+
+    private applySequencerAtTime = (timeSec: number): void => {
+        if (!this.sequencerProject) {
+            return;
+        }
+
+        const evalResult = evaluateProjectAtTime(this.sequencerProject, timeSec);
+
+        // Drive all open previews.
+        const payload = {
+            command: 'sequencerSetUniformValues',
+            values: evalResult.byUniformName,
+        };
+        if (this.webviewPanel) {
+            this.webviewPanel.Panel.webview.postMessage(payload);
+        }
+        this.staticWebviews.forEach((w) => w.Panel.webview.postMessage(payload));
+
+        // If paused, request one frame so updates become visible even when pauseWholeRender is enabled.
+        if (this.startingData.Paused) {
+            const renderOneFrame = { command: 'renderOneFrame' };
+            try {
+                if (this.webviewPanel) {
+                    this.webviewPanel.Panel.webview.postMessage(renderOneFrame);
+                }
+            } catch {
+                // ignore
+            }
+            try {
+                this.staticWebviews.forEach((w) => w.Panel.webview.postMessage(renderOneFrame));
+            } catch {
+                // ignore
+            }
+        }
+
+        // Provide values to sequencer UI for display.
+        if (this.sequencerWebview) {
+            try {
+                this.sequencerWebview.Panel.webview.postMessage({
+                    command: 'sequencerTrackValues',
+                    values: evalResult.byTrackId,
+                });
+            } catch {
+                // ignore
+            }
+        }
+    };
+
+    private mergeSequencerProject = (next: SequencerProject): SequencerProject => {
+        const prev = this.sequencerProject;
+        if (!prev) {
+            return next;
+        }
+
+        const prevTracksById = new Map<string, typeof prev.tracks[number]>();
+        for (const t of prev.tracks) {
+            prevTracksById.set(t.id, t);
+        }
+
+        return {
+            ...next,
+            tracks: next.tracks.map((t) => {
+                const existing = prevTracksById.get(t.id);
+                if (!existing) {
+                    return t;
+                }
+                return {
+                    ...t,
+                    // Preserve user edits.
+                    keys: Array.isArray(existing.keys) ? existing.keys : t.keys,
+                    interpolation: existing.interpolation ?? t.interpolation,
+                    stepMode: existing.stepMode ?? t.stepMode,
+                    outOfRange: existing.outOfRange ?? t.outOfRange,
+                };
+            })
+        };
     };
 
     private createSequencerWebview = async (previewPanel: vscode.WebviewPanel): Promise<vscode.WebviewPanel> => {
@@ -310,6 +560,50 @@ export class ShaderToyManager {
                         this.webviewPanel.Panel.webview.postMessage({ command: 'setTime', time: newTime });
                     }
                     this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setTime', time: newTime }));
+
+                    this.applySequencerAtTime(newTime);
+                    return;
+                }
+
+                if (message.command === 'sequencerBeginScrub') {
+                    if (this.sequencerScrubbing) {
+                        return;
+                    }
+                    this.sequencerScrubbing = true;
+                    this.scrubRestorePaused = this.startingData.Paused;
+                    this.startingData.Paused = true;
+
+                    // Freeze preview time progression while the user is interacting.
+                    if (this.webviewPanel) {
+                        this.webviewPanel.Panel.webview.postMessage({ command: 'setPauseState', paused: true });
+                    }
+                    this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setPauseState', paused: true }));
+
+                    try {
+                        panel.webview.postMessage({ command: 'syncPause', paused: true });
+                    } catch {
+                        // ignore
+                    }
+                    return;
+                }
+
+                if (message.command === 'sequencerEndScrub') {
+                    if (!this.sequencerScrubbing) {
+                        return;
+                    }
+                    this.sequencerScrubbing = false;
+                    this.startingData.Paused = this.scrubRestorePaused;
+
+                    if (this.webviewPanel) {
+                        this.webviewPanel.Panel.webview.postMessage({ command: 'setPauseState', paused: this.startingData.Paused });
+                    }
+                    this.staticWebviews.forEach((w) => w.Panel.webview.postMessage({ command: 'setPauseState', paused: this.startingData.Paused }));
+
+                    try {
+                        panel.webview.postMessage({ command: 'syncPause', paused: this.startingData.Paused });
+                    } catch {
+                        // ignore
+                    }
                     return;
                 }
 
@@ -329,6 +623,89 @@ export class ShaderToyManager {
                     } catch {
                         // ignore
                     }
+                    return;
+                }
+
+                if (message.command === 'sequencerAddKey') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const trackId: string = String(message.trackId || '');
+                    const t: number = Number(message.t ?? this.startingData.Time);
+                    const v: number = Number(message.v);
+                    if (!trackId) {
+                        return;
+                    }
+                    this.sequencerProject = addOrReplaceKey(this.sequencerProject, trackId, { t, v });
+                    this.postSequencerProject();
+                    this.applySequencerAtTime(this.startingData.Time);
+
+                    // Mirror the edit back into the shader source (like #iUniform sliders).
+                    try {
+                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
+                        if (track && track.target && track.target.kind === 'uniform') {
+                            void this.updateIUniformDefaultInDocument(previewPanel, track.target.uniformName, v);
+                        }
+                    } catch {
+                        // ignore
+                    }
+                    return;
+                }
+
+                if (message.command === 'sequencerMoveKey') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const trackId: string = String(message.trackId || '');
+                    const keyId: string = String(message.keyId || '');
+                    const t: number = Number(message.t);
+                    if (!trackId || !keyId) {
+                        return;
+                    }
+                    this.sequencerProject = moveKeyTime(this.sequencerProject, trackId, keyId, t);
+                    this.postSequencerProject();
+                    this.applySequencerAtTime(this.startingData.Time);
+                    return;
+                }
+
+                if (message.command === 'sequencerSetKeyValue') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const trackId: string = String(message.trackId || '');
+                    const keyId: string = String(message.keyId || '');
+                    const v: number = Number(message.v);
+                    if (!trackId || !keyId) {
+                        return;
+                    }
+                    this.sequencerProject = setKeyValue(this.sequencerProject, trackId, keyId, v);
+                    this.postSequencerProject();
+                    this.applySequencerAtTime(this.startingData.Time);
+
+                    // Mirror the edit back into the shader source (like #iUniform sliders).
+                    try {
+                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
+                        if (track && track.target && track.target.kind === 'uniform') {
+                            void this.updateIUniformDefaultInDocument(previewPanel, track.target.uniformName, v);
+                        }
+                    } catch {
+                        // ignore
+                    }
+                    return;
+                }
+
+                if (message.command === 'sequencerDeleteKey') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const trackId: string = String(message.trackId || '');
+                    const keyId: string = String(message.keyId || '');
+                    if (!trackId || !keyId) {
+                        return;
+                    }
+                    this.sequencerProject = deleteKey(this.sequencerProject, trackId, keyId);
+                    this.postSequencerProject();
+                    this.applySequencerAtTime(this.startingData.Time);
                     return;
                 }
             },
@@ -443,9 +820,26 @@ export class ShaderToyManager {
                     }
                     return;
                 case 'updateTime':
+                    if (this.sequencerScrubbing) {
+                        // While scrubbing, ignore preview time ticks so the playhead stays where the user puts it.
+                        return;
+                    }
                     this.startingData.Time = message.time;
 
                     this.syncSequencerTime(this.startingData.Time, false);
+
+                    // Continuously apply sequencer values as time advances.
+                    // Throttle a bit to avoid spamming messages on very high FPS.
+                    if (this.sequencerProject) {
+                        const now = Date.now();
+                        const t = this.startingData.Time;
+                        const timeDelta = isFinite(this.lastSequencerAppliedTime) ? Math.abs(t - this.lastSequencerAppliedTime) : Number.POSITIVE_INFINITY;
+                        if ((now - this.lastSequencerAppliedAtMs) >= 30 || timeDelta >= 0.02) {
+                            this.lastSequencerAppliedAtMs = now;
+                            this.lastSequencerAppliedTime = t;
+                            this.applySequencerAtTime(t);
+                        }
+                    }
                     return;
                 case 'setPause':
                     this.startingData.Paused = message.paused;
@@ -521,6 +915,19 @@ export class ShaderToyManager {
         this.context.clearDiagnostics();
         const webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
         const localResources = await webviewContentProvider.parseShaderTree(false);
+
+        // Derive a sequencer project from parsed #iUniform float/int (scalar) declarations.
+        try {
+            const customUniforms: Types.UniformDefinition[] = webviewContentProvider.getCustomUniforms();
+            const nextProject = createSequencerProjectFromUniforms(customUniforms, { displayFps: 60 });
+            this.sequencerProject = this.mergeSequencerProject(nextProject);
+
+            // Keep sequencer panel in sync if it's open for this preview.
+            this.postSequencerProject();
+            this.applySequencerAtTime(this.startingData.Time);
+        } catch {
+            // ignore
+        }
 
         let localResourceRoots: string[] = [];
         for (const localResource of localResources) {

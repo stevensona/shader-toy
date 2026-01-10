@@ -73,6 +73,7 @@ import { AudioResumeExtension } from './extensions/audio/audio_resume_extension'
 import { UniformsInitExtension } from './extensions/uniforms/uniforms_init_extension';
 import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_extension';
 import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
+import { UniformsSequencerBridgeExtension } from './extensions/uniforms/uniforms_sequencer_bridge_extension';
 
 import { removeDuplicates } from './utility';
 import { RecordTargetFramerateExtension } from './extensions/user_interface/record_target_framerate_extension';
@@ -100,6 +101,21 @@ export class WebviewContentProvider {
 
         this.buffers = [];
         this.commonIncludes = [];
+    }
+
+    public getCustomUniforms(): Types.UniformDefinition[] {
+        const byName = new Map<string, Types.UniformDefinition>();
+        for (const buffer of this.buffers) {
+            for (const u of buffer.CustomUniforms) {
+                if (!u || !u.Name) {
+                    continue;
+                }
+                if (!byName.has(u.Name)) {
+                    byName.set(u.Name, u);
+                }
+            }
+        }
+        return Array.from(byName.values());
     }
 
     public async parseShaderTree(generateStandalone: boolean): Promise<string[]> {
@@ -266,6 +282,10 @@ export class WebviewContentProvider {
         if (useUniforms) {
             const uniformsInitExtension = new UniformsInitExtension(this.buffers, startingState.UniformsGui);
             this.webviewAssembler.addWebviewModule(uniformsInitExtension, '// Uniforms Init');
+
+            const uniformsSequencerBridge = new UniformsSequencerBridgeExtension();
+            this.webviewAssembler.addWebviewModule(uniformsSequencerBridge, '// Uniforms Init');
+
             const uniformsUpdateExtension = new UniformsUpdateExtension(this.buffers);
             this.webviewAssembler.addWebviewModule(uniformsUpdateExtension, '// Uniforms Update');
             const uniformsPreambleExtension = new UniformsPreambleExtension(this.buffers);

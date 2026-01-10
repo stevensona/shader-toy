@@ -9,10 +9,12 @@ export const getSequencerPanelHtml = (timelineSrc: string, panelScriptSrc: strin
   <style>
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
     body { display: flex; flex-direction: column; }
-    #toolbar { flex: 0 0 auto; padding: 6px 8px; background: #1e1e1e; color: #ddd; font-family: Consolas, monospace; font-size: 12px; border-bottom: 1px solid #333; }
+    #toolbar { flex: 0 0 auto; padding: 6px 8px; background: #1e1e1e; color: #ddd; font-family: Consolas, monospace; font-size: 12px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     #toolbar button { cursor: pointer; }
+    #toolbar select, #toolbar input { background: #252526; color: #ddd; border: 1px solid #333; padding: 2px 4px; }
     #toolbar .spacer { display: inline-block; width: 12px; }
     #toolbar #sequencer_time_label { display: inline-block; min-width: 72px; color: #9cdcfe; }
+    #toolbar #sequencer_key_id { color: #c586c0; }
     #sequencer { width: 100%; height: 100%; }
   </style>
 </head>
@@ -22,18 +24,20 @@ export const getSequencerPanelHtml = (timelineSrc: string, panelScriptSrc: strin
     <span class="spacer"></span>
     <span>Time:</span>
     <span id="sequencer_time_label">0.00 s</span>
+
+    <span class="spacer"></span>
+    <label for="sequencer_track_select">Track:</label>
+    <select id="sequencer_track_select"></select>
+
+    <label for="sequencer_value_input">Value:</label>
+    <input id="sequencer_value_input" type="number" step="any" style="width: 120px;" />
+
+    <button id="sequencer_add_key" type="button">Add/Replace Key</button>
+    <button id="sequencer_update_key" type="button">Update Selected</button>
+    <button id="sequencer_delete_key" type="button">Delete Selected</button>
+    <span id="sequencer_key_id"></span>
   </div>
   <div id="sequencer"></div>
-  <script>
-    window.ShaderToySequencerPanel = window.ShaderToySequencerPanel || {};
-    window.ShaderToySequencerPanel.hacks = window.ShaderToySequencerPanel.hacks || {};
-
-    // Non-standard tweak: change gauge text from ms -> seconds.
-    window.ShaderToySequencerPanel.hacks.formatUnitsText = (val) => {
-      const seconds = (val || 0) / 1000;
-      return seconds.toFixed(2) + ' s';
-    };
-  </script>
   <script src="${timelineSrc}"></script>
   <script src="${panelScriptSrc}"></script>
 </body>

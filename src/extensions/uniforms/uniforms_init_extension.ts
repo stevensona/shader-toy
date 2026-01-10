@@ -25,6 +25,9 @@ export class UniformsInitExtension implements WebviewExtension {
 let dat_gui = new dat.GUI({ autoPlace: false, closed: ${!startingState.Open} });
 var dat_gui_container = document.getElementById('dat_gui_container');
 dat_gui_container.appendChild(dat_gui.domElement);
+
+    // Optional: allow other modules (e.g. sequencer) to refresh controllers.
+    window.ShaderToyUniformControllers = window.ShaderToyUniformControllers || new Map();
 `;
         }
 
@@ -76,6 +79,15 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
             return `\
 {
     let controller = ${this.getRawDatGuiValueString(object, property, value)};
+    try {
+        if (window.ShaderToyUniformControllers && window.ShaderToyUniformControllers.get) {
+            const existing = window.ShaderToyUniformControllers.get('${value.Name}') || [];
+            existing.push(controller);
+            window.ShaderToyUniformControllers.set('${value.Name}', existing);
+        }
+    } catch {
+        // ignore
+    }
     controller.onFinishChange((value) => {
         if (vscode !== undefined) {
             vscode.postMessage({
@@ -92,6 +104,15 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
             return `\
 {
     let controller = ${this.getRawDatGuiValueString(object, property, value)};
+    try {
+        if (window.ShaderToyUniformControllers && window.ShaderToyUniformControllers.get) {
+            const existing = window.ShaderToyUniformControllers.get('${value.Name}') || [];
+            existing.push(controller);
+            window.ShaderToyUniformControllers.set('${value.Name}', existing);
+        }
+    } catch {
+        // ignore
+    }
     controller.onFinishChange((value) => {
         if (vscode !== undefined) {
             vscode.postMessage({
