@@ -79,7 +79,13 @@ export type UniformDefinition = {
     Default: number[],
     Min?: number[],
     Max?: number[],
-    Step?: number[]
+    Step?: number[],
+
+    // Optional marker that this uniform should be exposed as a sequencer track.
+    // Populated from `#iUniform ... sequncer {}` / `#iUniform ... sequencer {}`.
+    Sequencer?: {
+        // Reserved for future options.
+    }
 };
 export type BufferDependency = {
     Index: number,

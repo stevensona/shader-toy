@@ -186,6 +186,8 @@ suite("Parsing Tests", () => {
         let uniformsContents = `\
 #iUniform float test_float = 1
 #iUniform float test_float_with_range = 1 in { -1, 1 }
+#iUniform float test_float_with_sequncer = 1 in { -1, 1 } sequncer {}
+#iUniform float test_float_with_sequencer = 1 in { -1, 1 } sequencer{}
 #iUniform vec4 test_vec4 = vec4(1, 1, 1, 1)
 #iUniform vec4 test_vec4_with_range = vec4(1, 1, 1, 1) in { vec4(0, 1, 2, 3), vec4(99, 98, 97, 96) }
 #iUniform vec4 test_vec4_with_mismatched_range = vec4(1, 1, 1, 1) in { 0, 99 }
@@ -211,6 +213,26 @@ suite("Parsing Tests", () => {
                 Min: [ -1.0 ],
                 Max: [ 1.0 ],
                 Step: undefined
+            });
+            assert.deepStrictEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_float_with_sequncer',
+                Typename: 'float',
+                Default: [ 1.0 ],
+                Min: [ -1.0 ],
+                Max: [ 1.0 ],
+                Step: undefined,
+                Sequencer: {}
+            });
+            assert.deepStrictEqual(parser.next(), { 
+                Type: ObjectType.Uniform,
+                Name: 'test_float_with_sequencer',
+                Typename: 'float',
+                Default: [ 1.0 ],
+                Min: [ -1.0 ],
+                Max: [ 1.0 ],
+                Step: undefined,
+                Sequencer: {}
             });
             assert.deepStrictEqual(parser.next(), { 
                 Type: ObjectType.Uniform,

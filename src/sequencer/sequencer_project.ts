@@ -278,10 +278,18 @@ export const normalizeDisplayFps = (fps: number | undefined): number => {
 export const createSequencerProjectFromUniforms = (uniforms: UniformDefinition[], opts?: { displayFps?: number }): SequencerProject => {
 	const displayFps = normalizeDisplayFps(opts?.displayFps);
 
+	// Backward compatibility:
+	// - If *any* uniform declares the `sequncer`/`sequencer` tag, only tagged uniforms become sequencer tracks.
+	// - If none are tagged, keep the legacy behavior (all scalar float/int become tracks).
+	const hasAnySequencerTaggedUniform = uniforms.some((u) => !!u?.Sequencer);
+
 	// Rule: one track per uniform name (dedupe by Name).
 	const byName = new Map<string, UniformDefinition>();
 	for (const u of uniforms) {
 		if (!u || !u.Name) {
+			continue;
+		}
+		if (hasAnySequencerTaggedUniform && !u.Sequencer) {
 			continue;
 		}
 		if (u.Typename !== 'float' && u.Typename !== 'int') {

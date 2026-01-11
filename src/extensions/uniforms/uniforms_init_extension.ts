@@ -40,6 +40,19 @@ export class UniformsInitExtension implements WebviewExtension {
 
 .shader-toy-seq-plus:hover { background: rgba(0,0,0,0.35); }
 .shader-toy-seq-plus:active { background: rgba(0,0,0,0.45); }
+
+.shader-toy-seq-plus-empty {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    padding: 0;
+    margin: 0;
+    border-left: 1px solid rgba(255,255,255,0.18);
+    background: transparent;
+    pointer-events: none;
+}
 `;
 
         let has_uniforms = false;
@@ -70,7 +83,9 @@ try {
 }
 
 try {
-    window.ShaderToyAddSequencerPlusButton = window.ShaderToyAddSequencerPlusButton || ((controller, getValue, uniformName) => {
+    // Ensure a reserved "+" column for scalar float/int uniforms.
+    // If enabled is false, keep the space but do not show a button.
+    window.ShaderToyAddSequencerPlusButton = window.ShaderToyAddSequencerPlusButton || ((controller, getValue, uniformName, enabled = true) => {
         if (!controller || typeof uniformName !== 'string' || !uniformName) {
             return;
         }
@@ -87,7 +102,7 @@ try {
             if (!li || !li.querySelector) {
                 return false;
             }
-            if (li.querySelector('.shader-toy-seq-plus')) {
+            if (li.querySelector('.shader-toy-seq-plus, .shader-toy-seq-plus-empty')) {
                 return true;
             }
 
@@ -99,37 +114,43 @@ try {
             } catch {
                 // ignore
             }
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'shader-toy-seq-plus';
-            btn.textContent = '+';
-            btn.title = 'Add/replace sequencer key at current time';
-            btn.addEventListener('click', (ev) => {
-                try {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                } catch {
-                    // ignore
-                }
-                let v;
-                try {
-                    v = (typeof getValue === 'function') ? getValue() : undefined;
-                } catch {
-                    v = undefined;
-                }
-                try {
-                    if (vscode !== undefined) {
-                        vscode.postMessage({
-                            command: 'sequencerAddOrReplaceKeyFromUniform',
-                            name: uniformName,
-                            value: v
-                        });
+            if (enabled) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'shader-toy-seq-plus';
+                btn.textContent = '+';
+                btn.title = 'Add/replace sequencer key at current time';
+                btn.addEventListener('click', (ev) => {
+                    try {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                    } catch {
+                        // ignore
                     }
-                } catch {
-                    // ignore
-                }
-            });
-            li.appendChild(btn);
+                    let v;
+                    try {
+                        v = (typeof getValue === 'function') ? getValue() : undefined;
+                    } catch {
+                        v = undefined;
+                    }
+                    try {
+                        if (vscode !== undefined) {
+                            vscode.postMessage({
+                                command: 'sequencerAddOrReplaceKeyFromUniform',
+                                name: uniformName,
+                                value: v
+                            });
+                        }
+                    } catch {
+                        // ignore
+                    }
+                });
+                li.appendChild(btn);
+            } else {
+                const empty = document.createElement('div');
+                empty.className = 'shader-toy-seq-plus-empty';
+                li.appendChild(empty);
+            }
             return true;
         };
 
@@ -212,8 +233,11 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     // If this is a scalar float/int uniform, add a small "+" button to add/replace a sequencer key at current time.
     try {
         const isSequencerSupported = ${value.Typename === 'float' || value.Typename === 'int'};
+        const isSequencerAllowed = ${!!value.Sequencer};
         if (isSequencerSupported && controller && window.ShaderToyAddSequencerPlusButton) {
-            window.ShaderToyAddSequencerPlusButton(controller, () => ${object}.${property}, '${value.Name}');
+            // Reserve the slot for all scalar float/int uniforms, but only show the button
+            // when the uniform opted into sequencer support via 'sequncer {}' / 'sequencer {}'.
+            window.ShaderToyAddSequencerPlusButton(controller, () => ${object}.${property}, '${value.Name}', isSequencerAllowed);
         }
     } catch {
         // ignore

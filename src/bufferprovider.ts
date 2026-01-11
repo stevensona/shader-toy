@@ -597,7 +597,8 @@ void main() {
                         Default: nextObject.Default,
                         Min: nextObject.Min,
                         Max: nextObject.Max,
-                        Step: nextObject.Step
+                        Step: nextObject.Step,
+                        ...(nextObject.Sequencer ? { Sequencer: nextObject.Sequencer } : {})
                     };
                     uniforms.push(uniform);
                 }

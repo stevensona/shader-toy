@@ -1,10 +1,15 @@
 // Demo shader for manual sequencer testing
 // (deliberately simple; driven by 3 scalar uniforms)
 
-#iUniform float line1 = 0.0 in { -10.0, 10.0 } step 1.0
-#iUniform float line2 = 0.0 in { -10.0, 10.0 } step 1.0
-#iUniform float line3 = 0.0 in { -10.0, 10.0 } step 1.0
-#iUniform int test = 0 in { -10, 10 } step 1
+#iUniform float line1 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer {}
+#iUniform float line2 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer {}
+#iUniform float line3 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer {}
+#iUniform int test = 0 in { -10, 10 } step 1 sequncer {}
+
+// Control-window-only uniforms (not exposed to the sequencer):
+#iUniform float test1 = 0.0 in { -10.0, 10.0 } step 1.0
+#iUniform float test2 = 0.0 in { -10.0, 10.0 } step 1.0
+#iUniform float test3 = 0.0 in { -10.0, 10.0 } step 1.0
 
 float barMask(vec2 uv, float yCenter, float yHalfHeight, float v)
 {
