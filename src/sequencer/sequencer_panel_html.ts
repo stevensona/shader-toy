@@ -15,13 +15,19 @@ export const getSequencerPanelHtml = (timelineSrc: string, panelScriptSrc: strin
     #toolbar .spacer { display: inline-block; width: 12px; }
     #toolbar #sequencer_time_label { display: inline-block; min-width: 72px; color: #9cdcfe; }
     #toolbar #sequencer_key_id { color: #c586c0; }
-    #sequencer { width: 100%; height: 100%; }
+    #content { flex: 1 1 auto; min-height: 0; display: flex; }
+    #sequencer_outline { flex: 0 0 220px; min-width: 160px; max-width: 360px; overflow: auto; background: #1e1e1e; border-right: 1px solid #333; font-family: Consolas, monospace; font-size: 12px; color: #ddd; }
+    #sequencer_outline .outline-header-spacer { height: 48px; border-bottom: 1px solid #333; }
+    #sequencer_outline .outline-item { height: 24px; line-height: 24px; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 2px solid transparent; cursor: pointer; user-select: none; }
+    #sequencer_outline .outline-item.selected { background: rgba(156, 220, 254, 0.12); }
+    #sequencer { flex: 1 1 auto; min-width: 0; }
   </style>
 </head>
 <body>
   <div id="toolbar">
     <button id="sequencer_play_pause" type="button">Play</button>
     <button id="sequencer_loop" type="button">Loop: On</button>
+    <button id="sequencer_value_line" type="button">Value line: On</button>
     <button id="sequencer_export" type="button">Export JSON</button>
     <button id="sequencer_import" type="button">Import JSON</button>
     <span class="spacer"></span>
@@ -46,7 +52,10 @@ export const getSequencerPanelHtml = (timelineSrc: string, panelScriptSrc: strin
     <button id="sequencer_delete_key" type="button">Delete Selected</button>
     <span id="sequencer_key_id"></span>
   </div>
-  <div id="sequencer"></div>
+  <div id="content">
+    <div id="sequencer_outline"></div>
+    <div id="sequencer"></div>
+  </div>
   <script src="${timelineSrc}"></script>
   <script src="${panelScriptSrc}"></script>
 </body>
