@@ -171,11 +171,26 @@
 
     let paused = <!-- Start Paused -->;
     let forceRenderOneFrame = paused;
+    try {
+        window.ShaderToy = window.ShaderToy || {};
+        window.ShaderToy.__isPaused = paused;
+        // In paused mode, treat the control window as the master by default.
+        window.ShaderToy.__uniformsMaster = paused ? 'gui' : 'sequencer';
+    } catch {
+        // ignore
+    }
     let pauseButton = document.getElementById('pause-button');
     if (pauseButton) {
         pauseButton.checked = paused;
         pauseButton.onclick = function(){
             paused = pauseButton.checked;
+            try {
+                window.ShaderToy = window.ShaderToy || {};
+                window.ShaderToy.__isPaused = paused;
+                window.ShaderToy.__uniformsMaster = paused ? 'gui' : 'sequencer';
+            } catch {
+                // ignore
+            }
             if (!paused) {
                 // Audio Resume
                 pausedTime += clock.getDelta();
@@ -245,6 +260,13 @@
                 }
                 paused = nextPaused;
                 forceRenderOneFrame = paused;
+                try {
+                    window.ShaderToy = window.ShaderToy || {};
+                    window.ShaderToy.__isPaused = paused;
+                    window.ShaderToy.__uniformsMaster = paused ? 'gui' : 'sequencer';
+                } catch {
+                    // ignore
+                }
 
                 if (wasPaused && !paused) {
                     // Audio Resume
@@ -412,6 +434,9 @@
 
         // Audio Update
 
+        // Apply custom iUniform values before rendering so one-shot renders (paused) show updates immediately.
+        // Uniforms Update
+
         for (let buffer of buffers) {
             buffer.Shader.uniforms['iResolution'].value = resolution;
             buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
@@ -430,8 +455,8 @@
             renderer.setRenderTarget(buffer.Target);
             renderer.render(scene, camera);
         }
+
         
-        // Uniforms Update
 
         // Keyboard Update
 

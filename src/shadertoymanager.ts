@@ -1187,6 +1187,64 @@ export class ShaderToyManager {
                 case 'updateUniformsGuiValue':
                     this.startingData.UniformsGui.Values.set(message.name, message.value);
                     return;
+
+                case 'requestRenderOneFrame': {
+                    // NOTE: This mirrors the sequencer's paused one-shot redraw mechanism.
+                    // If message volume ever becomes an issue (e.g. slider scrubbing), coalesce requests (timer/flag) instead of posting every time.
+                    const renderOneFrame = { command: 'renderOneFrame' };
+                    try {
+                        if (this.webviewPanel) {
+                            this.webviewPanel.Panel.webview.postMessage(renderOneFrame);
+                        }
+                    } catch {
+                        // ignore
+                    }
+                    try {
+                        this.staticWebviews.forEach((w) => w.Panel.webview.postMessage(renderOneFrame));
+                    } catch {
+                        // ignore
+                    }
+                    return;
+                }
+
+                case 'sequencerAddOrReplaceKeyFromUniform': {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const uniformName = typeof message.name === 'string' ? message.name : '';
+                    const rawValue = Number(message.value);
+                    if (!uniformName || !isFinite(rawValue)) {
+                        return;
+                    }
+
+                    const track = this.sequencerProject.tracks.find((t) => t.target?.kind === 'uniform' && t.target.uniformName === uniformName);
+                    if (!track) {
+                        return;
+                    }
+
+                    let tSec = Number(this.startingData.Time);
+                    if (!isFinite(tSec)) {
+                        tSec = 0;
+                    }
+                    // Optional snapping if enabled.
+                    try {
+                        const snap = this.sequencerProject.snapSettings;
+                        if (snap && snap.enabled === true && typeof snap.stepSec === 'number' && isFinite(snap.stepSec) && snap.stepSec > 0) {
+                            tSec = Math.round(tSec / snap.stepSec) * snap.stepSec;
+                        }
+                    } catch {
+                        // ignore
+                    }
+
+                    // Upsert the key and sync/persist.
+                    this.sequencerProject = addOrReplaceKey(this.sequencerProject, track.id, { t: tSec, v: rawValue });
+                    void this.saveSequencerProjectForPanel(newWebviewPanel);
+                    this.postSequencerProject();
+
+                    // Keep display values consistent.
+                    this.applySequencerAtTime(this.startingData.Time);
+                    return;
+                }
                 case 'showGlslDiagnostic':
                 {
                     const diagnosticBatch: DiagnosticBatch = message.diagnosticBatch;

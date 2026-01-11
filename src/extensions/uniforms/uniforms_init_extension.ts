@@ -12,6 +12,36 @@ export class UniformsInitExtension implements WebviewExtension {
     }
 
     private processBuffers(buffers: Types.BufferDefinition[], startingState: Types.UniformsGuiStartingData) {
+                const sequencerPlusCss = `
+.shader-toy-has-seq-plus {
+    padding-right: 26px !important;
+}
+
+.shader-toy-seq-plus {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-left: 1px solid rgba(255,255,255,0.18);
+    background: rgba(0,0,0,0.22);
+    color: #ddd;
+    cursor: pointer;
+    font-family: Consolas, monospace;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shader-toy-seq-plus:hover { background: rgba(0,0,0,0.35); }
+.shader-toy-seq-plus:active { background: rgba(0,0,0,0.45); }
+`;
+
         let has_uniforms = false;
         for (const buffer of buffers) {
             if (buffer.CustomUniforms.length > 0) {
@@ -25,6 +55,96 @@ export class UniformsInitExtension implements WebviewExtension {
 let dat_gui = new dat.GUI({ autoPlace: false, closed: ${!startingState.Open} });
 var dat_gui_container = document.getElementById('dat_gui_container');
 dat_gui_container.appendChild(dat_gui.domElement);
+
+// Sequencer helper: add a small "+" button per scalar float/int iUniform row.
+// Implemented via DOM injection (no changes to dat.GUI sources).
+try {
+    if (!document.getElementById('shader_toy_uniforms_seq_plus_style')) {
+        const style = document.createElement('style');
+        style.id = 'shader_toy_uniforms_seq_plus_style';
+        style.textContent = ${JSON.stringify(sequencerPlusCss)};
+        document.head.appendChild(style);
+    }
+} catch {
+    // ignore
+}
+
+try {
+    window.ShaderToyAddSequencerPlusButton = window.ShaderToyAddSequencerPlusButton || ((controller, getValue, uniformName) => {
+        if (!controller || typeof uniformName !== 'string' || !uniformName) {
+            return;
+        }
+
+        const tryAttach = () => {
+            let li;
+            try {
+                li = controller.__li
+                    || (controller.domElement && controller.domElement.closest ? controller.domElement.closest('li') : undefined)
+                    || (controller.domElement ? controller.domElement.parentElement : undefined);
+            } catch {
+                li = undefined;
+            }
+            if (!li || !li.querySelector) {
+                return false;
+            }
+            if (li.querySelector('.shader-toy-seq-plus')) {
+                return true;
+            }
+
+            try {
+                li.style.position = 'relative';
+                if (li.classList && typeof li.classList.add === 'function') {
+                    li.classList.add('shader-toy-has-seq-plus');
+                }
+            } catch {
+                // ignore
+            }
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'shader-toy-seq-plus';
+            btn.textContent = '+';
+            btn.title = 'Add/replace sequencer key at current time';
+            btn.addEventListener('click', (ev) => {
+                try {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                } catch {
+                    // ignore
+                }
+                let v;
+                try {
+                    v = (typeof getValue === 'function') ? getValue() : undefined;
+                } catch {
+                    v = undefined;
+                }
+                try {
+                    if (vscode !== undefined) {
+                        vscode.postMessage({
+                            command: 'sequencerAddOrReplaceKeyFromUniform',
+                            name: uniformName,
+                            value: v
+                        });
+                    }
+                } catch {
+                    // ignore
+                }
+            });
+            li.appendChild(btn);
+            return true;
+        };
+
+        // dat.GUI DOM can be created synchronously, but retry once next frame if needed.
+        if (!tryAttach()) {
+            try {
+                requestAnimationFrame(() => { tryAttach(); });
+            } catch {
+                // ignore
+            }
+        }
+    });
+} catch {
+    // ignore
+}
 
     // Optional: allow other modules (e.g. sequencer) to refresh controllers.
     window.ShaderToyUniformControllers = window.ShaderToyUniformControllers || new Map();
@@ -88,6 +208,40 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     } catch {
         // ignore
     }
+
+    // If this is a scalar float/int uniform, add a small "+" button to add/replace a sequencer key at current time.
+    try {
+        const isSequencerSupported = ${value.Typename === 'float' || value.Typename === 'int'};
+        if (isSequencerSupported && controller && window.ShaderToyAddSequencerPlusButton) {
+            window.ShaderToyAddSequencerPlusButton(controller, () => ${object}.${property}, '${value.Name}');
+        }
+    } catch {
+        // ignore
+    }
+
+    // When pauseWholeRender is enabled, request a one-shot frame so the UI change is visible.
+    // (Sequencer scrubbing does the same via the 'renderOneFrame' message.)
+    controller.onChange(() => {
+        try {
+            forceRenderOneFrame = true;
+        } catch {
+            // ignore
+        }
+
+        // Prefer the same mechanism used by sequencer scrubbing: ask the extension to
+        // post 'renderOneFrame' back to the preview (works even if local bindings differ).
+        // NOTE: This intentionally mirrors the sequencer's message-driven one-shot redraw.
+        // If needed, we can optimize by coalescing/debouncing these requests during fast slider drags.
+        try {
+            if (typeof paused !== 'undefined' && paused && vscode !== undefined) {
+                vscode.postMessage({ command: 'requestRenderOneFrame' });
+            }
+        } catch {
+            // ignore
+        }
+
+    });
+
     controller.onFinishChange((value) => {
         if (vscode !== undefined) {
             vscode.postMessage({
@@ -113,6 +267,14 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     } catch {
         // ignore
     }
+    // When pauseWholeRender is enabled, request a one-shot frame so the UI change is visible.
+    controller.onChange(() => {
+        try {
+            forceRenderOneFrame = true;
+        } catch {
+            // ignore
+        }
+    });
     controller.onFinishChange((value) => {
         if (vscode !== undefined) {
             vscode.postMessage({
@@ -149,6 +311,15 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
                 datGuiString += `\
     values.push({ value: ${sub_value.Default[0]} });
     let controller_${i} = ${this.getRawDatGuiValueString(`values[${i}]`, 'value', sub_value)}.name('${property}.${sub_value.Name}');
+    controller_${i}.onChange((value) => {
+        values[${i}].value = value;
+        ${sub_object}[${i}] = value;
+        try {
+            forceRenderOneFrame = true;
+        } catch {
+            // ignore
+        }
+    });
     controller_${i}.onFinishChange((value) => {
         values[${i}].value = value;
         ${sub_object}[${i}] = value;

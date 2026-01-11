@@ -11,6 +11,25 @@ export class UniformsSequencerBridgeExtension implements WebviewExtension {
     'use strict';
 
     const applyValues = (values) => {
+        // In paused mode, default to "GUI is master" so manual control window edits don't get
+        // immediately overwritten by sequencer updates. Sequencer can still override once
+        // when explicitly requested (e.g. timeline scrubbing) by setting __sequencerOverrideOnce.
+        try {
+            const st = global.ShaderToy || {};
+            const isPaused = !!st.__isPaused;
+            const master = typeof st.__uniformsMaster === 'string' ? st.__uniformsMaster : '';
+            const allowOnce = !!st.__sequencerOverrideOnce;
+            if (isPaused && master === 'gui' && !allowOnce) {
+                return;
+            }
+            if (allowOnce) {
+                st.__sequencerOverrideOnce = false;
+                global.ShaderToy = st;
+            }
+        } catch {
+            // ignore
+        }
+
         // Note: in our webview template, "buffers" is declared with let at top-level.
         // That creates a global binding, but not a window.buffers property.
         // So prefer the identifier binding if available.

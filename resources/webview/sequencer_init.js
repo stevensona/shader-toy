@@ -94,6 +94,15 @@
             time = newTime;
             deltaTime = 0.0;
             forceRenderOneFrame = true;
+
+            // While paused we usually treat the GUI as master, but scrubbing time is an explicit
+            // request to preview sequencer output. Allow the next sequencer uniform update once.
+            try {
+                global.ShaderToy = global.ShaderToy || {};
+                global.ShaderToy.__sequencerOverrideOnce = true;
+            } catch {
+                // ignore
+            }
             return;
         }
         case 'renderOneFrame': {
