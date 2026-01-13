@@ -40,6 +40,12 @@ export class UniformsInitExtension implements WebviewExtension {
 
 .shader-toy-seq-plus:hover { background: rgba(0,0,0,0.35); }
 .shader-toy-seq-plus:active { background: rgba(0,0,0,0.45); }
+.shader-toy-seq-plus:disabled {
+    opacity: 0.35;
+    cursor: default;
+    background: rgba(0,0,0,0.12);
+}
+.shader-toy-seq-plus:disabled:hover { background: rgba(0,0,0,0.12); }
 
 .shader-toy-seq-plus-empty {
     position: absolute;
@@ -52,6 +58,20 @@ export class UniformsInitExtension implements WebviewExtension {
     border-left: 1px solid rgba(255,255,255,0.18);
     background: transparent;
     pointer-events: none;
+}
+
+/* Sequencer-managed iUniforms: dim and disable edits while playing. */
+.shader-toy-seq-managed { }
+.shader-toy-seq-managed-disabled {
+    opacity: 0.55;
+}
+.shader-toy-seq-managed-disabled .slider {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+.shader-toy-seq-managed-disabled input {
+    pointer-events: none !important;
+    cursor: default !important;
 }
 `;
 
@@ -85,6 +105,142 @@ try {
 try {
     // Ensure a reserved "+" column for scalar float/int uniforms.
     // If enabled is false, keep the space but do not show a button.
+    window.ShaderToySequencerPlusState = window.ShaderToySequencerPlusState || {
+        paused: (typeof paused !== 'undefined') ? !!paused : true,
+        byUniformName: {},
+        update: () => {
+            try {
+                const state = window.ShaderToySequencerPlusState;
+
+                // Derive paused live so GUI-originated pause changes are reflected without
+                // requiring a round-trip message from the extension.
+                try {
+                    if (typeof paused !== 'undefined') {
+                        state.paused = !!paused;
+                    }
+                } catch {
+                    // ignore
+                }
+
+                const buttons = document.querySelectorAll ? document.querySelectorAll('.shader-toy-seq-plus') : [];
+                for (const btn of buttons) {
+                    try {
+                        const name = btn && btn.dataset ? btn.dataset.uniformName : undefined;
+                        const locked = !!(name && state.byUniformName && state.byUniformName[name] && state.byUniformName[name].locked);
+                        btn.disabled = !state.paused || locked;
+                    } catch {
+                        // ignore
+                    }
+                }
+
+                // Disable sequencer-managed uniform edits while playing.
+                const playing = !state.paused;
+                const managed = document.querySelectorAll ? document.querySelectorAll('.shader-toy-seq-managed') : [];
+                for (const li of managed) {
+                    try {
+                        if (!li || !li.classList) {
+                            continue;
+                        }
+                        if (playing) {
+                            li.classList.add('shader-toy-seq-managed-disabled');
+                        } else {
+                            li.classList.remove('shader-toy-seq-managed-disabled');
+                        }
+
+                        // Disable any text inputs so wheel/drag/focus can't change values.
+                        const inputs = li.querySelectorAll ? li.querySelectorAll('input') : [];
+                        for (const inp of inputs) {
+                            try {
+                                // Do not disable our '+' button (it's a <button>, not an input),
+                                // but do disable controller value fields.
+                                inp.disabled = playing;
+                            } catch {
+                                // ignore
+                            }
+                        }
+                    } catch {
+                        // ignore
+                    }
+                }
+            } catch {
+                // ignore
+            }
+        }
+    };
+
+    // Listen for pause + per-track UI updates coming from the extension.
+    if (!window.ShaderToySequencerPlusMessageHookInstalled) {
+        window.ShaderToySequencerPlusMessageHookInstalled = true;
+        window.addEventListener('message', (event) => {
+            const msg = event && event.data ? event.data : undefined;
+            if (!msg || !msg.command) {
+                return;
+            }
+            try {
+                if (msg.command === 'setPauseState') {
+                    window.ShaderToySequencerPlusState.paused = !!msg.paused;
+                    window.ShaderToySequencerPlusState.update();
+                }
+                if (msg.command === 'sequencerTrackUiByUniform') {
+                    window.ShaderToySequencerPlusState.byUniformName = msg.byUniformName || {};
+                    window.ShaderToySequencerPlusState.update();
+                }
+            } catch {
+                // ignore
+            }
+        });
+
+        // Also refresh when the preview pause checkbox is toggled locally.
+        try {
+            const pauseBtn = document.getElementById ? document.getElementById('pause-button') : undefined;
+            if (pauseBtn && !pauseBtn.__shaderToySeqPlusHooked) {
+                pauseBtn.__shaderToySeqPlusHooked = true;
+                pauseBtn.addEventListener('change', () => {
+                    try { window.ShaderToySequencerPlusState.update(); } catch { /* ignore */ }
+                });
+                pauseBtn.addEventListener('click', () => {
+                    try { window.ShaderToySequencerPlusState.update(); } catch { /* ignore */ }
+                });
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    window.ShaderToyMarkSequencerManaged = window.ShaderToyMarkSequencerManaged || ((controller, uniformName) => {
+        if (!controller) {
+            return;
+        }
+
+        let li;
+        try {
+            li = controller.__li
+                || (controller.domElement && controller.domElement.closest ? controller.domElement.closest('li') : undefined)
+                || (controller.domElement ? controller.domElement.parentElement : undefined);
+        } catch {
+            li = undefined;
+        }
+        if (!li || !li.classList) {
+            return;
+        }
+        try {
+            li.classList.add('shader-toy-seq-managed');
+            if (uniformName && li.dataset) {
+                li.dataset.uniformName = uniformName;
+            }
+        } catch {
+            // ignore
+        }
+
+        try {
+            if (window.ShaderToySequencerPlusState && window.ShaderToySequencerPlusState.update) {
+                window.ShaderToySequencerPlusState.update();
+            }
+        } catch {
+            // ignore
+        }
+    });
+
     window.ShaderToyAddSequencerPlusButton = window.ShaderToyAddSequencerPlusButton || ((controller, getValue, uniformName, enabled = true) => {
         if (!controller || typeof uniformName !== 'string' || !uniformName) {
             return;
@@ -115,11 +271,25 @@ try {
                 // ignore
             }
             if (enabled) {
+                // Mark as sequencer-managed so we can disable edits while playing.
+                try {
+                    if (window.ShaderToyMarkSequencerManaged) {
+                        window.ShaderToyMarkSequencerManaged(controller, uniformName);
+                    }
+                } catch {
+                    // ignore
+                }
+
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'shader-toy-seq-plus';
                 btn.textContent = '+';
                 btn.title = 'Add/replace sequencer key at current time';
+                try {
+                    btn.dataset.uniformName = uniformName;
+                } catch {
+                    // ignore
+                }
                 btn.addEventListener('click', (ev) => {
                     try {
                         ev.preventDefault();
@@ -146,6 +316,15 @@ try {
                     }
                 });
                 li.appendChild(btn);
+
+                // Apply current paused/locked state.
+                try {
+                    if (window.ShaderToySequencerPlusState && window.ShaderToySequencerPlusState.update) {
+                        window.ShaderToySequencerPlusState.update();
+                    }
+                } catch {
+                    // ignore
+                }
             } else {
                 const empty = document.createElement('div');
                 empty.className = 'shader-toy-seq-plus-empty';
@@ -239,6 +418,11 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
             // when the uniform opted into sequencer support via 'sequncer {}' / 'sequencer {}'.
             window.ShaderToyAddSequencerPlusButton(controller, () => ${object}.${property}, '${value.Name}', isSequencerAllowed);
         }
+
+        // When a uniform is sequencer-managed, block user edits while playing.
+        if (isSequencerAllowed && controller && window.ShaderToyMarkSequencerManaged) {
+            window.ShaderToyMarkSequencerManaged(controller, '${value.Name}');
+        }
     } catch {
         // ignore
     }
@@ -291,6 +475,17 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
     } catch {
         // ignore
     }
+
+    // When a uniform is sequencer-managed, block user edits while playing.
+    try {
+        const isSequencerAllowed = ${!!value.Sequencer};
+        if (isSequencerAllowed && controller && window.ShaderToyMarkSequencerManaged) {
+            window.ShaderToyMarkSequencerManaged(controller, '${value.Name}');
+        }
+    } catch {
+        // ignore
+    }
+
     // When pauseWholeRender is enabled, request a one-shot frame so the UI change is visible.
     controller.onChange(() => {
         try {
@@ -335,6 +530,17 @@ ${this.getDatGuiValueString(uniform_values, uniform.Name, uniform)}
                 datGuiString += `\
     values.push({ value: ${sub_value.Default[0]} });
     let controller_${i} = ${this.getRawDatGuiValueString(`values[${i}]`, 'value', sub_value)}.name('${property}.${sub_value.Name}');
+
+    // When a uniform is sequencer-managed, block user edits while playing.
+    try {
+        const isSequencerAllowed = ${!!value.Sequencer};
+        if (isSequencerAllowed && controller_${i} && window.ShaderToyMarkSequencerManaged) {
+            window.ShaderToyMarkSequencerManaged(controller_${i}, '${value.Name}');
+        }
+    } catch {
+        // ignore
+    }
+
     controller_${i}.onChange((value) => {
         values[${i}].value = value;
         ${sub_object}[${i}] = value;

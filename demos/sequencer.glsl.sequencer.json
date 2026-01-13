@@ -1,0 +1,212 @@
+{
+  "schemaVersion": "0.2.0",
+  "displayFps": 60,
+  "timeScope": {
+    "startSec": 1,
+    "endSec": 4
+  },
+  "loop": true,
+  "defaults": {
+    "interpolation": "linear",
+    "stepMode": "holdLeft",
+    "outOfRange": "hold"
+  },
+  "tracks": [
+    {
+      "id": "uniform:line1",
+      "name": "line1",
+      "target": {
+        "kind": "uniform",
+        "uniformName": "line1"
+      },
+      "valueType": "float",
+      "ui": {
+        "valueLine": true,
+        "locked": false,
+        "dragEnabled": true
+      },
+      "defaultValue": 0,
+      "minValue": -10,
+      "maxValue": 10,
+      "stepValue": 1,
+      "interpolation": "linear",
+      "stepMode": "holdLeft",
+      "outOfRange": "hold",
+      "keys": [
+        {
+          "id": "k0",
+          "t": 0,
+          "v": 0
+        },
+        {
+          "id": "kmkfbun6p9o4t",
+          "t": 2,
+          "v": 10
+        },
+        {
+          "id": "kmkfbvlrbayat",
+          "t": 3,
+          "v": 10
+        },
+        {
+          "id": "kmkfbvsumsw0",
+          "t": 5,
+          "v": 0
+        }
+      ]
+    },
+    {
+      "id": "uniform:line2",
+      "name": "line2",
+      "target": {
+        "kind": "uniform",
+        "uniformName": "line2"
+      },
+      "valueType": "float",
+      "ui": {
+        "valueLine": true,
+        "locked": true,
+        "dragEnabled": true
+      },
+      "defaultValue": 0,
+      "minValue": -10,
+      "maxValue": 10,
+      "stepValue": 1,
+      "interpolation": "linear",
+      "stepMode": "holdLeft",
+      "outOfRange": "hold",
+      "keys": [
+        {
+          "id": "k0",
+          "t": 0,
+          "v": 0
+        },
+        {
+          "id": "kmkfbv3m0k6gs",
+          "t": 1,
+          "v": -10
+        },
+        {
+          "id": "kmkfbw5iwhseg",
+          "t": 2.5,
+          "v": 10
+        },
+        {
+          "id": "kmkfbwzsnfdc4",
+          "t": 4,
+          "v": -10
+        },
+        {
+          "id": "kmkfbx7e9hfzy",
+          "t": 5,
+          "v": 0
+        }
+      ]
+    },
+    {
+      "id": "uniform:line3",
+      "name": "line3",
+      "target": {
+        "kind": "uniform",
+        "uniformName": "line3"
+      },
+      "valueType": "float",
+      "ui": {
+        "valueLine": true,
+        "locked": false,
+        "dragEnabled": true
+      },
+      "defaultValue": 0,
+      "minValue": -10,
+      "maxValue": 10,
+      "stepValue": 1,
+      "interpolation": "linear",
+      "stepMode": "holdLeft",
+      "outOfRange": "hold",
+      "keys": [
+        {
+          "id": "k0",
+          "t": 0,
+          "v": -10
+        },
+        {
+          "id": "kmkfbxv7ykkf7",
+          "t": 5,
+          "v": 10
+        }
+      ]
+    },
+    {
+      "id": "uniform:lineINT",
+      "name": "lineINT",
+      "target": {
+        "kind": "uniform",
+        "uniformName": "lineINT"
+      },
+      "valueType": "int",
+      "ui": {
+        "valueLine": false,
+        "locked": true,
+        "dragEnabled": true
+      },
+      "defaultValue": 0,
+      "minValue": -10,
+      "maxValue": 10,
+      "stepValue": 1,
+      "interpolation": "step",
+      "stepMode": "holdLeft",
+      "outOfRange": "hold",
+      "keys": [
+        {
+          "id": "k0",
+          "t": 0,
+          "v": 0
+        },
+        {
+          "id": "kmkfby5zw3czp",
+          "t": 1,
+          "v": 0
+        },
+        {
+          "id": "kmkfbyorr60fc",
+          "t": 1.4000000000000001,
+          "v": 5
+        },
+        {
+          "id": "kmkfbyz7e13q4",
+          "t": 2,
+          "v": 0
+        },
+        {
+          "id": "kmkfbz94vjh37",
+          "t": 2.4000000000000004,
+          "v": 5
+        },
+        {
+          "id": "kmkfbzhn66y9h",
+          "t": 3,
+          "v": -5
+        },
+        {
+          "id": "kmkfbzr7kdx0w",
+          "t": 3.6,
+          "v": 5
+        },
+        {
+          "id": "kmkfby95vcxnw",
+          "t": 4,
+          "v": 0
+        },
+        {
+          "id": "kmkfbybsgke27",
+          "t": 5,
+          "v": 0
+        }
+      ]
+    }
+  ],
+  "snapSettings": {
+    "enabled": true,
+    "stepSec": 0.2
+  }
+}

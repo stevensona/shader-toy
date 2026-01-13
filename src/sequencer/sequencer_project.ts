@@ -51,6 +51,18 @@ export type SequencerTrack = {
 	};
 	valueType: 'float' | 'int';
 
+	/**
+	 * Per-row UI controls (stored in JSON):
+	 * - valueLine: show/hide the value line visualization for this row ("V")
+	 * - locked: lock the row against edits ("L")
+	 * - dragEnabled: allow dragging keyframes/groups for this row ("D")
+	 */
+	ui?: {
+		valueLine?: boolean;
+		locked?: boolean;
+		dragEnabled?: boolean;
+	};
+
 	defaultValue: number;
 	minValue?: number;
 	maxValue?: number;
@@ -120,6 +132,15 @@ const normalizeTrack = (raw: unknown): SequencerTrack | undefined => {
 	const stepMode = (raw.stepMode === 'holdLeft') ? raw.stepMode : undefined;
 	const outOfRange = (raw.outOfRange === 'hold' || raw.outOfRange === 'default') ? raw.outOfRange : undefined;
 
+	let ui: SequencerTrack['ui'] | undefined;
+	if (isPlainObject(raw.ui)) {
+		ui = {
+			valueLine: (typeof raw.ui.valueLine === 'boolean') ? raw.ui.valueLine : undefined,
+			locked: (typeof raw.ui.locked === 'boolean') ? raw.ui.locked : undefined,
+			dragEnabled: (typeof raw.ui.dragEnabled === 'boolean') ? raw.ui.dragEnabled : undefined,
+		};
+	}
+
 	const keysRaw = Array.isArray(raw.keys) ? raw.keys : [];
 	const keys: SequencerKey[] = [];
 	for (let i = 0; i < keysRaw.length; i++) {
@@ -138,6 +159,7 @@ const normalizeTrack = (raw: unknown): SequencerTrack | undefined => {
 		name,
 		target: { kind: 'uniform', uniformName },
 		valueType,
+		ui,
 		defaultValue,
 		minValue,
 		maxValue,
@@ -316,6 +338,11 @@ export const createSequencerProjectFromUniforms = (uniforms: UniformDefinition[]
 			name,
 			target: { kind: 'uniform', uniformName: name },
 			valueType: u.Typename === 'int' ? 'int' : 'float',
+			ui: {
+				valueLine: true,
+				locked: false,
+				dragEnabled: true,
+			},
 			defaultValue: defaultValue,
 			minValue,
 			maxValue,

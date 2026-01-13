@@ -1,15 +1,16 @@
 // Demo shader for manual sequencer testing
-// (deliberately simple; driven by 3 scalar uniforms)
+// (deliberately simple; driven by 3 float + 1 int scalar uniforms)
 
-#iUniform float line1 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer {}
-#iUniform float line2 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer {}
-#iUniform float line3 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer {}
-#iUniform int test = 0 in { -10, 10 } step 1 sequncer {}
+#iUniform float line1 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer
+#iUniform float line2 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer
+#iUniform float line3 = 0.0 in { -10.0, 10.0 } step 1.0 sequncer
 
 // Control-window-only uniforms (not exposed to the sequencer):
 #iUniform float test1 = 0.0 in { -10.0, 10.0 } step 1.0
 #iUniform float test2 = 0.0 in { -10.0, 10.0 } step 1.0
 #iUniform float test3 = 0.0 in { -10.0, 10.0 } step 1.0
+
+#iUniform int lineINT = 0 in { -10, 10 } step 1 sequncer
 
 float barMask(vec2 uv, float yCenter, float yHalfHeight, float v)
 {
@@ -44,15 +45,22 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     // Subtle center axis.
     col += vec3(0.12) * (1.0 - smoothstep(0.0, 0.002, abs(uv.x - 0.5)));
 
-    // 3 bars at fixed Y positions.
+    // 3 float bars at fixed Y positions (kept higher in frame).
     float h = 0.04;
-    float b1 = barMask(uv, 0.70, h, line1);
-    float b2 = barMask(uv, 0.50, h, line2);
-    float b3 = barMask(uv, 0.30, h, line3);
+    float b1 = barMask(uv, 0.78, h, line1);
+    float b2 = barMask(uv, 0.62, h, line2);
+    float b3 = barMask(uv, 0.46, h, line3);
+
+    // Clean separation, then one thicker int bar.
+    // NOTE: int uniform must be explicitly converted to float for drawing.
+    float hInt = 0.08; // double the half-height of float bars
+    float lineINTf = float(lineINT);
+    float b4 = barMask(uv, 0.24, hInt, lineINTf);
 
     col = mix(col, vec3(0.20, 0.80, 1.00), b1);
     col = mix(col, vec3(1.00, 0.60, 0.20), b2);
     col = mix(col, vec3(0.35, 1.00, 0.35), b3);
+    col = mix(col, vec3(0.95, 0.35, 0.90), b4);
 
     fragColor = vec4(col, 1.0);
 }

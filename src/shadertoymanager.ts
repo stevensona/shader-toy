@@ -500,14 +500,42 @@ export class ShaderToyManager {
     };
 
     private postSequencerProject = (): void => {
-        if (!this.sequencerWebview || !this.sequencerProject) {
+        if (!this.sequencerProject) {
             return;
         }
+
+        if (this.sequencerWebview) {
+            try {
+                this.sequencerWebview.Panel.webview.postMessage({
+                    command: 'sequencerProject',
+                    project: this.sequencerProject,
+                });
+            } catch {
+                // ignore
+            }
+        }
+
+        // Also provide per-uniform track UI to all previews so the uniforms GUI can reflect
+        // sequencer lock state (e.g. disable the per-uniform "+" button when locked).
         try {
-            this.sequencerWebview.Panel.webview.postMessage({
-                command: 'sequencerProject',
-                project: this.sequencerProject,
-            });
+            const byUniformName: Record<string, { valueLine: boolean; locked: boolean; dragEnabled: boolean }> = {};
+            for (const t of this.sequencerProject.tracks) {
+                if (t.target?.kind !== 'uniform' || !t.target.uniformName) {
+                    continue;
+                }
+                const ui = t.ui ?? {};
+                byUniformName[t.target.uniformName] = {
+                    valueLine: ui.valueLine !== false,
+                    locked: ui.locked === true,
+                    dragEnabled: ui.dragEnabled !== false,
+                };
+            }
+
+            const payload = { command: 'sequencerTrackUiByUniform', byUniformName };
+            if (this.webviewPanel) {
+                this.webviewPanel.Panel.webview.postMessage(payload);
+            }
+            this.staticWebviews.forEach((w) => w.Panel.webview.postMessage(payload));
         } catch {
             // ignore
         }
@@ -588,6 +616,7 @@ export class ShaderToyManager {
                 }
                 return {
                     ...t,
+                    ui: (existing.ui || t.ui) ? { ...(t.ui ?? {}), ...(existing.ui ?? {}) } : undefined,
                     // Preserve user edits.
                     keys: Array.isArray(existing.keys) ? existing.keys : t.keys,
                     interpolation: existing.interpolation ?? t.interpolation,
@@ -815,6 +844,66 @@ export class ShaderToyManager {
                     return;
                 }
 
+                if (message.command === 'sequencerSetSnapSettings') {
+                    if (!this.sequencerProject) {
+                        return;
+                    }
+                    const stepSec = Number(message.stepSec);
+                    if (!isFinite(stepSec) || stepSec <= 0) {
+                        return;
+                    }
+
+                    this.sequencerProject = {
+                        ...this.sequencerProject,
+                        snapSettings: {
+                            enabled: true,
+                            stepSec,
+                        },
+                    };
+                    this.postSequencerProject();
+                    void this.saveSequencerProjectForPanel(previewPanel);
+                    return;
+                }
+
+                    if (message.command === 'sequencerSetTrackUi') {
+                        if (!this.sequencerProject) {
+                            return;
+                        }
+                        const trackId: string = String(message.trackId || '');
+                        const uiPatch: unknown = message.ui;
+                        if (!trackId || !uiPatch || typeof uiPatch !== 'object') {
+                            return;
+                        }
+
+                        const normalizedPatch = {
+                            valueLine: ('valueLine' in (uiPatch as any) && typeof (uiPatch as any).valueLine === 'boolean') ? (uiPatch as any).valueLine : undefined,
+                            locked: ('locked' in (uiPatch as any) && typeof (uiPatch as any).locked === 'boolean') ? (uiPatch as any).locked : undefined,
+                            dragEnabled: ('dragEnabled' in (uiPatch as any) && typeof (uiPatch as any).dragEnabled === 'boolean') ? (uiPatch as any).dragEnabled : undefined,
+                        };
+
+                        this.sequencerProject = {
+                            ...this.sequencerProject,
+                            tracks: this.sequencerProject.tracks.map((t) => {
+                                if (t.id !== trackId) {
+                                    return t;
+                                }
+                                return {
+                                    ...t,
+                                    ui: {
+                                        ...(t.ui ?? {}),
+                                        ...(normalizedPatch.valueLine === undefined ? {} : { valueLine: normalizedPatch.valueLine }),
+                                        ...(normalizedPatch.locked === undefined ? {} : { locked: normalizedPatch.locked }),
+                                        ...(normalizedPatch.dragEnabled === undefined ? {} : { dragEnabled: normalizedPatch.dragEnabled }),
+                                    },
+                                };
+                            }),
+                        };
+
+                        this.postSequencerProject();
+                        void this.saveSequencerProjectForPanel(previewPanel);
+                        return;
+                    }
+
                 if (message.command === 'sequencerAddKey') {
                     if (!this.sequencerProject) {
                         return;
@@ -825,18 +914,21 @@ export class ShaderToyManager {
                     if (!trackId) {
                         return;
                     }
+                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
+                        if (track?.ui?.locked) {
+                            return;
+                        }
                     this.sequencerProject = addOrReplaceKey(this.sequencerProject, trackId, { t, v });
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
                     void this.saveSequencerProjectForPanel(previewPanel);
 
                     // Mirror the edit back into the shader source (like #iUniform sliders).
-                    try {
-                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
-                        if (track && track.target && track.target.kind === 'uniform') {
-                            void this.updateIUniformDefaultInDocument(previewPanel, track.target.uniformName, v);
-                        }
-                    } catch {
+                        try {
+                            if (track && track.target && track.target.kind === 'uniform') {
+                                void this.updateIUniformDefaultInDocument(previewPanel, track.target.uniformName, v);
+                            }
+                        } catch {
                         // ignore
                     }
                     return;
@@ -852,6 +944,10 @@ export class ShaderToyManager {
                     if (!trackId || !keyId) {
                         return;
                     }
+                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
+                        if (track?.ui?.locked || track?.ui?.dragEnabled === false) {
+                            return;
+                        }
                     this.sequencerProject = moveKeyTime(this.sequencerProject, trackId, keyId, t);
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
@@ -869,18 +965,21 @@ export class ShaderToyManager {
                     if (!trackId || !keyId) {
                         return;
                     }
+                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
+                        if (track?.ui?.locked) {
+                            return;
+                        }
                     this.sequencerProject = setKeyValue(this.sequencerProject, trackId, keyId, v);
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
                     void this.saveSequencerProjectForPanel(previewPanel);
 
                     // Mirror the edit back into the shader source (like #iUniform sliders).
-                    try {
-                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
-                        if (track && track.target && track.target.kind === 'uniform') {
-                            void this.updateIUniformDefaultInDocument(previewPanel, track.target.uniformName, v);
-                        }
-                    } catch {
+                        try {
+                            if (track && track.target && track.target.kind === 'uniform') {
+                                void this.updateIUniformDefaultInDocument(previewPanel, track.target.uniformName, v);
+                            }
+                        } catch {
                         // ignore
                     }
                     return;
@@ -895,6 +994,10 @@ export class ShaderToyManager {
                     if (!trackId || !keyId) {
                         return;
                     }
+                        const track = this.sequencerProject.tracks.find((tr) => tr.id === trackId);
+                        if (track?.ui?.locked) {
+                            return;
+                        }
                     this.sequencerProject = deleteKey(this.sequencerProject, trackId, keyId);
                     this.postSequencerProject();
                     this.applySequencerAtTime(this.startingData.Time);
@@ -1211,6 +1314,12 @@ export class ShaderToyManager {
                     if (!this.sequencerProject) {
                         return;
                     }
+
+                    // Only allow this action when paused.
+                    if (!this.startingData.Paused) {
+                        return;
+                    }
+
                     const uniformName = typeof message.name === 'string' ? message.name : '';
                     const rawValue = Number(message.value);
                     if (!uniformName || !isFinite(rawValue)) {
@@ -1219,6 +1328,10 @@ export class ShaderToyManager {
 
                     const track = this.sequencerProject.tracks.find((t) => t.target?.kind === 'uniform' && t.target.uniformName === uniformName);
                     if (!track) {
+                        return;
+                    }
+
+                    if (track.ui?.locked === true) {
                         return;
                     }
 
