@@ -440,11 +440,11 @@ export class WebviewContentProvider {
         const recordTargetFramerateExtension = new RecordTargetFramerateExtension(recordTargetFramerate);
         this.webviewAssembler.addReplaceModule(recordTargetFramerateExtension, 'let targetFrameRate = <!-- Record Target Framerate -->;', '<!-- Record Target Framerate -->');
 
-        const recordVideoContainer = this.context.getConfig<string>('recordVideoContainer') || "webm";
+        const recordVideoContainer = this.context.getConfig<string>('recordVideoContainer') || 'webm';
         const recordVideoContainerExtension = new RecordVideoContainerExtension(recordVideoContainer);
         this.webviewAssembler.addReplaceModule(recordVideoContainerExtension, 'let videoContainer = <!-- Record Video Container -->;', '<!-- Record Video Container -->');
 
-        const recordVideoCodec = this.context.getConfig<string>('recordVideoCodec') || "vp8";
+        const recordVideoCodec = this.context.getConfig<string>('recordVideoCodec') || 'vp8';
         const recordVideoCodecExtension = new RecordVideoCodecExtension(recordVideoCodec);
         this.webviewAssembler.addReplaceModule(recordVideoCodecExtension, 'let videoCodec = <!-- Record Video Codec -->;', '<!-- Record Video Codec -->');
 
@@ -456,7 +456,7 @@ export class WebviewContentProvider {
         const recordMaxDurationExtension = new RecordMaxDurationExtension(recordMaxDuration);
         this.webviewAssembler.addReplaceModule(recordMaxDurationExtension, 'let maxDuration = <!-- Record Max Duration -->;', '<!-- Record Max Duration -->');
 
-        const recordOfflineFormat = this.context.getConfig<string>('recordOfflineFormat') || "webm";
+        const recordOfflineFormat = this.context.getConfig<string>('recordOfflineFormat') || 'webm';
         const recordOfflineFormatExtension = new RecordOfflineFormatExtension(recordOfflineFormat);
         this.webviewAssembler.addReplaceModule(recordOfflineFormatExtension, 'let format = <!-- Record Offline Format -->;', '<!-- Record Offline Format -->');
 

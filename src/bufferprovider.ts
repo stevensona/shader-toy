@@ -339,7 +339,7 @@ void main() {
             this.showInformationAtLine(file, `Using root path '${baseDir}' for glslify`, 0);
 
             // glslify the code
-            const glsl = require('glslify'); // eslint-disable-line @typescript-eslint/no-var-requires
+            const glsl = require('glslify'); // eslint-disable-line @typescript-eslint/no-require-imports
             try {
                 code = glsl.compile(code, {basedir: baseDir});
             }
@@ -347,7 +347,7 @@ void main() {
                 const rawMessage = (e as Error).message || String(e);
                 // Make the most common failure mode actionable: missing dependency modules.
                 // Example: "Cannot find module 'glsl-noise/simplex/2d'".
-                const missingModuleMatch = rawMessage.match(/Cannot find module ['\"]([^'\"]+)['\"]/i);
+                const missingModuleMatch = rawMessage.match(/Cannot find module ['"]([^'"]+)['"]/i);
                 if (missingModuleMatch) {
                     const requested = missingModuleMatch[1];
                     // Suggest installing the top-level package name (best-effort heuristic).
