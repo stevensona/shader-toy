@@ -45,6 +45,9 @@ import { RecordButtonExtension } from './extensions/user_interface/record_button
 import { ReloadButtonStyleExtension } from './extensions/user_interface/reload_button_style_extension';
 import { ReloadButtonExtension } from './extensions/user_interface/reload_button_extension';
 
+import { SequencerButtonStyleExtension } from './extensions/user_interface/sequencer_button_style_extension';
+import { SequencerButtonExtension } from './extensions/user_interface/sequencer_button_extension';
+
 import { DefaultErrorsExtension } from './extensions/user_interface/error_display/default_errors_extension';
 import { DiagnosticsErrorsExtension } from './extensions/user_interface/error_display/diagnostics_errors_extension';
 import { GlslifyErrorsExtension } from './extensions/user_interface/error_display/glslify_errors_extension';
@@ -70,6 +73,7 @@ import { AudioResumeExtension } from './extensions/audio/audio_resume_extension'
 import { UniformsInitExtension } from './extensions/uniforms/uniforms_init_extension';
 import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_extension';
 import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
+import { UniformsSequencerBridgeExtension } from './extensions/uniforms/uniforms_sequencer_bridge_extension';
 
 import { removeDuplicates } from './utility';
 import { RecordTargetFramerateExtension } from './extensions/user_interface/record_target_framerate_extension';
@@ -97,6 +101,21 @@ export class WebviewContentProvider {
 
         this.buffers = [];
         this.commonIncludes = [];
+    }
+
+    public getCustomUniforms(): Types.UniformDefinition[] {
+        const byName = new Map<string, Types.UniformDefinition>();
+        for (const buffer of this.buffers) {
+            for (const u of buffer.CustomUniforms) {
+                if (!u || !u.Name) {
+                    continue;
+                }
+                if (!byName.has(u.Name)) {
+                    byName.set(u.Name, u);
+                }
+            }
+        }
+        return Array.from(byName.values());
     }
 
     public async parseShaderTree(generateStandalone: boolean): Promise<string[]> {
@@ -263,6 +282,10 @@ export class WebviewContentProvider {
         if (useUniforms) {
             const uniformsInitExtension = new UniformsInitExtension(this.buffers, startingState.UniformsGui);
             this.webviewAssembler.addWebviewModule(uniformsInitExtension, '// Uniforms Init');
+
+            const uniformsSequencerBridge = new UniformsSequencerBridgeExtension();
+            this.webviewAssembler.addWebviewModule(uniformsSequencerBridge, '// Uniforms Init');
+
             const uniformsUpdateExtension = new UniformsUpdateExtension(this.buffers);
             this.webviewAssembler.addWebviewModule(uniformsUpdateExtension, '// Uniforms Update');
             const uniformsPreambleExtension = new UniformsPreambleExtension(this.buffers);
@@ -357,6 +380,9 @@ export class WebviewContentProvider {
             const webviewRuntimeEnv = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/runtime_env.js', getResourceText);
             this.webviewAssembler.addReplaceModule(webviewRuntimeEnv, '<!-- Webview runtime_env.js -->', '<!-- Webview runtime_env.js -->');
 
+            const webviewSequencerInit = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/sequencer_init.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewSequencerInit, '<!-- Webview sequencer_init.js -->', '<!-- Webview sequencer_init.js -->');
+
             const webviewGlslErrorHook = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/glsl_error_hook.js', getResourceText);
             this.webviewAssembler.addReplaceModule(webviewGlslErrorHook, '<!-- Webview glsl_error_hook.js -->', '<!-- Webview glsl_error_hook.js -->');
 
@@ -379,6 +405,7 @@ export class WebviewContentProvider {
         // Keep the GLSL #line "self" sentinel source-id consistent between extension and webview.
         const selfSourceIdExtension = new SelfSourceIdExtension(SELF_SOURCE_ID);
         this.webviewAssembler.addReplaceModule(selfSourceIdExtension, 'window.ShaderToy.SELF_SOURCE_ID = <!-- Self Source Id -->;', '<!-- Self Source Id -->');
+
         if (this.context.getConfig<boolean>('printShaderFrameTime')) {
             const statsExtension = new StatsExtension(getWebviewResourcePath, generateStandalone);
             this.webviewAssembler.addWebviewModule(statsExtension, '<!-- Stats.js -->');
@@ -398,6 +425,13 @@ export class WebviewContentProvider {
                 const pauseButtonExtension = new PauseButtonExtension();
                 this.webviewAssembler.addWebviewModule(pauseButtonExtension, '<!-- Pause Element -->');
             }
+
+            // Sequencer toggle button (always available in VS Code webview mode)
+            const sequencerButtonStyleExtension = new SequencerButtonStyleExtension(getWebviewResourcePath);
+            this.webviewAssembler.addWebviewModule(sequencerButtonStyleExtension, '/* Sequencer Button Style */');
+
+            const sequencerButtonExtension = new SequencerButtonExtension();
+            this.webviewAssembler.addWebviewModule(sequencerButtonExtension, '<!-- Sequencer Button Element -->');
         }
 
         if (this.context.getConfig<boolean>('pauseWholeRender')) {

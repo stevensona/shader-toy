@@ -67,7 +67,13 @@ type Uniform = {
     Default?: number[],
     Min?: number[],
     Max?: number[],
-    Step?: number[]
+    Step?: number[],
+
+    // Optional tag used by the sequencer integration.
+    // Example: `#iUniform float foo = 0 in { -1, 1 } step 0.1 sequncer {}`
+    Sequencer?: {
+        // Future: options inside `{ ... }`.
+    }
 };
 type Keyboard = {
     Type: ObjectType.Keyboard
@@ -353,6 +359,41 @@ export class ShaderParser {
             stepValue = step;
         }
 
+        // Optional sequencer tag (intentionally tolerant):
+        // - Accept `sequncer` (typo preserved for backward compatibility) and `sequencer`.
+        // - Allow optional `{ ... }` (ignored for now).
+        // Note: use the same peek/next pattern as the rest of the parser so we don't
+        // disturb tokens that may already be peeked across newlines.
+        let sequencerTag: Uniform['Sequencer'] | undefined;
+        {
+            const tagPeek = this.lexer.peek();
+            const tagName = tagPeek && tagPeek.type === TokenType.Identifier ? String(tagPeek.value) : '';
+            if (tagName === 'sequncer' || tagName === 'sequencer') {
+                this.lexer.next();
+                sequencerTag = {};
+
+                // Optional options block `{ ... }`.
+                const maybeBrace = this.lexer.peek();
+                if (maybeBrace && maybeBrace.type === TokenType.Punctuation && maybeBrace.value === '{') {
+                    this.lexer.next();
+                    let depth = 1;
+                    while (depth > 0) {
+                        const t = this.lexer.next();
+                        if (t === undefined) {
+                            return this.makeError(`Unterminated ${tagName} options block (missing "}")`);
+                        }
+                        if (t.type === TokenType.Punctuation) {
+                            if (t.value === '{') {
+                                depth++;
+                            } else if (t.value === '}') {
+                                depth--;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         const isIntegerType = [ 'int', 'ivec2', 'ivec3', 'ivec4' ].findIndex((value: string) => value === type) >= 0; 
 
         const flattenLiteral = (source: LiteralNumber | LiteralValue | undefined) => {
@@ -385,7 +426,8 @@ export class ShaderParser {
             Default: defaultAsNumber,
             Min: minValueAsNumber,
             Max: maxValueAsNumber,
-            Step: stepValueAsNumber
+            Step: stepValueAsNumber,
+            ...(sequencerTag ? { Sequencer: sequencerTag } : {})
         };
         return uniform;
     }
