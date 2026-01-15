@@ -245,7 +245,7 @@ export class WebviewContentProvider {
             ? 'WebGL2'
             : 'Default';
         const glslVersionExtension = new GlslVersionExtension(glslVersionSetting);
-        this.webviewAssembler.addReplaceModule(glslVersionExtension, "let glslVersionSetting = '<!-- GLSL Version -->';", '<!-- GLSL Version -->');
+        this.webviewAssembler.addReplaceModule(glslVersionExtension, 'let glslVersionSetting = \'<!-- GLSL Version -->\';', '<!-- GLSL Version -->');
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // WebGL2 extra line count (used for error line mapping)

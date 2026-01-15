@@ -711,7 +711,7 @@ void main() {
                 let userPath = nextObject.Path;
                 const normalized = userPath.replace('file://', '');
                 if (normalized === 'self') {
-                    this.showErrorAtLine(file, '"#iVertex \"self\"" is not supported. Use "#iVertex \"default\"" or point to a .glsl file.', line);
+                    this.showErrorAtLine(file, '\'#iVertex "self"\' is not supported. Use \'#iVertex "default"\' or point to a .glsl file.', line);
                     removeLastObject();
                     break;
                 }
