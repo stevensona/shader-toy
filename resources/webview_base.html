@@ -233,10 +233,35 @@
         }
     });
 
+    // GLSL version selection
+    // Values: 'Default' | 'WebGL2'
+    let glslVersionSetting = '<!-- GLSL Version -->';
+    if (glslVersionSetting !== 'Default' && glslVersionSetting !== 'WebGL2') {
+        glslVersionSetting = 'Default';
+    }
+    let glslUseVersion3 = (glslVersionSetting === 'WebGL2');
+
+    function prepareFragmentShader(source) {
+        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.prepareFragmentShader) {
+            return window.ShaderToy.shaderCompile.prepareFragmentShader(source, glslUseVersion3);
+        }
+        return source;
+    }
+
+    function prepareVertexShader(source) {
+        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.prepareVertexShader) {
+            return window.ShaderToy.shaderCompile.prepareVertexShader(source, glslUseVersion3);
+        }
+        return source;
+    }
+
     let canvas = document.getElementById('canvas');
-    let gl = canvas.getContext('webgl2');
-    let isWebGL2 = gl != null;
-    if (gl == null) gl = canvas.getContext('webgl');
+    let glContextInfo = (window.ShaderToy && window.ShaderToy.gl && window.ShaderToy.gl.getContext)
+        ? window.ShaderToy.gl.getContext(canvas, glslUseVersion3)
+        : { gl: canvas.getContext('webgl2') || canvas.getContext('webgl'), isWebGL2: false };
+    let gl = glContextInfo.gl;
+    let isWebGL2 = glContextInfo.isWebGL2;
+    const WEBGL2_EXTRA_SHADER_LINES = <!-- WebGL2 Extra Shader Lines -->;
     let supportsFloatFramebuffer = (gl.getExtension('EXT_color_buffer_float') != null) || (gl.getExtension('WEBGL_color_buffer_float') != null);
     let supportsHalfFloatFramebuffer = (gl.getExtension('EXT_color_buffer_half_float') != null);
     let framebufferType = THREE.UnsignedByteType;
@@ -264,7 +289,10 @@
     // WebGL2 inserts more lines into the shader
     if (isWebGL2) {
         for (let buffer of buffers) {
-            buffer.LineOffset += 16;
+            buffer.LineOffset += WEBGL2_EXTRA_SHADER_LINES;
+            if (buffer.VertexLineOffset !== undefined) {
+                buffer.VertexLineOffset += WEBGL2_EXTRA_SHADER_LINES;
+            }
         }
     }
 
@@ -304,17 +332,32 @@
     // Run every shader once to check for compile errors
     let compileTimeStart = performance.now();
     let failed=0;
+    const failedBufferNames = new Set();
     for (let include of commonIncludes) {
         currentShader = {
             Name: include.Name,
             File: include.File,
-            // add two for version and precision lines
-            LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? 16 : 0)
+            // add for wrapper lines inserted by compileFragShader
+            LineOffset: <!-- Preamble Line Numbers --> + 2 + (isWebGL2 ? WEBGL2_EXTRA_SHADER_LINES : 0)
         };
         // Test Compile Included Files
     }
 
     for (let buffer of buffers) {
+        if (buffer.VertexShaderElementId !== undefined) {
+            currentShader = {
+                Name: buffer.Name + ' (vertex)',
+                File: buffer.VertexFile,
+                LineOffset: buffer.VertexLineOffset
+            };
+
+            const vertexSource = prepareVertexShader(document.getElementById(buffer.VertexShaderElementId).textContent);
+            if (!compileVertShader(gl, vertexSource)) {
+                failed++;
+                failedBufferNames.add(buffer.Name);
+                continue;
+            }
+        }
         currentShader = {
             Name: buffer.Name,
             File: buffer.File,
@@ -345,26 +388,17 @@
     }
 
     function compileFragShader(gl, fsSource) {
-        // Prefer module implementation (resources/webview/shader_compile.js) if present.
-        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.compileFragShader) {
-            return window.ShaderToy.shaderCompile.compileFragShader(gl, fsSource);
+        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.compileIncludeFragment) {
+            return window.ShaderToy.shaderCompile.compileIncludeFragment(gl, fsSource, glslUseVersion3);
         }
+        return false;
+    }
 
-        // Fallback (portable preview): keep legacy behavior when module scripts are not available.
-        const fs = gl.createShader(gl.FRAGMENT_SHADER);
-        // Normalize our "self" sentinel source-id for standalone compiles.
-            const selfSourceId = Number(window.ShaderToy && window.ShaderToy.SELF_SOURCE_ID);
-            if (Number.isFinite(selfSourceId)) {
-                fsSource = (fsSource || '').replace(new RegExp(`#line\\s+(\\d+)\\s+${selfSourceId}`, 'g'), '#line $1 0');
-            }
-        gl.shaderSource(fs, fsSource);
-        gl.compileShader(fs);
-        if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-            const fragmentLog = gl.getShaderInfoLog(fs);
-            console.error('THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.COMPILE_STATUS', null, null, null, null, fragmentLog);
-            return false;
+    function compileVertShader(gl, vsSource) {
+        if (window.ShaderToy && window.ShaderToy.shaderCompile && window.ShaderToy.shaderCompile.compileVertexShader) {
+            return window.ShaderToy.shaderCompile.compileVertexShader(gl, vsSource, glslUseVersion3);
         }
-        return true;
+        return false;
     }
 
     function render() {
@@ -385,6 +419,9 @@
         // Audio Update
 
         for (let buffer of buffers) {
+            if (failedBufferNames.has(buffer.Name)) {
+                continue;
+            }
             buffer.Shader.uniforms['iResolution'].value = resolution;
             buffer.Shader.uniforms['iTimeDelta'].value = deltaTime;
             buffer.Shader.uniforms['iTime'].value = time;

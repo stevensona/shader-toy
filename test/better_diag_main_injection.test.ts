@@ -35,7 +35,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 `;
         const out = await parse(code);
         assert.ok(out.includes('void main() {'));
-        assert.ok(out.includes('mainImage(gl_FragColor, fragCoord);'));
+        assert.ok(out.includes('mainImage(GLSL_FRAGCOLOR, fragCoord);'));
     });
 
     test('Still injects when commented-out void main() exists', async () => {
@@ -47,7 +47,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 `;
         const out = await parse(code);
         assert.ok(out.includes('void main() {'));
-        assert.ok(out.includes('mainImage(gl_FragColor, fragCoord);'));
+        assert.ok(out.includes('mainImage(GLSL_FRAGCOLOR, fragCoord);'));
     });
 
     test('Still injects with multiple commented-out void main() signatures', async () => {
@@ -61,7 +61,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 `;
         const out = await parse(code);
         assert.ok(out.includes('void main() {'));
-        assert.ok(out.includes('mainImage(gl_FragColor, fragCoord);'));
+        assert.ok(out.includes('mainImage(GLSL_FRAGCOLOR, fragCoord);'));
     });
 
     test('Does not inject when real void main() exists (even if mainImage exists too)', async () => {
@@ -74,8 +74,8 @@ void main() {
 }
 `;
         const out = await parse(code);
-        // The injected wrapper is the only place that calls mainImage(gl_FragColor, fragCoord)
-        assert.ok(!out.includes('mainImage(gl_FragColor, fragCoord);'));
+        // The injected wrapper is the only place that calls mainImage(GLSL_FRAGCOLOR, fragCoord)
+        assert.ok(!out.includes('mainImage(GLSL_FRAGCOLOR, fragCoord);'));
     });
 
     test('Does not inject when only commented-out mainImage exists', async () => {
@@ -86,6 +86,6 @@ void main() {
 `;
         const out = await parse(code);
         assert.ok(!out.includes('void main() {'));
-        assert.ok(!out.includes('mainImage(gl_FragColor, fragCoord);'));
+        assert.ok(!out.includes('mainImage(GLSL_FRAGCOLOR, fragCoord);'));
     });
 });
