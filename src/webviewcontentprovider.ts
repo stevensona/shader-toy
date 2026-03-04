@@ -71,6 +71,8 @@ import { AudioUpdateExtension } from './extensions/audio/audio_update_extension'
 import { AudioPauseExtension } from './extensions/audio/audio_pause_extension';
 import { AudioResumeExtension } from './extensions/audio/audio_resume_extension';
 
+import { FrameTimingInitExtension } from './extensions/frames/frame_timing_init_extension';
+
 import { UniformsInitExtension } from './extensions/uniforms/uniforms_init_extension';
 import { UniformsUpdateExtension } from './extensions/uniforms/uniforms_update_extension';
 import { UniformsPreambleExtension } from './extensions/uniforms/uniforms_preamble_extension';
@@ -392,7 +394,14 @@ export class WebviewContentProvider {
 
             const webviewRenderLoop = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/render_loop.js', getResourceText);
             this.webviewAssembler.addReplaceModule(webviewRenderLoop, '<!-- Webview render_loop.js -->', '<!-- Webview render_loop.js -->');
+
+            const webviewFrameTiming = new WebviewModuleScriptExtension(getWebviewResourcePath, generateStandalone, 'webview/frame_timing.js', getResourceText);
+            this.webviewAssembler.addReplaceModule(webviewFrameTiming, '<!-- Webview frame_timing.js -->', '<!-- Webview frame_timing.js -->');
         }
+
+        // Frame Timing — inject render loop hook
+        const frameTimingInitExtension = new FrameTimingInitExtension();
+        this.webviewAssembler.addWebviewModule(frameTimingInitExtension, '// Frame Timing');
 
         // Keep the GLSL #line "self" sentinel source-id consistent between extension and webview.
         const selfSourceIdExtension = new SelfSourceIdExtension(SELF_SOURCE_ID);

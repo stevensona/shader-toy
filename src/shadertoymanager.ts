@@ -7,6 +7,7 @@ import { RenderStartingData, DiagnosticBatch } from './typenames';
 import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 import { removeDuplicates } from './utility';
+import { FramesPanel } from './framespanel';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
@@ -23,9 +24,11 @@ export class ShaderToyManager {
 
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
+    framesPanel: FramesPanel;
 
     constructor(context: Context) {
         this.context = context;
+        this.framesPanel = new FramesPanel(context);
     }
 
     public migrateToNewContext = async (context: Context) => {
@@ -148,6 +151,11 @@ export class ShaderToyManager {
         this.staticWebviews.forEach((webview: StaticWebview) => webview.Panel.webview.postMessage({command: command}));
     };
 
+    public showFrameTimePanel = () => {
+        this.framesPanel.show();
+        this.postCommand('enableFrameTiming');
+    };
+
     private resetStartingData = () => {
         const paused = this.startingData.Paused;
         this.startingData = new RenderStartingData();
@@ -176,6 +184,11 @@ export class ShaderToyManager {
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 switch (message.command) {
+                case 'frameData':
+                    if (this.framesPanel.isActive) {
+                        this.framesPanel.postFrameData(message);
+                    }
+                    return;
                 case 'readDDSFile':
                 {
                     const requestId: number = message.requestId;

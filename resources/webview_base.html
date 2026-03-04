@@ -112,6 +112,7 @@
 <!-- Webview ui_controls.js -->
 <!-- Webview gl_context.js -->
 <!-- Webview time_input.js -->
+<!-- Webview frame_timing.js -->
 <!-- Webview render_loop.js -->
 
 <script type="text/javascript">
@@ -229,6 +230,11 @@
                 break;
             case 'screenshot':
                 saveScreenshot();
+                break;
+            case 'enableFrameTiming':
+                if (window.ShaderToy && window.ShaderToy.frameTiming) {
+                    window.ShaderToy.frameTiming.setEnabled(true);
+                }
                 break;
         }
     });
@@ -465,6 +471,8 @@
         }
 
         frameCounter++;
+
+        // Frame Timing
     }
     function forceAspectRatio(width, height) {
         // Forced aspect ratio

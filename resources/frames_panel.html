@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame Timing</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 12px;
+    color: var(--vscode-foreground, #ccc);
+    background: var(--vscode-editor-background, #1e1e1e);
+}
+
+.frame-time-graph-fill {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.frame-time-canvas {
+    flex: 1;
+    width: 100%;
+    cursor: crosshair;
+    display: block;
+}
+
+.frame-time-zoom-controls {
+    display: flex;
+    gap: 2px;
+    padding: 2px 4px;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.frame-time-zoom-btn {
+    background: transparent;
+    border: 1px solid rgba(128,128,128,0.3);
+    color: inherit;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-family: 'Consolas', 'Menlo', monospace;
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 16px;
+}
+.frame-time-zoom-btn.active {
+    background: rgba(128,128,128,0.25);
+    border-color: rgba(128,128,128,0.5);
+}
+.frame-time-zoom-btn:hover {
+    background: rgba(128,128,128,0.15);
+}
+.frame-time-zoom-sep {
+    width: 1px;
+    height: 14px;
+    background: rgba(128,128,128,0.2);
+    margin: 0 4px;
+}
+.frame-time-zoom-spacer { flex: 1; }
+</style>
+</head>
+<body>
+<div class="frame-time-graph-fill">
+    <canvas class="frame-time-canvas"
+            title="Click to pause/resume — hover for details — scroll to zoom"></canvas>
+    <div class="frame-time-zoom-controls">
+        <button class="frame-time-zoom-btn frame-time-unit-btn active" data-unit="ms">ms</button>
+        <button class="frame-time-zoom-btn frame-time-unit-btn" data-unit="fps">fps</button>
+        <span class="frame-time-zoom-sep" aria-hidden="true"></span>
+        <span class="frame-time-zoom-spacer" aria-hidden="true"></span>
+        <button class="frame-time-zoom-btn" data-zoom="50">50</button>
+        <button class="frame-time-zoom-btn" data-zoom="100">100</button>
+        <button class="frame-time-zoom-btn active" data-zoom="200">200</button>
+        <button class="frame-time-zoom-btn" data-zoom="500">500</button>
+        <button class="frame-time-zoom-btn" data-zoom="1000">1000</button>
+    </div>
+</div>
+<script>
+(function () {
+    'use strict';
+
+    // ── Constants ────────────────────────────────────────────────────────
+    var CAPACITY            = 2000;
+    var DEFAULT_VISIBLE     = 200;
+    var EMA_ALPHA           = 0.15;
+    var STUTTER_MULTIPLIER  = 2;
+    var REFERENCE_60FPS_MS  = 16.67;
+    var REFERENCE_30FPS_MS  = 33.33;
+    var DPR_CAP             = 3;
+    var MIN_ZOOM_FRAMES     = 20;
+    var MAX_ZOOM_FRAMES     = 2000;
+    var ZOOM_IN_FACTOR      = 0.8;
+    var ZOOM_OUT_FACTOR     = 1.25;
+    var FONT_MONO           = "'Consolas','Menlo',monospace";
+
+    // ── Ring Buffer ─────────────────────────────────────────────────────
+    function RingBuffer(capacity) {
+        this.capacity = capacity;
+        this.buf = new Float64Array(capacity);
+        this.head = 0;
+        this._size = 0;
+    }
+    RingBuffer.prototype.push = function (v) {
+        this.buf[this.head] = v;
+        this.head = (this.head + 1) % this.capacity;
+        if (this._size < this.capacity) this._size++;
+    };
+    RingBuffer.prototype.at = function (i) {
+        if (i < 0 || i >= this._size) return 0;
+        var start = this._size < this.capacity ? 0 : this.head;
+        return this.buf[(start + i) % this.capacity];
+    };
+    RingBuffer.prototype.last = function () {
+        if (this._size === 0) return 0;
+        return this.buf[(this.head - 1 + this.capacity) % this.capacity];
+    };
+    RingBuffer.prototype.clear = function () {
+        this.head = 0;
+        this._size = 0;
+    };
+    Object.defineProperty(RingBuffer.prototype, 'size', {
+        get: function () { return this._size; }
+    });
+
+    // ── Statistics ───────────────────────────────────────────────────────
+    var EMPTY_STATS = { min: 0, max: 0, avg: 0, p50: 0, p99: 0, fps: 0, stutterCount: 0 };
+
+    function computeStats(buf, frameCap) {
+        var n = buf.size;
+        if (n === 0) return EMPTY_STATS;
+
+        var sum = 0, min = Infinity, max = -Infinity;
+        var arr = new Array(n);
+        for (var i = 0; i < n; i++) {
+            var v = buf.at(i);
+            arr[i] = v;
+            sum += v;
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+        var avg = sum / n;
+
+        // Percentiles via sorted copy
+        arr.sort(function (a, b) { return a - b; });
+        var p50 = arr[Math.floor(n * 0.5)];
+        var p99 = arr[Math.floor(n * 0.99)];
+
+        // FPS from average
+        var fps = avg > 0 ? 1000 / avg : 0;
+
+        // Stutter detection
+        var stutterCount = 0;
+        var capMs = frameCap && frameCap > 0 ? 1000 / frameCap : 0;
+        var withinCap = capMs > 0 && avg <= capMs * 1.1;
+        if (!withinCap) {
+            var threshold = avg * STUTTER_MULTIPLIER;
+            for (var j = 0; j < n; j++) {
+                if (buf.at(j) > threshold) stutterCount++;
+            }
+        } else {
+            for (var k = 0; k < n; k++) {
+                if (buf.at(k) > capMs * STUTTER_MULTIPLIER) stutterCount++;
+            }
+        }
+
+        return { min: min, max: max, avg: avg, p50: p50, p99: p99, fps: fps, stutterCount: stutterCount };
+    }
+
+    function computeEMA(buf, alpha) {
+        var n = buf.size;
+        if (n === 0) return [];
+        var result = new Array(n);
+        result[0] = buf.at(0);
+        for (var i = 1; i < n; i++) {
+            result[i] = alpha * buf.at(i) + (1 - alpha) * result[i - 1];
+        }
+        return result;
+    }
+
+    // ── Themes ──────────────────────────────────────────────────────────
+    var DARK_THEME = {
+        bg: 'rgba(12,12,16,0.88)',
+        text: 'rgba(255,255,255,0.7)',
+        textDim: 'rgba(255,255,255,0.4)',
+        textDim2: 'rgba(255,255,255,0.25)',
+        line60: 'rgba(34,221,68,0.3)',
+        line30: 'rgba(255,170,0,0.3)',
+        label60: 'rgba(34,221,68,0.45)',
+        label30: 'rgba(255,170,0,0.45)',
+        gpuBar: 'rgba(0,130,255,0.2)',
+        stutter: 'rgba(255,60,60,0.3)',
+        ema: 'rgba(255,255,255,0.2)',
+        crosshair: 'rgba(255,255,255,0.4)',
+        tooltipBg: 'rgba(12,12,16,0.9)',
+        tooltipBorder: 'rgba(255,255,255,0.3)',
+        tooltipText: '#fff',
+        gpuText: 'rgba(0,130,255,0.9)',
+        minStat: 'rgba(34,221,68,0.5)',
+        maxStat: 'rgba(255,60,60,0.5)',
+        p99Stat: 'rgba(255,170,0,0.5)',
+        stutterStat: 'rgba(255,60,60,0.7)',
+        paused: 'rgba(255,170,0,0.8)',
+        cpuLine: '#22dd44',
+        cpuLineWarn: '#ffaa00',
+        cpuLineCrit: '#ff4444'
+    };
+
+    var LIGHT_THEME = {
+        bg: 'rgba(250,250,250,0.95)',
+        text: 'rgba(0,0,0,0.75)',
+        textDim: 'rgba(0,0,0,0.45)',
+        textDim2: 'rgba(0,0,0,0.35)',
+        line60: 'rgba(34,197,94,0.5)',
+        line30: 'rgba(234,179,8,0.5)',
+        label60: 'rgba(34,197,94,0.7)',
+        label30: 'rgba(234,179,8,0.7)',
+        gpuBar: 'rgba(59,130,246,0.25)',
+        stutter: 'rgba(239,68,68,0.35)',
+        ema: 'rgba(0,0,0,0.25)',
+        crosshair: 'rgba(0,0,0,0.4)',
+        tooltipBg: 'rgba(255,255,255,0.98)',
+        tooltipBorder: 'rgba(0,0,0,0.15)',
+        tooltipText: '#18181b',
+        gpuText: 'rgba(37,99,235,0.95)',
+        minStat: 'rgba(34,197,94,0.7)',
+        maxStat: 'rgba(239,68,68,0.7)',
+        p99Stat: 'rgba(234,179,8,0.7)',
+        stutterStat: 'rgba(239,68,68,0.85)',
+        paused: 'rgba(234,179,8,0.9)',
+        cpuLine: '#16a34a',
+        cpuLineWarn: '#ca8a04',
+        cpuLineCrit: '#dc2626'
+    };
+
+    // ── State ────────────────────────────────────────────────────────────
+    var state = {
+        cpuBuf: new RingBuffer(CAPACITY),
+        gpuBuf: new RingBuffer(CAPACITY),
+        realDtBuf: new RingBuffer(CAPACITY),
+        paused: false,
+        hoverIndex: null,
+        visibleFrames: DEFAULT_VISIBLE,
+        statsUnit: 'ms',
+        autoMax: REFERENCE_30FPS_MS,
+        theme: DARK_THEME
+    };
+    var canvasSize = { w: 300, h: 150 };
+    var lastRealTime = 0;
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function frameColor(ms, theme) {
+        if (ms <= REFERENCE_60FPS_MS) return theme.cpuLine;
+        if (ms <= REFERENCE_30FPS_MS) return theme.cpuLineWarn;
+        return theme.cpuLineCrit;
+    }
+
+    function roundedRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
+
+    function fmtMs(v) { return v.toFixed(1); }
+    function fmtFps(v) { return v > 0 ? (1000 / v).toFixed(0) : '—'; }
+
+    // ── Draw Graph ──────────────────────────────────────────────────────
+    function drawGraph(ctx, w, h) {
+        var theme = state.theme;
+        var cpuBuf = state.cpuBuf;
+        var gpuBuf = state.gpuBuf;
+        var visibleFrames = state.visibleFrames;
+        var totalFrames = cpuBuf.size;
+
+        var dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+
+        // Clear
+        ctx.clearRect(0, 0, w, h);
+
+        if (totalFrames === 0) {
+            // Empty state
+            ctx.fillStyle = theme.bg;
+            roundedRect(ctx, 0, 0, w, h, 6);
+            ctx.fill();
+            ctx.font = '11px ' + FONT_MONO;
+            ctx.fillStyle = theme.textDim;
+            ctx.textAlign = 'center';
+            ctx.fillText('Waiting for frame data…', w / 2, h / 2);
+            ctx.restore();
+            return;
+        }
+
+        var stats = computeStats(cpuBuf);
+        var ema = computeEMA(cpuBuf, EMA_ALPHA);
+
+        // Auto-scale Y
+        var maxVisible = Math.max(stats.max, REFERENCE_30FPS_MS);
+        state.autoMax = Math.max(maxVisible, state.autoMax * 0.995, REFERENCE_30FPS_MS * 1.5);
+        var gridMax = Math.ceil(state.autoMax / 5) * 5;
+
+        var startIndex = Math.max(0, totalFrames - visibleFrames);
+        var frameCount = totalFrames - startIndex;
+
+        // Layout
+        var marginLeft = 2, marginRight = 2;
+        var headerH = 16, footerH = 14;
+        var plotW = w - marginLeft - marginRight;
+        var plotH = h - headerH - footerH;
+        if (plotH < 10 || plotW < 10) { ctx.restore(); return; }
+
+        var xAt = function (i) { return marginLeft + (i / Math.max(visibleFrames - 1, 1)) * plotW; };
+        var yAt = function (ms) { return headerH + plotH - Math.min(ms, gridMax) / gridMax * plotH; };
+
+        // Background
+        ctx.fillStyle = theme.bg;
+        roundedRect(ctx, 0, 0, w, h, 6);
+        ctx.fill();
+
+        // ── Layer 1: Reference lines ────────────────────────────────────
+        ctx.setLineDash([2, 3]);
+        ctx.lineWidth = 0.5;
+
+        // 60 FPS line
+        var y60 = yAt(REFERENCE_60FPS_MS);
+        if (y60 > headerH && y60 < headerH + plotH) {
+            ctx.strokeStyle = theme.line60;
+            ctx.beginPath();
+            ctx.moveTo(marginLeft, y60);
+            ctx.lineTo(w - marginRight, y60);
+            ctx.stroke();
+            ctx.font = '9px ' + FONT_MONO;
+            ctx.fillStyle = theme.label60;
+            ctx.textAlign = 'right';
+            ctx.fillText('60fps', w - marginRight - 2, y60 - 2);
+        }
+
+        // 30 FPS line
+        var y30 = yAt(REFERENCE_30FPS_MS);
+        if (y30 > headerH && y30 < headerH + plotH) {
+            ctx.strokeStyle = theme.line30;
+            ctx.beginPath();
+            ctx.moveTo(marginLeft, y30);
+            ctx.lineTo(w - marginRight, y30);
+            ctx.stroke();
+            ctx.font = '9px ' + FONT_MONO;
+            ctx.fillStyle = theme.label30;
+            ctx.textAlign = 'right';
+            ctx.fillText('30fps', w - marginRight - 2, y30 - 2);
+        }
+        ctx.setLineDash([]);
+
+        // ── Layer 2: GPU bars ───────────────────────────────────────────
+        if (gpuBuf.size > 0) {
+            ctx.fillStyle = theme.gpuBar;
+            var barW = Math.max(1, plotW / visibleFrames * 0.6);
+            for (var gi = 0; gi < frameCount; gi++) {
+                var gIdx = startIndex + gi;
+                if (gIdx >= gpuBuf.size) break;
+                var gMs = gpuBuf.at(gIdx);
+                if (gMs <= 0) continue;
+                var gx = xAt(gi) - barW / 2;
+                var gy = yAt(gMs);
+                ctx.fillRect(gx, gy, barW, yAt(0) - gy);
+            }
+        }
+
+        // ── Layer 3: Stutter highlights ─────────────────────────────────
+        var stutterThresh = stats.avg * STUTTER_MULTIPLIER;
+        ctx.fillStyle = theme.stutter;
+        var sBarW = Math.max(1, plotW / visibleFrames);
+        for (var si = 0; si < frameCount; si++) {
+            var sMs = cpuBuf.at(startIndex + si);
+            if (sMs > stutterThresh) {
+                var sx = xAt(si) - sBarW / 2;
+                ctx.fillRect(sx, headerH, sBarW, plotH);
+            }
+        }
+
+        // ── Layer 4: EMA line ───────────────────────────────────────────
+        if (ema.length > 0) {
+            ctx.strokeStyle = theme.ema;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (var ei = 0; ei < frameCount; ei++) {
+                var eIdx = startIndex + ei;
+                if (eIdx >= ema.length) break;
+                var ex = xAt(ei);
+                var ey = yAt(ema[eIdx]);
+                if (ei === 0) ctx.moveTo(ex, ey);
+                else ctx.lineTo(ex, ey);
+            }
+            ctx.stroke();
+        }
+
+        // ── Layer 5: CPU frame time polyline ────────────────────────────
+        ctx.lineWidth = 1;
+        ctx.lineJoin = 'round';
+        var prevColor = null;
+        ctx.beginPath();
+        for (var ci = 0; ci < frameCount; ci++) {
+            var cMs = cpuBuf.at(startIndex + ci);
+            var cc = frameColor(cMs, theme);
+            var cx = xAt(ci);
+            var cy = yAt(cMs);
+            if (ci === 0 || cc !== prevColor) {
+                if (ci > 0) {
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(xAt(ci - 1), yAt(cpuBuf.at(startIndex + ci - 1)));
+                    ctx.lineTo(cx, cy);
+                }
+                ctx.strokeStyle = cc;
+                prevColor = cc;
+                if (ci === 0) ctx.moveTo(cx, cy);
+            } else {
+                ctx.lineTo(cx, cy);
+            }
+        }
+        ctx.stroke();
+
+        // ── Layer 6: Crosshair + tooltip (hover) ────────────────────────
+        if (state.hoverIndex !== null) {
+            var hi = state.hoverIndex;
+            var hAbsIdx = startIndex + hi;
+            if (hAbsIdx < totalFrames && hi >= 0 && hi < frameCount) {
+                var hMs = cpuBuf.at(hAbsIdx);
+                var hx = xAt(hi);
+                var hy = yAt(hMs);
+
+                // Crosshair line
+                ctx.strokeStyle = theme.crosshair;
+                ctx.lineWidth = 0.5;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.moveTo(hx, headerH);
+                ctx.lineTo(hx, headerH + plotH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Data point circle
+                ctx.fillStyle = frameColor(hMs, theme);
+                ctx.beginPath();
+                ctx.arc(hx, hy, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tooltip
+                ctx.font = '10px ' + FONT_MONO;
+                var lines = ['CPU: ' + fmtMs(hMs) + ' ms'];
+                if (hAbsIdx < gpuBuf.size && gpuBuf.at(hAbsIdx) > 0) {
+                    lines.push('GPU: ' + fmtMs(gpuBuf.at(hAbsIdx)) + ' ms');
+                }
+                lines.push('FPS: ' + fmtFps(hMs));
+                lines.push('#' + hAbsIdx);
+
+                var lineH = 13;
+                var tipPad = 6;
+                var maxTipW = 0;
+                for (var ti = 0; ti < lines.length; ti++) {
+                    var tw = ctx.measureText(lines[ti]).width;
+                    if (tw > maxTipW) maxTipW = tw;
+                }
+                var tipW = maxTipW + tipPad * 2;
+                var tipH = lines.length * lineH + tipPad * 2 - 2;
+                var tipX = hx + 10;
+                var tipY = hy - tipH / 2;
+                // Clamp to viewport
+                if (tipX + tipW > w - 4) tipX = hx - tipW - 10;
+                if (tipY < 2) tipY = 2;
+                if (tipY + tipH > h - 2) tipY = h - tipH - 2;
+
+                ctx.fillStyle = theme.tooltipBg;
+                ctx.strokeStyle = theme.tooltipBorder;
+                ctx.lineWidth = 1;
+                roundedRect(ctx, tipX, tipY, tipW, tipH, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = theme.tooltipText;
+                ctx.textAlign = 'left';
+                for (var tl = 0; tl < lines.length; tl++) {
+                    ctx.fillText(lines[tl], tipX + tipPad, tipY + tipPad + (tl + 1) * lineH - 3);
+                }
+            }
+        }
+
+        // ── Layer 7: Header stats ───────────────────────────────────────
+        ctx.font = '10px ' + FONT_MONO;
+        ctx.textAlign = 'left';
+        var lastMs = cpuBuf.last();
+        var headerY = 11;
+
+        // Current FPS
+        ctx.fillStyle = frameColor(lastMs, theme);
+        var fpsStr = lastMs > 0 ? Math.round(1000 / lastMs) + ' fps' : '— fps';
+        ctx.fillText(fpsStr, marginLeft + 2, headerY);
+
+        // Current ms
+        ctx.fillStyle = theme.text;
+        var msStr = fmtMs(lastMs) + ' ms';
+        var fpsW = ctx.measureText(fpsStr).width;
+        ctx.fillText(msStr, marginLeft + fpsW + 12, headerY);
+
+        // GPU ms (if available)
+        if (gpuBuf.size > 0) {
+            var lastGpu = gpuBuf.last();
+            if (lastGpu > 0) {
+                ctx.fillStyle = theme.gpuText;
+                var gpuStr = 'GPU ' + fmtMs(lastGpu) + ' ms';
+                ctx.fillText(gpuStr, marginLeft + fpsW + 12 + ctx.measureText(msStr).width + 12, headerY);
+            }
+        }
+
+        // Frame count
+        ctx.fillStyle = theme.textDim;
+        ctx.textAlign = 'right';
+        ctx.fillText(totalFrames + ' frames', w - marginRight - 2, headerY);
+
+        // ── Layer 8: PAUSED label ───────────────────────────────────────
+        if (state.paused) {
+            ctx.font = 'bold 11px ' + FONT_MONO;
+            ctx.fillStyle = theme.paused;
+            ctx.textAlign = 'center';
+            ctx.fillText('PAUSED', w / 2, headerY);
+        }
+
+        // ── Layer 9: Visible frames count ───────────────────────────────
+        ctx.font = '9px ' + FONT_MONO;
+        ctx.fillStyle = theme.textDim2;
+        ctx.textAlign = 'right';
+        ctx.fillText(visibleFrames + 'f visible', w - marginRight - 2, headerH + plotH + 10);
+
+        // ── Layer 10: Footer stats ──────────────────────────────────────
+        ctx.font = '9px ' + FONT_MONO;
+        ctx.textAlign = 'left';
+        var footY = headerH + plotH + 10;
+        var footX = marginLeft + 2;
+        var showFps = state.statsUnit === 'fps';
+
+        if (showFps) {
+            ctx.fillStyle = theme.maxStat;
+            var sMin = 'max:' + (stats.min > 0 ? Math.round(1000 / stats.min) : '—');
+            ctx.fillText(sMin, footX, footY);
+            footX += ctx.measureText(sMin).width + 8;
+
+            ctx.fillStyle = theme.minStat;
+            var sMax = 'min:' + (stats.max > 0 ? Math.round(1000 / stats.max) : '—');
+            ctx.fillText(sMax, footX, footY);
+            footX += ctx.measureText(sMax).width + 8;
+
+            ctx.fillStyle = theme.text;
+            var sAvg = 'avg:' + (stats.avg > 0 ? Math.round(1000 / stats.avg) : '—');
+            ctx.fillText(sAvg, footX, footY);
+            footX += ctx.measureText(sAvg).width + 8;
+
+            ctx.fillStyle = theme.p99Stat;
+            var sP99 = 'P1:' + (stats.p99 > 0 ? Math.round(1000 / stats.p99) : '—');
+            ctx.fillText(sP99, footX, footY);
+            footX += ctx.measureText(sP99).width + 8;
+        } else {
+            ctx.fillStyle = theme.minStat;
+            var mMin = 'min:' + fmtMs(stats.min);
+            ctx.fillText(mMin, footX, footY);
+            footX += ctx.measureText(mMin).width + 8;
+
+            ctx.fillStyle = theme.maxStat;
+            var mMax = 'max:' + fmtMs(stats.max);
+            ctx.fillText(mMax, footX, footY);
+            footX += ctx.measureText(mMax).width + 8;
+
+            ctx.fillStyle = theme.text;
+            var mAvg = 'avg:' + fmtMs(stats.avg);
+            ctx.fillText(mAvg, footX, footY);
+            footX += ctx.measureText(mAvg).width + 8;
+
+            ctx.fillStyle = theme.p99Stat;
+            var mP99 = 'P99:' + fmtMs(stats.p99);
+            ctx.fillText(mP99, footX, footY);
+            footX += ctx.measureText(mP99).width + 8;
+        }
+
+        if (stats.stutterCount > 0) {
+            ctx.fillStyle = theme.stutterStat;
+            ctx.fillText('stutter:' + stats.stutterCount, footX, footY);
+        }
+
+        ctx.restore();
+    }
+
+    // ── Redraw Throttle ─────────────────────────────────────────────────
+    var redrawPending = false;
+    var canvas = document.querySelector('.frame-time-canvas');
+    var graphCtx = canvas.getContext('2d');
+
+    function requestRedraw() {
+        if (redrawPending) return;
+        redrawPending = true;
+        requestAnimationFrame(function () {
+            redrawPending = false;
+            if (graphCtx) drawGraph(graphCtx, canvasSize.w, canvasSize.h);
+        });
+    }
+
+    // ── Canvas Sizing ───────────────────────────────────────────────────
+    var container = document.querySelector('.frame-time-graph-fill');
+    var resizeObserver = new ResizeObserver(function (entries) {
+        var rect = entries[0].contentRect;
+        var cw = Math.round(rect.width);
+        // subtract zoom controls height (~22px)
+        var controls = document.querySelector('.frame-time-zoom-controls');
+        var controlsH = controls ? controls.offsetHeight : 22;
+        var ch = Math.round(rect.height - controlsH);
+        if (cw > 0 && ch > 0) {
+            canvasSize.w = cw;
+            canvasSize.h = ch;
+            var dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+            canvas.width = cw * dpr;
+            canvas.height = ch * dpr;
+            canvas.style.width = cw + 'px';
+            canvas.style.height = ch + 'px';
+            requestRedraw();
+        }
+    });
+    resizeObserver.observe(container);
+
+    // ── Theme Detection ─────────────────────────────────────────────────
+    function detectTheme() {
+        var kind = document.body.getAttribute('data-vscode-theme-kind');
+        return kind === 'vscode-light' ? 'light' : 'dark';
+    }
+    state.theme = detectTheme() === 'light' ? LIGHT_THEME : DARK_THEME;
+
+    var themeObserver = new MutationObserver(function () {
+        state.theme = detectTheme() === 'light' ? LIGHT_THEME : DARK_THEME;
+        requestRedraw();
+    });
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-vscode-theme-kind'] });
+
+    // ── IPC Message Handler ─────────────────────────────────────────────
+    window.addEventListener('message', function (event) {
+        var msg = event.data;
+        if (!msg) return;
+
+        if (msg.command === 'frameData' && !state.paused) {
+            state.cpuBuf.push(msg.cpuMs);
+            if (msg.gpuMs > 0) state.gpuBuf.push(msg.gpuMs);
+
+            // Track real delivery delta for FPS computation
+            var now = performance.now();
+            var dt = lastRealTime > 0 ? now - lastRealTime : 0;
+            lastRealTime = now;
+            if (dt >= 2 && dt <= 500) state.realDtBuf.push(dt);
+
+            requestRedraw();
+        }
+
+        if (msg.command === 'setEnabled') {
+            if (!msg.enabled) {
+                state.cpuBuf.clear();
+                state.gpuBuf.clear();
+                state.realDtBuf.clear();
+                state.autoMax = REFERENCE_30FPS_MS;
+                lastRealTime = 0;
+                requestRedraw();
+            }
+        }
+    });
+
+    // ── Hover ───────────────────────────────────────────────────────────
+    canvas.addEventListener('pointermove', function (e) {
+        var rect = canvas.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var plotWidth = rect.width - 4;
+        var normalizedX = (x - 2) / plotWidth;
+        var frameIndex = Math.round(normalizedX * Math.max(state.visibleFrames - 1, 1));
+        var startIdx = Math.max(0, state.cpuBuf.size - state.visibleFrames);
+        var absIdx = startIdx + frameIndex;
+
+        if (frameIndex >= 0 && absIdx < state.cpuBuf.size) {
+            state.hoverIndex = frameIndex;
+        } else {
+            state.hoverIndex = null;
+        }
+        requestRedraw();
+    });
+
+    canvas.addEventListener('pointerleave', function () {
+        state.hoverIndex = null;
+        requestRedraw();
+    });
+
+    // ── Pause / Resume ──────────────────────────────────────────────────
+    canvas.addEventListener('click', function () {
+        state.paused = !state.paused;
+        if (!state.paused) lastRealTime = 0;
+        requestRedraw();
+    });
+
+    // ── Scroll-to-Zoom ──────────────────────────────────────────────────
+    canvas.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        var factor = e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR;
+        state.visibleFrames = Math.max(
+            MIN_ZOOM_FRAMES,
+            Math.min(MAX_ZOOM_FRAMES, Math.round(state.visibleFrames * factor))
+        );
+        // Update active button state
+        var btns = document.querySelectorAll('[data-zoom]');
+        for (var z = 0; z < btns.length; z++) {
+            btns[z].classList.toggle('active', parseInt(btns[z].getAttribute('data-zoom')) === state.visibleFrames);
+        }
+        requestRedraw();
+    }, { passive: false });
+
+    // ── Preset Zoom Buttons ─────────────────────────────────────────────
+    document.querySelectorAll('[data-zoom]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            state.visibleFrames = parseInt(btn.getAttribute('data-zoom'));
+            document.querySelectorAll('[data-zoom]').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            requestRedraw();
+        });
+    });
+
+    // ── Unit Toggle ─────────────────────────────────────────────────────
+    document.querySelectorAll('[data-unit]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            state.statsUnit = btn.getAttribute('data-unit');
+            document.querySelectorAll('[data-unit]').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            requestRedraw();
+        });
+    });
+
+    // ── Initial draw ────────────────────────────────────────────────────
+    requestRedraw();
+})();
+</script>
+</body>
+</html>
