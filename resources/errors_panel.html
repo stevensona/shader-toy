@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shader Errors</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --fg: #cccccc;
+    --fg-dim: #888888;
+    --border: #333333;
+    --panel-bg: #252526;
+    --hover-bg: #2a2d2e;
+    --error-color: #f44747;
+    --warning-color: #cca700;
+    --info-color: #3794ff;
+    --success-color: #89d185;
+    --badge-bg: #4d4d4d;
+    --badge-fg: #ffffff;
+    --scrollbar-bg: #1e1e1e;
+    --scrollbar-thumb: #424242;
+    --pill-nan: #f44747;
+    --pill-inf: #ff8c00;
+    --pill-oor: #cca700;
+  }
+
+  body.vscode-light {
+    --bg: #ffffff;
+    --fg: #333333;
+    --fg-dim: #999999;
+    --border: #e0e0e0;
+    --panel-bg: #f3f3f3;
+    --hover-bg: #e8e8e8;
+    --badge-bg: #c4c4c4;
+    --badge-fg: #333333;
+    --scrollbar-bg: #f3f3f3;
+    --scrollbar-thumb: #c4c4c4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--vscode-font-family, 'Segoe UI', Tahoma, sans-serif);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--fg);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .header h2 {
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-error { background: var(--error-color); color: #fff; }
+  .badge-warning { background: var(--warning-color); color: #000; }
+  .badge-hidden { display: none; }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--fg-dim);
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab.active {
+    color: var(--fg);
+    border-bottom-color: var(--info-color);
+  }
+  .tab .tab-badge {
+    display: none;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 16px;
+  }
+  .tab .tab-badge.visible { display: inline-block; }
+  .tab-errors .tab-badge { background: var(--error-color); color: #fff; }
+  .tab-warnings .tab-badge { background: var(--warning-color); color: #000; }
+  .tab-runtime .tab-badge { background: var(--pill-nan); color: #fff; }
+
+  /* ── Panels ── */
+  .panels {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .panel {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    display: none;
+    padding: 8px 0;
+  }
+  .panel.active { display: block; }
+  .panel::-webkit-scrollbar { width: 8px; }
+  .panel::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+  .panel::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--fg-dim);
+    text-align: center;
+    gap: 8px;
+  }
+  .empty-state .icon { font-size: 32px; opacity: 0.5; }
+  .empty-state .message { font-size: 13px; }
+  .empty-state .sub { font-size: 11px; opacity: 0.7; }
+
+  /* ── Error items ── */
+  .error-item {
+    padding: 6px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border-left: 3px solid transparent;
+  }
+  .error-item:hover { background: var(--hover-bg); }
+  .error-item.compile-error { border-left-color: var(--error-color); }
+  .error-item .line-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--error-color);
+    min-width: 40px;
+    font-family: var(--vscode-editor-font-family, 'Consolas', monospace);
+  }
+  .error-item .error-message {
+    flex: 1;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+  .error-item .error-file {
+    font-size: 11px;
+    color: var(--fg-dim);
+    margin-top: 2px;
+  }
+
+  /* ── Warning items ── */
+  .warning-item {
+    padding: 6px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border-left: 3px solid var(--warning-color);
+  }
+  .warning-item:hover { background: var(--hover-bg); }
+  .warning-item .line-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--warning-color);
+    min-width: 40px;
+    font-family: var(--vscode-editor-font-family, 'Consolas', monospace);
+  }
+  .warning-item .kind-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .warning-item .warning-label {
+    font-family: var(--vscode-editor-font-family, 'Consolas', monospace);
+    font-size: 12px;
+    color: var(--fg);
+    word-break: break-word;
+  }
+  .warning-item .warning-reason {
+    font-size: 11px;
+    color: var(--fg-dim);
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  .warning-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* ── Runtime error pills ── */
+  .runtime-summary {
+    display: flex;
+    gap: 12px;
+    padding: 12px 14px;
+    flex-wrap: wrap;
+  }
+  .runtime-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  .runtime-pill.active { opacity: 1; }
+  .runtime-pill .pill-count {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--vscode-editor-font-family, 'Consolas', monospace);
+  }
+  .pill-nan { background: rgba(244, 71, 71, 0.15); color: var(--pill-nan); border: 1px solid var(--pill-nan); }
+  .pill-inf { background: rgba(255, 140, 0, 0.15); color: var(--pill-inf); border: 1px solid var(--pill-inf); }
+  .pill-oor { background: rgba(204, 167, 0, 0.15); color: var(--pill-oor); border: 1px solid var(--pill-oor); }
+
+  .runtime-info {
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--fg-dim);
+    line-height: 1.4;
+  }
+
+  /* ── Warning filter bar ── */
+  .filter-bar {
+    display: flex;
+    gap: 4px;
+    padding: 6px 14px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-chip {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    color: var(--fg-dim);
+    transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--fg-dim); }
+  .filter-chip.active {
+    border-color: currentColor;
+    color: var(--fg);
+    background: rgba(128,128,128,0.15);
+  }
+
+  /* ── Footer ── */
+  .footer {
+    padding: 6px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--fg-dim);
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h2>🔍 Shader Errors</h2>
+    <span id="errorBadge" class="badge badge-error badge-hidden">0</span>
+    <span id="warningBadge" class="badge badge-warning badge-hidden">0</span>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab tab-errors active" data-panel="compile">
+      Compile Errors
+      <span class="tab-badge" id="compileTabBadge">0</span>
+    </div>
+    <div class="tab tab-warnings" data-panel="warnings">
+      Analysis Warnings
+      <span class="tab-badge" id="warningsTabBadge">0</span>
+    </div>
+    <div class="tab tab-runtime" data-panel="runtime">
+      Runtime
+      <span class="tab-badge" id="runtimeTabBadge">0</span>
+    </div>
+  </div>
+
+  <div class="panels">
+    <!-- Compile Errors Panel -->
+    <div class="panel active" id="panel-compile">
+      <div id="compileErrorsList"></div>
+      <div id="compileEmpty" class="empty-state">
+        <div class="icon">✓</div>
+        <div class="message">No compile errors</div>
+        <div class="sub">Shader compiled successfully</div>
+      </div>
+    </div>
+
+    <!-- Shader Analysis Warnings Panel -->
+    <div class="panel" id="panel-warnings">
+      <div class="filter-bar" id="warningFilters"></div>
+      <div id="warningsList"></div>
+      <div id="warningsEmpty" class="empty-state">
+        <div class="icon">✓</div>
+        <div class="message">No analysis warnings</div>
+        <div class="sub">No potentially dangerous operations detected</div>
+      </div>
+    </div>
+
+    <!-- Runtime Errors Panel -->
+    <div class="panel" id="panel-runtime">
+      <div class="runtime-summary">
+        <div class="runtime-pill pill-nan" id="nanPill">
+          <span>NaN</span>
+          <span class="pill-count" id="nanCount">0</span>
+        </div>
+        <div class="runtime-pill pill-inf" id="infPill">
+          <span>Inf</span>
+          <span class="pill-count" id="infCount">0</span>
+        </div>
+        <div class="runtime-pill pill-oor" id="oorPill">
+          <span>OOR</span>
+          <span class="pill-count" id="oorCount">0</span>
+        </div>
+      </div>
+      <div class="runtime-info" id="runtimeInfo">
+        Runtime NaN/Inf/OOR pixel detection will be available in a future update.
+        <br><br>
+        <strong>NaN</strong> — Not a Number (e.g., 0.0/0.0, sqrt of negative)<br>
+        <strong>Inf</strong> — Infinity (e.g., 1.0/0.0)<br>
+        <strong>OOR</strong> — Out of Range (values outside [0, 1])
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span id="footerLeft">Waiting for shader data…</span>
+    <span id="footerRight"></span>
+  </div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── VSCode API ──
+  const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+
+  // ── State ──
+  let compileErrors = [];       // [{line, message, file}]
+  let shaderWarnings = [];      // [{kind, line, column, endColumn, label, reason, color}]
+  let runtimeResult = null;     // {hasNan, hasInf, hasOor, nanPixels, infPixels, oorPixels, totalSampled}
+  let activeFilters = new Set(); // active warning kind filters (empty = show all)
+
+  // ── Theme detection ──
+  function detectTheme() {
+    const body = document.body;
+    const themeKind = body.getAttribute('data-vscode-theme-kind');
+    body.classList.remove('vscode-light', 'vscode-dark', 'vscode-high-contrast');
+    if (themeKind) body.classList.add(themeKind);
+    else if (document.documentElement.style.getPropertyValue('--vscode-editor-background')) {
+      // Fallback: check brightness
+      body.classList.add('vscode-dark');
+    }
+  }
+  detectTheme();
+  const observer = new MutationObserver(detectTheme);
+  observer.observe(document.body, { attributes: true, attributeFilter: ['data-vscode-theme-kind'] });
+
+  // ── Tab switching ──
+  const tabs = document.querySelectorAll('.tab');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      const panelId = 'panel-' + tab.getAttribute('data-panel');
+      const panel = document.getElementById(panelId);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // ── Warning categories (from shaderanalysis.ts) ──
+  const WARNING_CATEGORIES = {
+    division:     { color: '#ff6666', description: 'Division' },
+    sqrt:         { color: '#66ccff', description: 'sqrt' },
+    inversesqrt:  { color: '#66ccff', description: 'inversesqrt' },
+    log:          { color: '#88ddaa', description: 'log/log2' },
+    pow:          { color: '#ffaa44', description: 'pow' },
+    asin:         { color: '#cc88ff', description: 'asin' },
+    acos:         { color: '#cc88ff', description: 'acos' },
+    atan:         { color: '#cc88ff', description: 'atan' },
+    mod:          { color: '#ffcc44', description: 'mod' }
+  };
+
+  // ── Render compile errors ──
+  function renderCompileErrors() {
+    const list = document.getElementById('compileErrorsList');
+    const empty = document.getElementById('compileEmpty');
+    const badge = document.getElementById('compileTabBadge');
+    const headerBadge = document.getElementById('errorBadge');
+
+    list.innerHTML = '';
+
+    if (compileErrors.length === 0) {
+      empty.style.display = '';
+      badge.classList.remove('visible');
+      headerBadge.classList.add('badge-hidden');
+      return;
+    }
+
+    empty.style.display = 'none';
+    badge.textContent = String(compileErrors.length);
+    badge.classList.add('visible');
+    headerBadge.textContent = String(compileErrors.length);
+    headerBadge.classList.remove('badge-hidden');
+
+    for (const err of compileErrors) {
+      const item = document.createElement('div');
+      item.className = 'error-item compile-error';
+      item.innerHTML = `
+        <span class="line-badge">L${err.line}</span>
+        <div>
+          <div class="error-message">${escapeHtml(err.message)}</div>
+          ${err.file ? `<div class="error-file">${escapeHtml(shortenPath(err.file))}</div>` : ''}
+        </div>
+      `;
+      item.addEventListener('click', () => navigateTo(err.file, err.line));
+      list.appendChild(item);
+    }
+  }
+
+  // ── Render shader warnings ──
+  function renderWarningFilters() {
+    const bar = document.getElementById('warningFilters');
+    bar.innerHTML = '';
+
+    const kinds = [...new Set(shaderWarnings.map(w => w.kind))];
+    if (kinds.length === 0) {
+      bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = '';
+
+    for (const kind of kinds) {
+      const cat = WARNING_CATEGORIES[kind] || { color: '#888', description: kind };
+      const count = shaderWarnings.filter(w => w.kind === kind).length;
+      const chip = document.createElement('span');
+      chip.className = 'filter-chip' + (activeFilters.size === 0 || activeFilters.has(kind) ? ' active' : '');
+      chip.style.borderColor = cat.color;
+      chip.style.color = cat.color;
+      chip.textContent = `${cat.description} (${count})`;
+      chip.addEventListener('click', () => toggleFilter(kind));
+      bar.appendChild(chip);
+    }
+  }
+
+  function toggleFilter(kind) {
+    if (activeFilters.has(kind)) {
+      activeFilters.delete(kind);
+    } else {
+      activeFilters.add(kind);
+    }
+    // If all deselected, show all
+    const allKinds = [...new Set(shaderWarnings.map(w => w.kind))];
+    if (activeFilters.size === allKinds.length) {
+      activeFilters.clear();
+    }
+    renderWarningFilters();
+    renderWarnings();
+  }
+
+  function renderWarnings() {
+    const list = document.getElementById('warningsList');
+    const empty = document.getElementById('warningsEmpty');
+    const badge = document.getElementById('warningsTabBadge');
+    const headerBadge = document.getElementById('warningBadge');
+
+    list.innerHTML = '';
+
+    const filtered = activeFilters.size === 0
+      ? shaderWarnings
+      : shaderWarnings.filter(w => activeFilters.has(w.kind));
+
+    if (shaderWarnings.length === 0) {
+      empty.style.display = '';
+      badge.classList.remove('visible');
+      headerBadge.classList.add('badge-hidden');
+      return;
+    }
+
+    empty.style.display = filtered.length === 0 ? '' : 'none';
+    badge.textContent = String(shaderWarnings.length);
+    badge.classList.add('visible');
+    headerBadge.textContent = String(shaderWarnings.length);
+    headerBadge.classList.remove('badge-hidden');
+
+    for (const w of filtered) {
+      const cat = WARNING_CATEGORIES[w.kind] || { color: '#888' };
+      const item = document.createElement('div');
+      item.className = 'warning-item';
+      item.style.borderLeftColor = w.color || cat.color;
+      item.innerHTML = `
+        <span class="line-badge" style="color: ${w.color || cat.color}">L${w.line}</span>
+        <div class="warning-details">
+          <div>
+            <span class="kind-badge" style="background: ${w.color || cat.color}22; color: ${w.color || cat.color}">${escapeHtml(w.kind)}</span>
+            <span class="warning-label">${escapeHtml(w.label)}</span>
+          </div>
+          <div class="warning-reason">${escapeHtml(w.reason)}</div>
+        </div>
+      `;
+      item.addEventListener('click', () => navigateTo(null, w.line));
+      list.appendChild(item);
+    }
+  }
+
+  // ── Render runtime errors ──
+  function renderRuntimeErrors() {
+    const badge = document.getElementById('runtimeTabBadge');
+    const nanPill = document.getElementById('nanPill');
+    const infPill = document.getElementById('infPill');
+    const oorPill = document.getElementById('oorPill');
+
+    if (!runtimeResult) {
+      nanPill.classList.remove('active');
+      infPill.classList.remove('active');
+      oorPill.classList.remove('active');
+      badge.classList.remove('visible');
+      return;
+    }
+
+    document.getElementById('nanCount').textContent = String(runtimeResult.nanPixels);
+    document.getElementById('infCount').textContent = String(runtimeResult.infPixels);
+    document.getElementById('oorCount').textContent = String(runtimeResult.oorPixels);
+
+    nanPill.classList.toggle('active', runtimeResult.hasNan);
+    infPill.classList.toggle('active', runtimeResult.hasInf);
+    oorPill.classList.toggle('active', runtimeResult.hasOor);
+
+    const total = runtimeResult.nanPixels + runtimeResult.infPixels + runtimeResult.oorPixels;
+    if (total > 0) {
+      badge.textContent = String(total);
+      badge.classList.add('visible');
+    } else {
+      badge.classList.remove('visible');
+    }
+
+    const info = document.getElementById('runtimeInfo');
+    if (runtimeResult.totalSampled > 0) {
+      info.innerHTML = `Sampled <strong>${runtimeResult.totalSampled}</strong> pixels` +
+        (total > 0 ? ` — <strong>${total}</strong> pixel errors detected` : ' — all clear');
+    }
+  }
+
+  // ── Footer ──
+  function updateFooter() {
+    const left = document.getElementById('footerLeft');
+    const right = document.getElementById('footerRight');
+    const errCount = compileErrors.length;
+    const warnCount = shaderWarnings.length;
+    const parts = [];
+    if (errCount > 0) parts.push(`${errCount} error${errCount > 1 ? 's' : ''}`);
+    if (warnCount > 0) parts.push(`${warnCount} warning${warnCount > 1 ? 's' : ''}`);
+    left.textContent = parts.length > 0 ? parts.join(', ') : 'No issues detected';
+    right.textContent = new Date().toLocaleTimeString();
+  }
+
+  // ── Navigate to line ──
+  function navigateTo(file, line) {
+    if (vscode) {
+      vscode.postMessage({ command: 'navigateToLine', file: file || null, line: line });
+    }
+  }
+
+  // ── Helpers ──
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function shortenPath(filePath) {
+    if (!filePath) return '';
+    const parts = filePath.replace(/\\/g, '/').split('/');
+    return parts.length > 3 ? '…/' + parts.slice(-3).join('/') : filePath;
+  }
+
+  // ── Message handler ──
+  window.addEventListener('message', (event) => {
+    const msg = event.data;
+    if (!msg || !msg.command) return;
+
+    switch (msg.command) {
+      case 'compileErrors':
+        compileErrors = msg.errors || [];
+        renderCompileErrors();
+        updateFooter();
+        break;
+
+      case 'shaderWarnings':
+        shaderWarnings = msg.warnings || [];
+        activeFilters.clear();
+        renderWarningFilters();
+        renderWarnings();
+        updateFooter();
+        break;
+
+      case 'nanDetected':
+        runtimeResult = {
+          hasNan: msg.hasNan,
+          hasInf: msg.hasInf,
+          hasOor: msg.hasOor,
+          nanPixels: msg.nanPixels || 0,
+          infPixels: msg.infPixels || 0,
+          oorPixels: msg.oorPixels || 0,
+          totalSampled: msg.totalSampled || 0
+        };
+        renderRuntimeErrors();
+        break;
+
+      case 'clearErrors':
+        compileErrors = [];
+        shaderWarnings = [];
+        runtimeResult = null;
+        renderCompileErrors();
+        renderWarningFilters();
+        renderWarnings();
+        renderRuntimeErrors();
+        updateFooter();
+        break;
+    }
+  });
+
+  // Initial render
+  renderCompileErrors();
+  renderWarningFilters();
+  renderWarnings();
+  renderRuntimeErrors();
+  updateFooter();
+})();
+</script>
+</body>
+</html>

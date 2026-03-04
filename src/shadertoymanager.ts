@@ -8,6 +8,8 @@ import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 import { removeDuplicates } from './utility';
 import { FramesPanel } from './framespanel';
+import { ErrorsPanel } from './errorspanel';
+import { analyzeShader } from './shaderanalysis';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
@@ -26,6 +28,8 @@ export class ShaderToyManager {
     staticWebviews: StaticWebview[] = [];
     framesPanel: FramesPanel;
     private timingEnabled = false;
+    errorsPanel: ErrorsPanel;
+    private analysisDiagnosticCollection: vscode.DiagnosticCollection;
 
     constructor(context: Context) {
         this.context = context;
@@ -36,6 +40,8 @@ export class ShaderToyManager {
         this.framesPanel.onDidChangeVisibility((visible) => {
             this.postTimingCommand(visible);
         });
+        this.errorsPanel = new ErrorsPanel(context);
+        this.analysisDiagnosticCollection = vscode.languages.createDiagnosticCollection('shader-toy.analysis');
     }
 
     public migrateToNewContext = async (context: Context) => {
@@ -171,6 +177,34 @@ export class ShaderToyManager {
             this.webviewPanel.Panel.webview.postMessage({ command });
         }
         this.framesPanel.postSetEnabled(enable);
+    };
+
+    public showErrorsPanel = () => {
+        this.errorsPanel.show();
+        // Run analysis on current document immediately
+        if (this.context.activeEditor) {
+            this.runShaderAnalysis(this.context.activeEditor.document);
+        }
+    };
+
+    /**
+     * Run static shader analysis and forward results to errors panel + diagnostics.
+     */
+    private runShaderAnalysis = (document: vscode.TextDocument) => {
+        const source = document.getText();
+        const warnings = analyzeShader(source);
+
+        // Send to errors panel
+        this.errorsPanel.postShaderWarnings(warnings);
+
+        // Also emit as VSCode diagnostics (warnings)
+        const diagnostics = warnings.map(w => {
+            const range = new vscode.Range(w.line - 1, w.column - 1, w.line - 1, w.endColumn - 1);
+            const diag = new vscode.Diagnostic(range, w.reason, vscode.DiagnosticSeverity.Warning);
+            diag.source = `shader-analysis (${w.kind})`;
+            return diag;
+        });
+        this.analysisDiagnosticCollection.set(document.uri, diagnostics);
     };
 
     private resetStartingData = () => {
@@ -343,6 +377,17 @@ export class ShaderToyManager {
                     }
 
                     this.context.showDiagnostics(diagnosticBatch, severity);
+
+                    // Forward compile errors to the errors panel
+                    if (this.errorsPanel.isActive && message.type === 'error') {
+                        this.errorsPanel.postCompileErrors(
+                            diagnosticBatch.diagnostics.map((d: { line: number; message: string }) => ({
+                                line: d.line,
+                                message: d.message,
+                                file: diagnosticBatch.filename
+                            }))
+                        );
+                    }
                     return;
                 }
                 case 'showGlslsError':
@@ -366,6 +411,8 @@ export class ShaderToyManager {
 
     private updateWebview = async <T extends Webview | StaticWebview>(webviewPanel: T, document: vscode.TextDocument): Promise<T> => {
         this.context.clearDiagnostics();
+        this.analysisDiagnosticCollection.clear();
+        this.errorsPanel.clearErrors();
         const webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
         const localResources = await webviewContentProvider.parseShaderTree(false);
 
@@ -396,6 +443,11 @@ export class ShaderToyManager {
         // Re-send timing state after webview (re)load so FRAMES panel keeps receiving data
         if (this.timingEnabled && this.webviewPanel && webviewPanel.Panel === this.webviewPanel.Panel) {
             this.webviewPanel.Panel.webview.postMessage({ command: 'enableFrameTiming' });
+        }
+
+        // Run shader analysis if errors panel is active
+        if (this.errorsPanel.isActive) {
+            this.runShaderAnalysis(document);
         }
 
         return webviewPanel;

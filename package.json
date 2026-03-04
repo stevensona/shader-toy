@@ -229,6 +229,10 @@
             {
                 "command": "shader-toy.showFrameTimePanel",
                 "title": "Shader Toy: Show Frame Time Panel"
+            },
+            {
+                "command": "shader-toy.showErrorsPanel",
+                "title": "Shader Toy: Show Shader Errors Panel"
             }
         ],
         "menus": {
