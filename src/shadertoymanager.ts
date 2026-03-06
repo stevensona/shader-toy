@@ -25,6 +25,7 @@ export class ShaderToyManager {
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
     framesPanel: FramesPanel;
+    private timingEnabled = false;
 
     constructor(context: Context) {
         this.context = context;
@@ -164,6 +165,7 @@ export class ShaderToyManager {
     };
 
     private postTimingCommand = (enable: boolean) => {
+        this.timingEnabled = enable;
         const command = enable ? 'enableFrameTiming' : 'disableFrameTiming';
         if (this.webviewPanel !== undefined) {
             this.webviewPanel.Panel.webview.postMessage({ command });
@@ -390,6 +392,12 @@ export class ShaderToyManager {
         }
 
         webviewPanel.Panel.webview.html = await webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
+
+        // Re-send timing state after webview (re)load so FRAMES panel keeps receiving data
+        if (this.timingEnabled && this.webviewPanel && webviewPanel.Panel === this.webviewPanel.Panel) {
+            this.webviewPanel.Panel.webview.postMessage({ command: 'enableFrameTiming' });
+        }
+
         return webviewPanel;
     };
 }

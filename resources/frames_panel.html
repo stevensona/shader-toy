@@ -689,6 +689,9 @@ html, body {
                 state.realDtBuf.clear();
                 state.autoMax = REFERENCE_30FPS_MS;
                 lastRealTime = 0;
+                _percentileCallCount = 0;
+                _lastP50 = 0;
+                _lastP99 = 0;
                 requestRedraw();
             }
         }
