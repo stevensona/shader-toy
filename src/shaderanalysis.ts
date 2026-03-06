@@ -45,14 +45,46 @@ function stripComments(source: string): string {
 }
 
 /**
- * Convert character offset to line/column (1-based).
+ * Precompute line start offsets for efficient offset→position lookups.
+ * Returns an array where lineStarts[i] is the character offset of line i+1.
+ */
+function computeLineStarts(source: string): number[] {
+    const lineStarts: number[] = [0];
+    for (let i = 0; i < source.length; i++) {
+        if (source.charCodeAt(i) === 10) { // '\n'
+            lineStarts.push(i + 1);
+        }
+    }
+    return lineStarts;
+}
+
+/**
+ * Convert character offset to line/column (1-based) using precomputed line starts.
+ * Uses binary search — O(log n) per lookup instead of O(n).
  * Port of i2(source, offset).
  */
-function offsetToPosition(source: string, offset: number): { line: number; column: number } {
-    const prefix = source.slice(0, offset);
-    const lastNL = prefix.lastIndexOf('\n');
-    const line = (prefix.match(/\n/g)?.length ?? 0) + 1;
-    const column = lastNL >= 0 ? offset - lastNL : offset + 1;
+function offsetToPosition(lineStarts: number[], sourceLength: number, offset: number): { line: number; column: number } {
+    if (offset < 0) {
+        offset = 0;
+    } else if (offset > sourceLength) {
+        offset = sourceLength;
+    }
+
+    // Binary search for the greatest index where lineStarts[index] <= offset
+    let low = 0;
+    let high = lineStarts.length - 1;
+    while (low <= high) {
+        const mid = (low + high) >>> 1;
+        if (lineStarts[mid] <= offset) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    const lineIndex = low - 1;
+    const line = lineIndex + 1;
+    const column = offset - lineStarts[lineIndex] + 1;
     return { line, column };
 }
 
@@ -101,6 +133,7 @@ function truncateLabel(expr: string): string {
  */
 export function analyzeShader(source: string): ShaderWarning[] {
     const cleaned = stripComments(source);
+    const lineStarts = computeLineStarts(source);
     const warnings: ShaderWarning[] = [];
 
     // --- Division detection ---
@@ -117,7 +150,7 @@ export function analyzeShader(source: string): ShaderWarning[] {
 
         if (isNonZeroConstant(right)) continue;
 
-        const { line, column } = offsetToPosition(source, pos);
+        const { line, column } = offsetToPosition(lineStarts, source.length, pos);
         warnings.push({
             kind: 'division',
             line,
@@ -151,8 +184,8 @@ export function analyzeShader(source: string): ShaderWarning[] {
 
             const args = cleaned.slice(parenOpen + 1, parenClose).trim();
             const funcName = match[0].replace(/\s*\($/, '');
-            const { line, column } = offsetToPosition(source, funcStart);
-            const endCol = offsetToPosition(source, parenClose).column + 1;
+            const { line, column } = offsetToPosition(lineStarts, source.length, funcStart);
+            const endCol = offsetToPosition(lineStarts, source.length, parenClose).column + 1;
 
             warnings.push({
                 kind,

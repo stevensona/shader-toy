@@ -2,8 +2,11 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 import { Context } from './context';
 import { ShaderWarning, WARNING_CATEGORIES } from './shaderanalysis';
+
+export type ErrorsPanelDisposeListener = () => void;
 
 /**
  * Manages a separate webview panel that displays shader compile errors,
@@ -18,9 +21,18 @@ import { ShaderWarning, WARNING_CATEGORIES } from './shaderanalysis';
 export class ErrorsPanel {
     private panel: vscode.WebviewPanel | undefined;
     private context: Context;
+    private disposeListeners: ErrorsPanelDisposeListener[] = [];
 
     constructor(context: Context) {
         this.context = context;
+    }
+
+    /**
+     * Register a callback invoked when the panel is disposed (closed by the user).
+     * Used by the manager to clear analysis diagnostics tied to the panel.
+     */
+    public onDidDispose(listener: ErrorsPanelDisposeListener): void {
+        this.disposeListeners.push(listener);
     }
 
     public show(): void {
@@ -29,8 +41,8 @@ export class ErrorsPanel {
             return;
         }
 
-        const extensionRoot = vscode.Uri.file(
-            this.context.getVscodeExtensionContext().extensionPath
+        const resourcesRoot = vscode.Uri.file(
+            path.join(this.context.getVscodeExtensionContext().extensionPath, 'resources')
         );
 
         this.panel = vscode.window.createWebviewPanel(
@@ -39,7 +51,7 @@ export class ErrorsPanel {
             { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
             {
                 enableScripts: true,
-                localResourceRoots: [extensionRoot]
+                localResourceRoots: [resourcesRoot]
             }
         );
 
@@ -48,6 +60,9 @@ export class ErrorsPanel {
 
         this.panel.onDidDispose(() => {
             this.panel = undefined;
+            for (const listener of this.disposeListeners) {
+                listener();
+            }
         }, undefined, this.context.getVscodeExtensionContext().subscriptions);
 
         // Handle messages from the errors panel
