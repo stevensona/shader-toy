@@ -102,6 +102,18 @@ export class FramesPanel {
         }
     }
 
+    /**
+     * Notify the frames panel webview about timing enabled/disabled state.
+     */
+    public postSetEnabled(enabled: boolean): void {
+        if (this.panel) {
+            this.panel.webview.postMessage({
+                command: 'setEnabled',
+                enabled: enabled
+            });
+        }
+    }
+
     private getHtmlContent(): string {
         const htmlPath = this.context.getResourceUri('frames_panel.html').fsPath;
         return fs.readFileSync(htmlPath, 'utf8');

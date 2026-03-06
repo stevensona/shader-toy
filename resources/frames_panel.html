@@ -132,25 +132,37 @@ html, body {
     // ── Statistics ───────────────────────────────────────────────────────
     var EMPTY_STATS = { min: 0, max: 0, avg: 0, p50: 0, p99: 0, fps: 0, stutterCount: 0 };
 
+    var PERCENTILE_RECOMPUTE_EVERY = 5;
+    var _percentileCallCount = -1;
+    var _lastP50 = 0;
+    var _lastP99 = 0;
+
     function computeStats(buf, frameCap) {
         var n = buf.size;
         if (n === 0) return EMPTY_STATS;
 
+        _percentileCallCount++;
+        var recomputePercentiles = (_percentileCallCount % PERCENTILE_RECOMPUTE_EVERY === 0);
+
         var sum = 0, min = Infinity, max = -Infinity;
-        var arr = new Array(n);
+        var arr = recomputePercentiles ? new Array(n) : null;
         for (var i = 0; i < n; i++) {
             var v = buf.at(i);
-            arr[i] = v;
+            if (arr) arr[i] = v;
             sum += v;
             if (v < min) min = v;
             if (v > max) max = v;
         }
         var avg = sum / n;
 
-        // Percentiles via sorted copy
-        arr.sort(function (a, b) { return a - b; });
-        var p50 = arr[Math.floor(n * 0.5)];
-        var p99 = arr[Math.floor(n * 0.99)];
+        // Percentiles via sorted copy, throttled to every N calls
+        if (arr) {
+            arr.sort(function (a, b) { return a - b; });
+            _lastP50 = arr[Math.floor(n * 0.5)];
+            _lastP99 = arr[Math.floor(n * 0.99)];
+        }
+        var p50 = _lastP50;
+        var p99 = _lastP99;
 
         // FPS from average
         var fps = avg > 0 ? 1000 / avg : 0;

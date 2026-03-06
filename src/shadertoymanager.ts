@@ -30,10 +30,10 @@ export class ShaderToyManager {
         this.context = context;
         this.framesPanel = new FramesPanel(context);
         this.framesPanel.onDidDispose(() => {
-            this.postCommand('disableFrameTiming');
+            this.postTimingCommand(false);
         });
         this.framesPanel.onDidChangeVisibility((visible) => {
-            this.postCommand(visible ? 'enableFrameTiming' : 'disableFrameTiming');
+            this.postTimingCommand(visible);
         });
     }
 
@@ -160,7 +160,15 @@ export class ShaderToyManager {
 
     public showFrameTimePanel = () => {
         this.framesPanel.show();
-        this.postCommand('enableFrameTiming');
+        this.postTimingCommand(true);
+    };
+
+    private postTimingCommand = (enable: boolean) => {
+        const command = enable ? 'enableFrameTiming' : 'disableFrameTiming';
+        if (this.webviewPanel !== undefined) {
+            this.webviewPanel.Panel.webview.postMessage({ command });
+        }
+        this.framesPanel.postSetEnabled(enable);
     };
 
     private resetStartingData = () => {
@@ -191,11 +199,28 @@ export class ShaderToyManager {
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 switch (message.command) {
-                case 'frameData':
+                case 'frameData': {
+                    const isValidNumber = (value: unknown): value is number =>
+                        typeof value === 'number' && Number.isFinite(value);
+
+                    const { cpuMs, gpuMs, frameNumber } = message;
+
+                    if (!isValidNumber(cpuMs) || !isValidNumber(gpuMs) || !isValidNumber(frameNumber)) {
+                        return;
+                    }
+
+                    const clamp = (value: number, min: number, max: number): number =>
+                        Math.min(Math.max(value, min), max);
+
                     if (this.framesPanel.isActive) {
-                        this.framesPanel.postFrameData(message);
+                        this.framesPanel.postFrameData({
+                            cpuMs: clamp(cpuMs, 0, 60000),
+                            gpuMs: clamp(gpuMs, 0, 60000),
+                            frameNumber: Math.max(0, Math.floor(frameNumber))
+                        });
                     }
                     return;
+                }
                 case 'readDDSFile':
                 {
                     const requestId: number = message.requestId;
