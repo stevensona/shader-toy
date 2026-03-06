@@ -497,7 +497,7 @@
     } else {
       activeFilters.add(kind);
     }
-    // If all deselected, show all
+    // If all selected, reset filters to show all (unfiltered)
     const allKinds = [...new Set(shaderWarnings.map(w => w.kind))];
     if (activeFilters.size === allKinds.length) {
       activeFilters.clear();

@@ -43,6 +43,7 @@ export class ShaderToyManager {
         });
         this.errorsPanel = new ErrorsPanel(context);
         this.analysisDiagnosticCollection = vscode.languages.createDiagnosticCollection('shader-toy.analysis');
+        this.context.getVscodeExtensionContext().subscriptions.push(this.analysisDiagnosticCollection);
 
         // Clear analysis diagnostics when errors panel is closed
         this.errorsPanel.onDidDispose(() => {
