@@ -29,10 +29,17 @@ export class ShaderToyManager {
     constructor(context: Context) {
         this.context = context;
         this.framesPanel = new FramesPanel(context);
+        this.framesPanel.onDidDispose(() => {
+            this.postCommand('disableFrameTiming');
+        });
+        this.framesPanel.onDidChangeVisibility((visible) => {
+            this.postCommand(visible ? 'enableFrameTiming' : 'disableFrameTiming');
+        });
     }
 
     public migrateToNewContext = async (context: Context) => {
         this.context = context;
+        this.framesPanel.updateContext(context);
         if (this.webviewPanel && this.context.activeEditor) {
             await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
         }

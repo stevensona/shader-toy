@@ -236,6 +236,11 @@
                     window.ShaderToy.frameTiming.setEnabled(true);
                 }
                 break;
+            case 'disableFrameTiming':
+                if (window.ShaderToy && window.ShaderToy.frameTiming) {
+                    window.ShaderToy.frameTiming.setEnabled(false);
+                }
+                break;
         }
     });
 
@@ -470,9 +475,9 @@
             recorder.capture(canvas);
         }
 
-        frameCounter++;
-
         // Frame Timing
+
+        frameCounter++;
     }
     function forceAspectRatio(width, height) {
         // Forced aspect ratio

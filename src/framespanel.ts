@@ -16,9 +16,23 @@ import { Context } from './context';
 export class FramesPanel {
     private panel: vscode.WebviewPanel | undefined;
     private context: Context;
+    private disposeCallbacks: (() => void)[] = [];
+    private visibilityCallbacks: ((visible: boolean) => void)[] = [];
 
     constructor(context: Context) {
         this.context = context;
+    }
+
+    public updateContext(context: Context): void {
+        this.context = context;
+    }
+
+    public onDidDispose(callback: () => void): void {
+        this.disposeCallbacks.push(callback);
+    }
+
+    public onDidChangeVisibility(callback: (visible: boolean) => void): void {
+        this.visibilityCallbacks.push(callback);
     }
 
     public show(): void {
@@ -46,11 +60,16 @@ export class FramesPanel {
 
         this.panel.onDidDispose(() => {
             this.panel = undefined;
+            for (const cb of this.disposeCallbacks) {
+                cb();
+            }
         }, undefined, this.context.getVscodeExtensionContext().subscriptions);
 
-        // When the panel becomes visible, tell preview to start timing
-        this.panel.onDidChangeViewState(() => {
-            // No-op for now; timing is always-on when panel exists
+        this.panel.onDidChangeViewState((e) => {
+            const visible = e.webviewPanel.visible;
+            for (const cb of this.visibilityCallbacks) {
+                cb(visible);
+            }
         }, undefined, this.context.getVscodeExtensionContext().subscriptions);
     }
 

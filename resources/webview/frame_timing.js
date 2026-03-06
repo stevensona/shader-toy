@@ -5,7 +5,7 @@
     root.frameTiming = root.frameTiming || {};
 
     let lastFrameTime = 0;
-    let enabled = true;
+    let enabled = false;
     let lastPostTime = 0;
     const POST_INTERVAL = 16; // throttle to ~60Hz
 
