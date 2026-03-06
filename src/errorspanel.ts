@@ -27,6 +27,11 @@ export class ErrorsPanel {
         this.context = context;
     }
 
+    /** Update the context reference (called when configuration reloads). */
+    public updateContext(context: Context): void {
+        this.context = context;
+    }
+
     /**
      * Register a callback invoked when the panel is disposed (closed by the user).
      * Used by the manager to clear analysis diagnostics tied to the panel.

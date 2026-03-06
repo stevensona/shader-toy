@@ -54,6 +54,7 @@ export class ShaderToyManager {
     public migrateToNewContext = async (context: Context) => {
         this.context = context;
         this.framesPanel.updateContext(context);
+        this.errorsPanel.updateContext(context);
         if (this.webviewPanel && this.context.activeEditor) {
             await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
         }
@@ -435,7 +436,7 @@ export class ShaderToyManager {
 
     private updateWebview = async <T extends Webview | StaticWebview>(webviewPanel: T, document: vscode.TextDocument): Promise<T> => {
         this.context.clearDiagnostics();
-        this.analysisDiagnosticCollection.clear();
+        this.analysisDiagnosticCollection.delete(document.uri);
         this.cachedCompileErrors.clear();
         this.errorsPanel.clearErrors();
         const webviewContentProvider = new WebviewContentProvider(this.context, document.getText(), document.fileName);
@@ -470,8 +471,11 @@ export class ShaderToyManager {
             this.webviewPanel.Panel.webview.postMessage({ command: 'enableFrameTiming' });
         }
 
-        // Run shader analysis if errors panel is active
-        if (this.errorsPanel.isActive) {
+        // Run shader analysis if errors panel is active and this document is the active editor's document
+        const activeEditor = vscode.window.activeTextEditor;
+        if (this.errorsPanel.isActive &&
+            activeEditor &&
+            activeEditor.document.uri.toString() === document.uri.toString()) {
             this.runShaderAnalysis(document);
         }
 

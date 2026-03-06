@@ -41,7 +41,8 @@ export const WARNING_CATEGORIES: Record<WarningKind, { color: string; descriptio
 function stripComments(source: string): string {
     return source
         .replace(/\/\*[\s\S]*?\*\//g, m => ' '.repeat(m.length))
-        .replace(/\/\/[^\n]*/g, m => ' '.repeat(m.length));
+        .replace(/\/\/[^\n]*/g, m => ' '.repeat(m.length))
+        .replace(/^\s*#\s*include\s+.*$/gm, m => ' '.repeat(m.length));
 }
 
 /**
