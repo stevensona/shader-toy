@@ -225,6 +225,10 @@
             {
                 "command": "shader-toy.saveGlslPreviewScreenShots",
                 "title": "Shader Toy: Save GLSL Preview Screenshots"
+            },
+            {
+                "command": "shader-toy.showFrameTimePanel",
+                "title": "Shader Toy: Show Frame Time Panel"
             }
         ],
         "menus": {

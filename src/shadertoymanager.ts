@@ -7,6 +7,7 @@ import { RenderStartingData, DiagnosticBatch } from './typenames';
 import { WebviewContentProvider } from './webviewcontentprovider';
 import { Context } from './context';
 import { removeDuplicates } from './utility';
+import { FramesPanel } from './framespanel';
 
 type Webview = {
     Panel: vscode.WebviewPanel,
@@ -23,13 +24,23 @@ export class ShaderToyManager {
 
     webviewPanel: Webview | undefined;
     staticWebviews: StaticWebview[] = [];
+    framesPanel: FramesPanel;
+    private timingEnabled = false;
 
     constructor(context: Context) {
         this.context = context;
+        this.framesPanel = new FramesPanel(context);
+        this.framesPanel.onDidDispose(() => {
+            this.postTimingCommand(false);
+        });
+        this.framesPanel.onDidChangeVisibility((visible) => {
+            this.postTimingCommand(visible);
+        });
     }
 
     public migrateToNewContext = async (context: Context) => {
         this.context = context;
+        this.framesPanel.updateContext(context);
         if (this.webviewPanel && this.context.activeEditor) {
             await this.updateWebview(this.webviewPanel, this.context.activeEditor.document);
         }
@@ -148,6 +159,20 @@ export class ShaderToyManager {
         this.staticWebviews.forEach((webview: StaticWebview) => webview.Panel.webview.postMessage({command: command}));
     };
 
+    public showFrameTimePanel = () => {
+        this.framesPanel.show();
+        this.postTimingCommand(true);
+    };
+
+    private postTimingCommand = (enable: boolean) => {
+        this.timingEnabled = enable;
+        const command = enable ? 'enableFrameTiming' : 'disableFrameTiming';
+        if (this.webviewPanel !== undefined) {
+            this.webviewPanel.Panel.webview.postMessage({ command });
+        }
+        this.framesPanel.postSetEnabled(enable);
+    };
+
     private resetStartingData = () => {
         const paused = this.startingData.Paused;
         this.startingData = new RenderStartingData();
@@ -176,6 +201,28 @@ export class ShaderToyManager {
         newWebviewPanel.webview.onDidReceiveMessage(
             (message: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 switch (message.command) {
+                case 'frameData': {
+                    const isValidNumber = (value: unknown): value is number =>
+                        typeof value === 'number' && Number.isFinite(value);
+
+                    const { cpuMs, gpuMs, frameNumber } = message;
+
+                    if (!isValidNumber(cpuMs) || !isValidNumber(gpuMs) || !isValidNumber(frameNumber)) {
+                        return;
+                    }
+
+                    const clamp = (value: number, min: number, max: number): number =>
+                        Math.min(Math.max(value, min), max);
+
+                    if (this.framesPanel.isActive) {
+                        this.framesPanel.postFrameData({
+                            cpuMs: clamp(cpuMs, 0, 60000),
+                            gpuMs: clamp(gpuMs, 0, 60000),
+                            frameNumber: Math.max(0, Math.floor(frameNumber))
+                        });
+                    }
+                    return;
+                }
                 case 'readDDSFile':
                 {
                     const requestId: number = message.requestId;
@@ -345,6 +392,12 @@ export class ShaderToyManager {
         }
 
         webviewPanel.Panel.webview.html = await webviewContentProvider.generateWebviewContent(webviewPanel.Panel.webview, this.startingData);
+
+        // Re-send timing state after webview (re)load so FRAMES panel keeps receiving data
+        if (this.timingEnabled && this.webviewPanel && webviewPanel.Panel === this.webviewPanel.Panel) {
+            this.webviewPanel.Panel.webview.postMessage({ command: 'enableFrameTiming' });
+        }
+
         return webviewPanel;
     };
 }
